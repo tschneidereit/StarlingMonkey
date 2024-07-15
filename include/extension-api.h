@@ -24,10 +24,10 @@ using JS::MutableHandleValue;
 using JS::PersistentRooted;
 using JS::PersistentRootedVector;
 
+namespace api {
+
 typedef int32_t PollableHandle;
 constexpr PollableHandle INVALID_POLLABLE_HANDLE = -1;
-
-namespace api {
 
 class AsyncTask;
 
