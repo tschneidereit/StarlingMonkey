@@ -126,3 +126,5 @@ add_builtin(
         OpenSSL::Crypto
     INCLUDE_DIRS
         runtime)
+
+add_rust_builtin(test-builtin)
