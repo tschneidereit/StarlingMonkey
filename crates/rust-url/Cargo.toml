@@ -5,15 +5,6 @@ license = "Apache-2.0 WITH LLVM-exception"
 edition = "2021"
 
 [lib]
-crate-type = ["staticlib"]
 
 [dependencies]
 url = "2.5.2"
-
-[profile.release]
-lto = true
-panic = 'abort'
-
-[profile.dev]
-lto = true
-panic = 'abort'

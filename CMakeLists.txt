@@ -89,7 +89,7 @@ else()
     endif()
 endif()
 
-target_link_libraries(starling.wasm PRIVATE host_api extension_api builtins spidermonkey rust-url)
+target_link_libraries(starling.wasm PRIVATE host_api extension_api builtins spidermonkey rust_staticlib rust-glue)
 
 # build a compilation cache of ICs
 if(WEVAL)
@@ -112,9 +112,8 @@ endif()
 
 set(RUNTIME_FILE "starling.wasm")
 set(ADAPTER_FILE "preview1-adapter.wasm")
-configure_file("componentize.sh" "${CMAKE_CURRENT_BINARY_DIR}/componentize.sh" @ONLY)
+configure_file("componentize.sh.in" "${CMAKE_CURRENT_BINARY_DIR}/componentize.sh" @ONLY)
 configure_file(${ADAPTER} "${CMAKE_CURRENT_BINARY_DIR}/${ADAPTER_FILE}" COPYONLY)
-configure_file(spin.toml spin.toml COPYONLY)
 
 function(componentize OUTPUT)
     set(options)
