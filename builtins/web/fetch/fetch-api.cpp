@@ -124,7 +124,7 @@ bool fetch_https(JSContext *cx, HandleObject request_obj, HandleObject response_
     auto task = mozilla::MakeRefPtr<ResponseFutureTask>(request_obj, pending_handle);
     auto weak = mozilla::WeakPtr<ResponseFutureTask>(task);
 
-    ENGINE->queue_async_task(task);
+    api::Engine::from_context(cx).queue_async_task(task);
 
     RootedObject signal(cx, Request::signal(request_obj));
     MOZ_ASSERT(signal);
@@ -385,8 +385,6 @@ bool fetch(JSContext *cx, unsigned argc, Value *vp) {
 const JSFunctionSpec methods[] = {JS_FN("fetch", fetch, 2, JSPROP_ENUMERATE), JS_FS_END};
 
 bool install(api::Engine *engine) {
-  ENGINE = engine;
-
   if (!JS_DefineFunctions(engine->cx(), engine->global(), methods))
     return false;
   if (!request_response::install(engine)) {

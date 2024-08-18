@@ -28,7 +28,6 @@ public:
 } // namespace
 
 static PersistentRooted<js::UniquePtr<TimersMap>> TIMERS_MAP;
-static api::Engine *ENGINE;
 
 class TimerTask final : public api::AsyncTask {
   using TimerArgumentsVector = std::vector<JS::Heap<JS::Value>>;
@@ -115,12 +114,12 @@ public:
     }
   }
 
-  static bool clear(int32_t timer_id) {
+  static bool clear(api::Engine &engine, int32_t timer_id) {
     if (!TIMERS_MAP->timers_.contains(timer_id)) {
       return false;
     }
 
-    ENGINE->cancel_async_task(TIMERS_MAP->timers_[timer_id]);
+    engine.cancel_async_task(TIMERS_MAP->timers_[timer_id]);
     TIMERS_MAP->timers_.erase(timer_id);
     return true;
   }
@@ -225,7 +224,6 @@ constexpr JSFunctionSpec methods[] = {
     JS_FN("clearTimeout", clearTimeout_or_interval<false>, 1, JSPROP_ENUMERATE), JS_FS_END};
 
 bool install(api::Engine *engine) {
-  ENGINE = engine;
   TIMERS_MAP.init(engine->cx(), js::MakeUnique<TimersMap>());
   return JS_DefineFunctions(engine->cx(), engine->global(), methods);
 }
