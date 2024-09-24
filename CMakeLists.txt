@@ -37,7 +37,12 @@ include("openssl")
 include("${HOST_API}/host_api.cmake")
 include("build-crates")
 
+option(ENABLE_JS_DEBUGGER "Enable support for debugging content via a socket connection" ON)
+
 add_library(extension_api INTERFACE include/extension-api.h runtime/encode.h runtime/decode.h)
+if (ENABLE_JS_DEBUGGER)
+    target_compile_definitions(extension_api INTERFACE ENABLE_JS_DEBUGGER)
+endif()
 target_link_libraries(extension_api INTERFACE rust-url spidermonkey)
 target_include_directories(extension_api INTERFACE include deps/include runtime)
 
@@ -57,7 +62,10 @@ add_executable(starling-raw.wasm
         runtime/event_loop.cpp
         runtime/builtin.cpp
         runtime/script_loader.cpp
+        runtime/debugger.cpp
 )
+
+target_link_libraries(starling-raw.wasm PRIVATE host_api extension_api builtins spidermonkey rust-url)
 
 option(USE_WASM_OPT "use wasm-opt to optimize the StarlingMonkey binary" ON)
 
@@ -88,8 +96,6 @@ else()
         )
     endif()
 endif()
-
-target_link_libraries(starling-raw.wasm PRIVATE host_api extension_api builtins spidermonkey rust-url)
 
 # build a compilation cache of ICs
 if(WEVAL)

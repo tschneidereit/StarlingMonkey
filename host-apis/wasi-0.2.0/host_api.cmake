@@ -1,6 +1,7 @@
 add_library(host_api STATIC
         ${HOST_API}/host_api.cpp
         ${HOST_API}/host_call.cpp
+        ${HOST_API}/sockets.cpp
         ${HOST_API}/bindings/bindings.c
         ${HOST_API}/bindings/bindings_component_type.o
         ${CMAKE_CURRENT_SOURCE_DIR}/include/host_api.h

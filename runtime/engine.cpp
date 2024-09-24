@@ -20,7 +20,10 @@
 #include "jsfriendapi.h"
 #pragma clang diagnostic pop
 
+#include "debugger.h"
 #include "script_loader.h"
+
+#include <decode.h>
 
 #ifdef MEM_STATS
 #include <string>
@@ -431,10 +434,18 @@ Engine::Engine(std::unique_ptr<EngineConfig> config) {
     state_ = EngineState::Initialized;
   }
 
-  if (config_->content_script_path.has_value()) {
-    TRACE("Evaluating initial script from file " << config_->content_script_path.value());
+  content_debugger::maybe_init_debugger(cx(), false);
+  optional<std::string_view> content_script_path = content_debugger::replacement_script_path();
+  if (content_script_path.has_value()) {
+    TRACE("Using replacement script path received from debugger");
+  } else {
+    content_script_path = config_->content_script_path;
+  }
+
+  if (content_script_path.has_value()) {
+    TRACE("Evaluating initial script from file " << content_script_path.value());
     RootedValue result(cx());
-    if (!eval_toplevel(config_->content_script_path.value().data(), &result)) {
+    if (!eval_toplevel(content_script_path.value().data(), &result)) {
       abort("evaluating top-level script");
     }
   }
