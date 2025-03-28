@@ -1,7 +1,7 @@
 {
   "name": "starlingmonkey-debugger",
   "displayName": "StarlingMonkey Debugger",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "preview": true,
   "publisher": "bytecodealliance",
   "description": "Debugger for the StarlingMonkey JS runtime",
@@ -131,17 +131,18 @@
         "configurationAttributes": {
           "launch": {
             "required": [
+              "program",
               "component"
             ],
             "properties": {
               "program": {
                 "type": "string",
-                "description": "Absolute path to a JS file to debug.",
+                "description": "JS file to debug.",
                 "default": "${workspaceFolder}/${command:AskForProgramName}"
               },
               "component": {
                 "type": "string",
-                "description": "Absolute path to a StarlingMonkey component to use for debugging.",
+                "description": "StarlingMonkey component to use for debugging.",
                 "default": "${workspaceFolder}/${command:AskForComponent}"
               },
               "stopOnEntry": {
@@ -162,6 +163,7 @@
             "type": "starlingmonkey",
             "request": "launch",
             "name": "Debug StarlingMonkey component",
+            "program": "${workspaceFolder}/${command:AskForProgramName}",
             "component": "${workspaceFolder}/${command:AskForComponent}",
             "stopOnEntry": true
           }
@@ -174,6 +176,7 @@
               "type": "starlingmonkey",
               "request": "launch",
               "name": "Debug StarlingMonkey component",
+              "program": "${workspaceFolder}/${command:AskForProgramName}",
               "component": "^\"\\${workspaceFolder}/\\${command:AskForComponent}\"",
               "stopOnEntry": true
             }
