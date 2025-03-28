@@ -1,5 +1,4 @@
 var v = "bar";
-console.log("hello.");
 addEventListener('fetch', (event) => {
     foo(event);
 });
@@ -13,11 +12,11 @@ function foo(ev) {
     };
     let re = /a/;
     bar(ev);
-    console.log("hello from foo");
 }
 
 function bar(evt) {
-    let body = 'Hello from content!';
+    let body = 'Hello world!';
+    console.log(body);
     let resp = new Response(body);
     evt.respondWith(resp);
 }

@@ -106,10 +106,12 @@ try {
 
   dbg.onEnterFrame = function (frame: Debugger.Frame): void {
     dbg.onEnterFrame = undefined;
+    let path = frame.script.url;
     for (let script of dbg.findScripts()) {
       addScript(script);
     }
-    sendMessage("programLoaded");
+    LOG && print(`Loaded script ${frame.script.url}`);
+    sendMessage("programLoaded", path);
     return handlePausedFrame(frame);
   };
 
@@ -349,7 +351,7 @@ try {
   interface IRuntimeStackFrame {
     index: number;
     name?: string;
-    file?: string;
+    path?: string;
     line?: number;
     column?: number;
     instruction?: number;
@@ -365,7 +367,7 @@ try {
       };
       if (frame.script) {
         const offsetMeta = frame.script.getOffsetMetadata(frame.offset);
-        entry.file = frame.script.url;
+        entry.path = frame.script.url;
         entry.line = offsetMeta.lineNumber;
         entry.column = offsetMeta.columnNumber;
       }

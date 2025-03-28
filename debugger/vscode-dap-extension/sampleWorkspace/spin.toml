@@ -1,0 +1,19 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["Till Schneidereit <till@tillschneidereit.net>"]
+description = ""
+name = "js-debug"
+version = "0.1.0"
+
+[[trigger.http]]
+route = "/..."
+component = "js-debug"
+
+[component.js-debug]
+source = "out/main.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = ["tcp://127.0.0.1:*"]
+[component.js-debug.build]
+command = ["webpack && componentize-js -o out/main.wasm -w world.wit --runtime-args \"--enable-script-debugging\" out/bundle.js"]
+watch = ["src/**/*.js"]

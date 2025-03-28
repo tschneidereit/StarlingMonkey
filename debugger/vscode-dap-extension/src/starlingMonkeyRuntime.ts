@@ -4,6 +4,9 @@ import * as Net from "net";
 import { Signal } from "./signals.js";
 import { assert } from "console";
 import { Terminal, TerminalShellExecution, window } from "vscode";
+import { ILaunchRequestArguments } from "./starlingMonkeyDebugger.js";
+import { SourceLocation, SourceMaps } from "./sourcemaps/sourceMaps.js";
+import { dirname } from "path";
 
 export interface FileAccessor {
   isWindows: boolean;
@@ -20,7 +23,7 @@ export interface IRuntimeBreakpoint {
 interface IRuntimeStackFrame {
   index: number;
   name: string;
-  file: string;
+  path: string;
   line: number;
   column?: number;
   instruction?: number;
@@ -51,42 +54,51 @@ export interface IComponentRuntimeConfig {
 export interface IStarlingMonkeyRuntimeConfig {
   jsRuntimeOptions: string[];
   componentRuntime: IComponentRuntimeConfig;
+  trace: boolean;
 }
 
 class ComponentRuntimeInstance {
   private static _workspaceFolder?: string;
-  private static _component?: string;
   private static _server?: Net.Server;
   private static _terminal?: Terminal;
   private static _nextSessionPort?: number;
   private static _runtimeExecution?: TerminalShellExecution;
+  private static _execOptions?: string;
 
   static setNextSessionPort(port: number) {
     this._nextSessionPort = port;
   }
 
-  static async start(workspaceFolder: string, component: string, config: IStarlingMonkeyRuntimeConfig) {
-    if (this._workspaceFolder && this._workspaceFolder !== workspaceFolder ||
-        this._component && this._component !== component
-    ) {
-      this.reset();
-    }
-
-    this._workspaceFolder = workspaceFolder;
-    this._component = component;
-
+  static async start(
+    workspaceFolder: string,
+    config: IStarlingMonkeyRuntimeConfig,
+    component: string,
+  ) {
+    this.applyConfig(workspaceFolder, config, component);
     this.ensureServer();
     this.ensureHostRuntime(config, workspaceFolder, component);
   }
-  static reset() {
-    this._workspaceFolder = undefined;
-    this._component = undefined;
-    this._nextSessionPort = undefined;
-    this._server?.close();
-    this._server = undefined;
-    this._terminal?.dispose();
-    this._terminal = undefined;
-    this._runtimeExecution = undefined;
+  static applyConfig(workspaceFolder: string, config: IStarlingMonkeyRuntimeConfig, component: string) {
+    if (this._workspaceFolder && this._workspaceFolder !== workspaceFolder) {
+      this._server?.close();
+      this._server = undefined;
+      this._nextSessionPort = undefined;
+    }
+
+    let execOptions = config.componentRuntime.executable;
+    execOptions += config.componentRuntime.options.join(" ");
+    execOptions += config.componentRuntime.envOption;
+    execOptions += config.jsRuntimeOptions.join("");
+    execOptions += component;
+
+    if (this._runtimeExecution && this._execOptions! !== execOptions) {
+      this._terminal?.dispose();
+      this._terminal = undefined;
+      this._runtimeExecution = undefined;
+    }
+
+    this._workspaceFolder = workspaceFolder;
+    this._execOptions = execOptions;
   }
 
   static ensureServer() {
@@ -123,16 +135,22 @@ class ComponentRuntimeInstance {
     return (<Net.AddressInfo>this._server!.address()).port;
   }
 
-  private static async ensureHostRuntime(config: IStarlingMonkeyRuntimeConfig, workspaceFolder: string, component: string) {
+  private static async ensureHostRuntime(
+    config: IStarlingMonkeyRuntimeConfig,
+    workspaceFolder: string,
+    component: string
+  ) {
     if (this._runtimeExecution) {
       return;
     }
 
-    let componentRuntimeArgs = Array.from(config.componentRuntime.options).map(opt => {
-      return opt
-        .replace("${workspaceFolder}", workspaceFolder)
-        .replace("${component}", component);
-    });
+    let componentRuntimeArgs = Array.from(config.componentRuntime.options).map(
+      (opt) => {
+        return opt
+          .replace("${workspaceFolder}", workspaceFolder)
+          .replace("${component}", component);
+      }
+    );
     componentRuntimeArgs.push(config.componentRuntime.envOption);
     componentRuntimeArgs.push(
       `STARLINGMONKEY_CONFIG="${config.jsRuntimeOptions.join(" ")}"`
@@ -155,15 +173,19 @@ class ComponentRuntimeInstance {
         if (event.execution === this._runtimeExecution) {
           this._runtimeExecution = undefined;
           disposable.dispose();
-          console.log(`Component host runtime exited with code ${event.exitCode}`);
+          console.log(
+            `Component host runtime exited with code ${event.exitCode}`
+          );
         }
       });
     } else {
       // Fallback to sendText if there is no shell integration.
       // Send Ctrl+C to kill any existing component runtime first.
-      this._terminal!.sendText('\x03', false);
+      this._terminal!.sendText("\x03", false);
       this._terminal!.sendText(
-        `${config.componentRuntime.executable} ${componentRuntimeArgs.join(" ")}`,
+        `${config.componentRuntime.executable} ${componentRuntimeArgs.join(
+          " "
+        )}`,
         true
       );
     }
@@ -207,6 +229,7 @@ class ComponentRuntimeInstance {
 export class StarlingMonkeyRuntime extends EventEmitter {
   private _debug!: boolean;
   private _stopOnEntry!: boolean;
+  private _sourceMaps!: SourceMaps;
   public get fileAccessor(): FileAccessor {
     return this._fileAccessor;
   }
@@ -227,30 +250,39 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   constructor(
     private _workspaceDir: string,
     private _fileAccessor: FileAccessor,
-    private _config: IStarlingMonkeyRuntimeConfig
+    private _baseConfig: IStarlingMonkeyRuntimeConfig,
   ) {
     super();
   }
 
-  public async start(program: string, component: string, stopOnEntry: boolean, debug: boolean  ): Promise<void> {
-    await ComponentRuntimeInstance.start(this._workspaceDir, component, this._config);
+  public async start(args: ILaunchRequestArguments): Promise<void> {
+    let config = applyLaunchArgs(this._baseConfig, args);
+    await ComponentRuntimeInstance.start(this._workspaceDir, config, args.component);
     this.startSessionServer();
     // TODO: tell StarlingMonkey not to debug if this is false.
-    this._debug = debug;
-    this._stopOnEntry = stopOnEntry;
-    this._sourceFile = this.normalizePath(program);
+    this._debug = args.noDebug ?? true;
+    this._stopOnEntry = args.stopOnEntry ?? true;
+    this._sourceFile = this.normalizePath(args.program);
     let message = await this._messageReceived.wait();
     assert(
       message.type === "connect",
       `expected "connect" message, got "${message.type}"`
     );
-    // this.sendMessage("startDebugLogging");
+    if (args.trace) {
+      this.sendMessage("startDebugLogging");
+    }
     message = await this.sendAndReceiveMessage("loadProgram", this._sourceFile);
     assert(
       message.type === "programLoaded",
       `expected "programLoaded" message, got "${message.type}"`
     );
+    this.initSourceMaps(message.value);
     this.emit("programLoaded");
+  }
+
+  initSourceMaps(path: string) {
+    path = this.qualifyPath(path);
+    this._sourceMaps = new SourceMaps(dirname(path), this._workspaceDir);
   }
 
   /**
@@ -322,7 +354,7 @@ export class StarlingMonkeyRuntime extends EventEmitter {
       let message = partialMessage.slice(0, expectedLength);
       try {
         let parsed = JSON.parse(message);
-        // console.debug(`received message ${partialMessage}`);
+        console.debug(`received message ${partialMessage}`);
         resetMessageState();
         this._messageReceived.resolve(parsed);
       } catch (e) {
@@ -348,7 +380,7 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     } else {
       message = JSON.stringify({ type, value });
     }
-    // console.debug(`sending message to runtime: ${message}`);
+    console.debug(`sending message to runtime: ${message}`);
     this._socket.write(`${message.length}\n${message}`);
   }
 
@@ -412,12 +444,33 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     );
     let stack = message.value;
     for (let frame of stack) {
-      frame.file = this.qualifyPath(frame.file);
+      await this._translateLocationFromContent(frame);
+      frame.path = this.qualifyPath(frame.path);
     }
     return {
       count: stack.length,
       frames: stack,
     };
+  }
+
+  private async _translateLocationFromContent(frame: any) {
+    if (typeof frame.column === "number" && frame.column > 0) {
+      frame.column -= 1;
+    }
+    if (!this._sourceMaps) {
+      return true;
+    }
+    return await this._sourceMaps.MapToSource(frame);
+  }
+
+  private async _translateLocationToContent(frame: any) {
+    if (typeof frame.column === "number") {
+      frame.column += 1;
+    }
+    if (!this._sourceMaps) {
+      return true;
+    }
+    return await this._sourceMaps.MapFromSource(frame);
   }
 
   async getScopes(frameId: number): Promise<Scope[]> {
@@ -435,10 +488,10 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   ): Promise<{ line: number; column: number }[]> {
     // TODO: support the full set of query params from BreakpointLocationsArguments
     path = this.normalizePath(path);
-    let message = await this.sendAndReceiveMessage("getBreakpointsForLine", {
-      path,
-      line,
-    });
+    let loc = new SourceLocation(path, line, 0);
+    await this._translateLocationToContent(loc);
+
+    let message = await this.sendAndReceiveMessage("getBreakpointsForLine", loc);
     assert(
       message.type === "breakpointsForLine",
       `expected "breakpointsForLine" message, got "${message.type}"`
@@ -452,16 +505,21 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     column?: number
   ): Promise<IRuntimeBreakpoint> {
     path = this.normalizePath(path);
-    let response = await this.sendAndReceiveMessage("setBreakpoint", {
-      path,
-      line,
-      column,
-    });
+    let loc = new SourceLocation(path, line, column ?? 0);
+    await this._translateLocationToContent(loc);
+
+    let response = await this.sendAndReceiveMessage("setBreakpoint", loc);
     assert(
       response.type === "breakpointSet",
       `expected "breakpointSet" message, got "${response.type}"`
     );
-    return response.value;
+
+    if (response.value.id !== -1) {
+      loc.line = response.value.line;
+      loc.column = response.value.column;
+    }
+    await this._translateLocationFromContent(loc);
+    return { id: response.value.id, ...loc };
   }
 
   public async getVariables(reference: number): Promise<IRuntimeVariable[]> {
@@ -492,7 +550,6 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     return message.value;
   }
 
-  // private methods
   private normalizePath(path: string) {
     path = path.replace(/\\/g, "/");
     return path.startsWith(this._workspaceDir)
@@ -503,4 +560,17 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   private qualifyPath(path: string) {
     return `${this._workspaceDir}/${path}`;
   }
+}
+function applyLaunchArgs(baseConfig: IStarlingMonkeyRuntimeConfig, args: ILaunchRequestArguments) {
+  let config = {
+    componentRuntime: {
+      executable: args["componentRuntime.executable"] ?? baseConfig.componentRuntime.executable,
+      options: args["componentRuntime.options"] ?? baseConfig.componentRuntime.options,
+      envOption: args["componentRuntime.envOption"] ?? baseConfig.componentRuntime.envOption,
+    },
+    jsRuntimeOptions: args.jsRuntimeOptions ?? baseConfig.jsRuntimeOptions,
+    trace: args.trace ?? baseConfig.trace,
+   };
+
+  return config;
 }

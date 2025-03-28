@@ -18,12 +18,16 @@ import {
   FileAccessor,
 } from "./starlingMonkeyRuntime.js";
 
-interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+export interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   program: string;
   component: string;
   stopOnEntry?: boolean;
   trace?: boolean;
   noDebug?: boolean;
+  jsRuntimeOptions: string[];
+  "componentRuntime.executable"?: string;
+  "componentRuntime.options"?: string[];
+  "componentRuntime.envOption"?: string;
 }
 
 interface IAttachRequestArguments extends ILaunchRequestArguments {}
@@ -171,7 +175,7 @@ export class StarlingMonkeyDebugSession extends LoggingDebugSession {
       args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Stop,
       false
     );
-    this._runtime.start(args.program, args.component, !!args.stopOnEntry, !args.noDebug);
+    this._runtime.start(args);
     this.sendResponse(response);
   }
 
@@ -269,7 +273,7 @@ export class StarlingMonkeyDebugSession extends LoggingDebugSession {
           const sf: DebugProtocol.StackFrame = new StackFrame(
             f.index,
             f.name,
-            this.createSource(f.file),
+            this.createSource(f.path),
             this.convertDebuggerLineToClient(f.line)
           );
           if (typeof f.column === "number") {

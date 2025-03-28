@@ -7,11 +7,52 @@
     {
       "type": "starlingmonkey",
       "request": "launch",
-      "name": "Debug main.js",
+      "name": "Debug main.js in Wasmtime",
+      "program": "src/main.js",
+      "component": "out/main.wasm",
+      "stopOnEntry": false,
+      "trace": true,
+      "componentRuntime.executable": "wasmtime",
+      "componentRuntime.options": [
+        "serve",
+        "-S",
+        "cli,tcp,inherit-network",
+        "--dir",
+        "${workspaceFolder}::/",
+        "--addr",
+        "0.0.0.0:3000",
+        "${component}"
+      ]
+    },
+    {
+      "type": "starlingmonkey",
+      "request": "launch",
+      "name": "Debug main.js in Spin",
       "program": "${workspaceFolder}/src/main.js",
       "component": "${workspaceFolder}/out/main.wasm",
       "stopOnEntry": false,
-      "trace": true
-    }
+      "trace": true,
+      "componentRuntime.executable": "spin",
+      "componentRuntime.options": [
+        "watch",
+      ]
+    },
+    {
+      "type": "starlingmonkey",
+      "request": "launch",
+      "name": "Debug main.js in JCO",
+      "program": "${workspaceFolder}/src/main.js",
+      "component": "${workspaceFolder}/out/main.wasm",
+      "stopOnEntry": false,
+      "trace": false,
+      "componentRuntime.executable": "npx",
+      "componentRuntime.options": [
+        "jco",
+        "serve",
+        "--port",
+        "3000",
+        "${component}",
+      ]
+    },
   ]
 }
