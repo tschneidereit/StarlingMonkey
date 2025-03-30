@@ -1,3 +1,10 @@
+import {
+  DebuggerMessageType,
+  HostMessage,
+  HostMessageType,
+  IRuntimeStackFrame,
+} from "../shared/protocol-types";
+
 // Type definitions for SpiderMonkey Debugger API
 declare class Debugger {
   static Object: any;
@@ -18,7 +25,10 @@ declare namespace Debugger {
     startColumn: number;
     lineCount: number;
     global: Object;
-    getOffsetMetadata(offset: number): { lineNumber: number; columnNumber: number };
+    getOffsetMetadata(offset: number): {
+      lineNumber: number;
+      columnNumber: number;
+    };
     getPossibleBreakpointOffsets(options: { line: number }): number[];
     getChildScripts(): Script[];
     setBreakpoint(offset: number, handler: BreakpointHandler): void;
@@ -111,7 +121,7 @@ try {
       addScript(script);
     }
     LOG && print(`Loaded script ${frame.script.url}`);
-    sendMessage("programLoaded", path);
+    sendMessage(DebuggerMessageType.ProgramLoaded, path);
     return handlePausedFrame(frame);
   };
 
@@ -132,15 +142,11 @@ try {
       idToObject.clear();
     } catch (e) {
       assert(e instanceof Error);
-      LOG && print(
+      LOG &&
+        print(
           `Exception during paused frame handling: ${e}. Stack:\n${e.stack}`
         );
     }
-  }
-
-  interface Message {
-    type: string;
-    value?: any;
   }
 
   function waitForSocket(): void {
@@ -149,48 +155,49 @@ try {
         let message = receiveMessage();
         LOG && print(`received message ${JSON.stringify(message)}`);
         switch (message.type) {
-          case "loadProgram":
+          case HostMessageType.LoadProgram:
             setContentPath(message.value);
             return;
-          case "getBreakpointsForLine":
+          case HostMessageType.GetBreakpointsForLine:
             getBreakpointsForLine(message.value);
             break;
-          case "setBreakpoint":
+          case HostMessageType.SetBreakpoint:
             setBreakpoint(message.value);
             break;
-          case "getStack":
+          case HostMessageType.GetStack:
             getStack(message.value.index, message.value.count);
             break;
-          case "getScopes":
+          case HostMessageType.GetScopes:
             getScopes(message.value);
             break;
-          case "getVariables":
+          case HostMessageType.GetVariables:
             getVariables(message.value);
             break;
-          case "setVariable":
+          case HostMessageType.SetVariable:
             setVariable(message.value);
             break;
-          case "next":
+          case HostMessageType.Next:
             currentFrame!.onStep = handleNext;
             return;
-          case "stepIn":
+          case HostMessageType.StepIn:
             currentFrame!.onStep = handleNext;
             dbg.onEnterFrame = handleStepIn;
             return;
-          case "stepOut":
+          case HostMessageType.StepOut:
             currentFrame!.onPop = handleStepOut;
             return;
-          case "continue":
+          case HostMessageType.Continue:
             currentFrame = undefined;
             return;
-          case "startDebugLogging":
+          case HostMessageType.StartDebugLogging:
             LOG = true;
             break;
-          case "stopDebugLogging":
+          case HostMessageType.StopDebugLogging:
             LOG = false;
             break;
           default:
-            LOG && print(
+            LOG &&
+              print(
                 `Invalid message received, continuing execution. Message: ${message.type}`
               );
             currentFrame = undefined;
@@ -198,7 +205,8 @@ try {
         }
       } catch (e) {
         assert(e instanceof Error);
-        LOG && print(`Exception during paused frame loop: ${e}. Stack:\n${e.stack}`);
+        LOG &&
+          print(`Exception during paused frame loop: ${e}. Stack:\n${e.stack}`);
       }
     }
   }
@@ -226,13 +234,13 @@ try {
     if (!positionChanged(this)) {
       return;
     }
-    sendMessage("stopOnStep");
+    sendMessage(DebuggerMessageType.StopOnStep);
     handlePausedFrame(this);
   }
 
   function handleStepIn(frame: Debugger.Frame): void {
     dbg.onEnterFrame = undefined;
-    sendMessage("stopOnStep");
+    sendMessage(DebuggerMessageType.StopOnStep);
     handlePausedFrame(frame);
   }
 
@@ -247,7 +255,7 @@ try {
 
   const breakpointHandler: Debugger.BreakpointHandler = {
     hit(frame: Debugger.Frame): void {
-      sendMessage("breakpointHit", frame.offset);
+      sendMessage(DebuggerMessageType.StopOnBreakpoint, frame.offset);
       return handlePausedFrame(frame);
     },
   };
@@ -311,7 +319,7 @@ try {
         };
       });
     }
-    sendMessage("breakpointsForLine", locations);
+    sendMessage(DebuggerMessageType.BreakpointsForLine, locations);
   }
 
   function setBreakpoint({
@@ -326,7 +334,7 @@ try {
     let fileScripts = scripts.get(path);
     if (!fileScripts) {
       LOG && print(`Can't set breakpoint: no scripts found for file ${path}`);
-      sendMessage("breakpointSet", { id: -1, line, column });
+      sendMessage(DebuggerMessageType.BreakpointSet, { id: -1, line, column });
       return;
     }
     let { script, offsets } =
@@ -345,17 +353,13 @@ try {
       }
       script!.setBreakpoint(offset, breakpointHandler);
     }
-    sendMessage("breakpointSet", { id: offset, line, column });
+    sendMessage(DebuggerMessageType.BreakpointSet, {
+      id: offset,
+      line,
+      column,
+    });
   }
 
-  interface IRuntimeStackFrame {
-    index: number;
-    name?: string;
-    path?: string;
-    line?: number;
-    column?: number;
-    instruction?: number;
-  }
   function getStack(index: number, count: number): void {
     let stack: IRuntimeStackFrame[] = [];
     assert(currentFrame);
@@ -384,12 +388,12 @@ try {
       }
       frame = nextFrame;
     }
-    sendMessage("stack", stack);
+    sendMessage(DebuggerMessageType.Stack, stack);
   }
 
   interface Scope {
     name: string;
-    presentationHint?: 'arguments' | 'locals' | 'registers' | string;
+    presentationHint?: "arguments" | "locals" | "registers" | string;
     variablesReference: number;
     namedVariables?: number;
     indexedVariables?: number;
@@ -405,23 +409,25 @@ try {
     assert(currentFrame);
     let frame = findFrame(currentFrame, index);
     let script = frame.script;
-    let scopes: Scope[] = [{
-      name: "Locals",
-      presentationHint: "locals",
-      variablesReference: index + 1,
-      expensive: false,
-      line: script.startLine,
-      column: script.startColumn,
-      endLine: script.startLine + script.lineCount,
-    },
-    {
-      name: "Globals",
-      presentationHint: "globals",
-      variablesReference: GLOBAL_OBJECT_REF,
-      expensive: true,
-    }];
+    let scopes: Scope[] = [
+      {
+        name: "Locals",
+        presentationHint: "locals",
+        variablesReference: index + 1,
+        expensive: false,
+        line: script.startLine,
+        column: script.startColumn,
+        endLine: script.startLine + script.lineCount,
+      },
+      {
+        name: "Globals",
+        presentationHint: "globals",
+        variablesReference: GLOBAL_OBJECT_REF,
+        expensive: true,
+      },
+    ];
 
-    sendMessage("scopes", scopes);
+    sendMessage(DebuggerMessageType.Scopes, scopes);
   }
 
   interface IVariable {
@@ -435,7 +441,7 @@ try {
     if (reference > MAX_FRAMES) {
       let object = idToObject.get(reference);
       let locals = getMembers(object!);
-      sendMessage("variables", locals);
+      sendMessage(DebuggerMessageType.Variables, locals);
       return;
     }
 
@@ -458,7 +464,7 @@ try {
       });
     }
 
-    sendMessage("variables", locals);
+    sendMessage(DebuggerMessageType.Variables, locals);
   }
 
   function setVariable({
@@ -482,7 +488,7 @@ try {
       frame.environment.setVariable(name, value);
       newValue = formatValue(frame.environment.getVariable(name));
     }
-    sendMessage("variableSet", newValue);
+    sendMessage(DebuggerMessageType.VariableSet, newValue);
   }
 
   function getMembers(object: Debugger.Object): any[] {
@@ -562,10 +568,7 @@ try {
     return { value: formatted, type: "Accessor", variablesReference: 0 };
   }
 
-  function findFrame(
-    start: Debugger.Frame,
-    index: number
-  ): Debugger.Frame {
+  function findFrame(start: Debugger.Frame, index: number): Debugger.Frame {
     let frame = start;
     for (let i = 0; i < index && frame; i++) {
       let nextFrame = frame.older || frame.olderSavedFrame;
@@ -575,13 +578,13 @@ try {
     return frame;
   }
 
-  function sendMessage(type, value?) {
+  function sendMessage(type: DebuggerMessageType, value?) {
     const messageStr = JSON.stringify({ type, value });
     LOG && print(`sending message: ${messageStr}`);
     socket.send(`${messageStr.length}\n${messageStr}`);
   }
 
-  function receiveMessage(): Message {
+  function receiveMessage(): HostMessage {
     LOG && print("Debugger listening for incoming message ...");
     let partialMessage = "";
     let eol = -1;
@@ -595,7 +598,8 @@ try {
 
     let length = parseInt(partialMessage.slice(0, eol), 10);
     if (isNaN(length)) {
-      LOG && print(
+      LOG &&
+        print(
           `WARN: Received message ${partialMessage} not of the format '[length]\\n[JSON encoded message with length {length}]', discarding`
         );
       return receiveMessage();
@@ -607,7 +611,8 @@ try {
     }
 
     if (partialMessage.length > length) {
-      LOG && print(
+      LOG &&
+        print(
           `WARN: Received message ${
             partialMessage.length - length
           } bytes longer than advertised, ignoring everything beyond the first ${length} bytes`
@@ -619,14 +624,20 @@ try {
       return JSON.parse(partialMessage);
     } catch (e) {
       assert(e instanceof Error);
-      LOG && print(`WARN: Ill-formed message received, discarding: ${e}, ${e.stack}`);
+      LOG &&
+        print(
+          `WARN: Ill-formed message received, discarding: ${e}, ${e.stack}`
+        );
       return receiveMessage();
     }
   }
 
-  sendMessage("connect");
+  sendMessage(DebuggerMessageType.Connect);
   waitForSocket();
 } catch (e) {
   assert(e instanceof Error);
-  LOG && print(`Setting up connection to debugger failed with exception: ${e},\nstack:\n${e.stack}`);
+  LOG &&
+    print(
+      `Setting up connection to debugger failed with exception: ${e},\nstack:\n${e.stack}`
+    );
 }

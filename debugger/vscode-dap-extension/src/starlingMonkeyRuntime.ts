@@ -2,11 +2,12 @@ import { Scope } from "@vscode/debugadapter";
 import { EventEmitter } from "events";
 import * as Net from "net";
 import { Signal } from "./signals.js";
-import { assert } from "console";
+import assert from "node:assert/strict";
 import { Terminal, TerminalShellExecution, window } from "vscode";
 import { ILaunchRequestArguments } from "./starlingMonkeyDebugger.js";
 import { SourceLocation, SourceMaps } from "./sourcemaps/sourceMaps.js";
 import { dirname } from "path";
+import { DebuggerMessageType, HostMessageType } from "../shared/protocol-types";
 
 export interface FileAccessor {
   isWindows: boolean;
@@ -107,8 +108,8 @@ class ComponentRuntimeInstance {
     }
     this._server = Net.createServer((socket) => {
       socket.on("data", (data) => {
-        assert(
-          data.toString() === "get-session-port",
+        assert.equal(
+          data.toString(), "get-session-port",
           `expected "get-session-port" message, got "${data.toString()}"`
         );
         console.debug("StarlingMonkey sent a get-session-port request");
@@ -264,23 +265,23 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     this._stopOnEntry = args.stopOnEntry ?? true;
     this._sourceFile = this.normalizePath(args.program);
     let message = await this._messageReceived.wait();
-    assert(
-      message.type === "connect",
+    assert.equal(
+      message.type, DebuggerMessageType.Connect,
       `expected "connect" message, got "${message.type}"`
     );
     if (args.trace) {
-      this.sendMessage("startDebugLogging");
+      this.sendMessage(HostMessageType.StartDebugLogging);
     }
-    message = await this.sendAndReceiveMessage("loadProgram", this._sourceFile);
-    assert(
-      message.type === "programLoaded",
+    message = await this.sendAndReceiveMessage(HostMessageType.LoadProgram, this._sourceFile);
+    assert.equal(
+      message.type, DebuggerMessageType.ProgramLoaded,
       `expected "programLoaded" message, got "${message.type}"`
     );
-    this.initSourceMaps(message.value);
+    await this.initSourceMaps(message.value);
     this.emit("programLoaded");
   }
 
-  initSourceMaps(path: string) {
+  async initSourceMaps(path: string) {
     path = this.qualifyPath(path);
     this._sourceMaps = new SourceMaps(dirname(path), this._workspaceDir);
   }
@@ -373,7 +374,7 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     ComponentRuntimeInstance.setNextSessionPort(port);
   }
 
-  private sendMessage(type: string, value?: any, useRawValue = false) {
+  private sendMessage(type: HostMessageType, value?: any, useRawValue = false) {
     let message: string;
     if (useRawValue) {
       message = `{"type": "${type}", "value": ${value}}`;
@@ -385,7 +386,7 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   }
 
   private sendAndReceiveMessage(
-    type: string,
+    type: HostMessageType,
     value?: any,
     useRawValue = false
   ): Promise<any> {
@@ -402,44 +403,44 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   }
 
   public async continue() {
-    let message = await this.sendAndReceiveMessage("continue");
+    let message = await this.sendAndReceiveMessage(HostMessageType.Continue);
     // TODO: handle other results, such as run to completion
-    assert(
-      message.type === "breakpointHit",
+    assert.equal(
+      message.type, DebuggerMessageType.StopOnBreakpoint,
       `expected "breakpointHit" message, got "${message.type}"`
     );
     this.emit("stopOnBreakpoint");
   }
 
   public next(granularity: "statement" | "line" | "instruction") {
-    this.handleStep("next");
+    this.handleStep(HostMessageType.Next);
   }
 
   public stepIn(targetId: number | undefined) {
-    this.handleStep("stepIn");
+    this.handleStep(HostMessageType.StepIn);
   }
 
   public stepOut() {
-    this.handleStep("stepOut");
+    this.handleStep(HostMessageType.StepOut);
   }
 
-  private async handleStep(type: "next" | "stepIn" | "stepOut") {
+  private async handleStep(type: HostMessageType.Next | HostMessageType.StepIn | HostMessageType.StepOut) {
     let message = await this.sendAndReceiveMessage(type);
     // TODO: handle other results, such as run to completion
-    assert(
-      message.type === "stopOnStep",
+    assert.equal(
+      message.type, DebuggerMessageType.StopOnStep,
       `expected "stopOnStep" message, got "${message.type}"`
     );
     this.emit("stopOnStep");
   }
 
   public async stack(index: number, count: number): Promise<IRuntimeStack> {
-    let message = await this.sendAndReceiveMessage("getStack", {
+    let message = await this.sendAndReceiveMessage(HostMessageType.GetStack, {
       index,
       count,
     });
-    assert(
-      message.type === "stack",
+    assert.equal(
+      message.type, DebuggerMessageType.Stack,
       `expected "stack" message, got "${message.type}"`
     );
     let stack = message.value;
@@ -474,9 +475,9 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   }
 
   async getScopes(frameId: number): Promise<Scope[]> {
-    let message = await this.sendAndReceiveMessage("getScopes", frameId);
-    assert(
-      message.type === "scopes",
+    let message = await this.sendAndReceiveMessage(HostMessageType.GetScopes, frameId);
+    assert.equal(
+      message.type, DebuggerMessageType.Scopes,
       `expected "scopes" message, got "${message.type}"`
     );
     return message.value;
@@ -491,9 +492,9 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     let loc = new SourceLocation(path, line, 0);
     await this._translateLocationToContent(loc);
 
-    let message = await this.sendAndReceiveMessage("getBreakpointsForLine", loc);
-    assert(
-      message.type === "breakpointsForLine",
+    let message = await this.sendAndReceiveMessage(HostMessageType.GetBreakpointsForLine, loc);
+    assert.equal(
+      message.type, DebuggerMessageType.BreakpointsForLine,
       `expected "breakpointsForLine" message, got "${message.type}"`
     );
     return message.value;
@@ -508,9 +509,9 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     let loc = new SourceLocation(path, line, column ?? 0);
     await this._translateLocationToContent(loc);
 
-    let response = await this.sendAndReceiveMessage("setBreakpoint", loc);
-    assert(
-      response.type === "breakpointSet",
+    let response = await this.sendAndReceiveMessage(HostMessageType.SetBreakpoint, loc);
+    assert.equal(
+      response.type, "breakpointSet",
       `expected "breakpointSet" message, got "${response.type}"`
     );
 
@@ -523,9 +524,9 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   }
 
   public async getVariables(reference: number): Promise<IRuntimeVariable[]> {
-    let message = await this.sendAndReceiveMessage("getVariables", reference);
-    assert(
-      message.type === "variables",
+    let message = await this.sendAndReceiveMessage(HostMessageType.GetVariables, reference);
+    assert.equal(
+      message.type, DebuggerMessageType.Variables,
       `expected "variables" message, got "${message.type}"`
     );
     return message.value;
@@ -539,12 +540,12 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     // Manually encode the value so that it'll be decoded as raw values by the runtime, instead of everything becoming a string.
     let rawValue = `{"variablesReference": ${variablesReference}, "name": "${name}", "value": ${value}}`;
     let message = await this.sendAndReceiveMessage(
-      "setVariable",
+      HostMessageType.SetVariable,
       rawValue,
       true
     );
-    assert(
-      message.type === "variableSet",
+    assert.equal(
+      message.type, DebuggerMessageType.VariableSet,
       `expected "variableSet" message, got "${message.type}"`
     );
     return message.value;
