@@ -1,75 +1,24 @@
 import {
+  DebuggerMessage,
+  DebuggerMessageBreakpointSet,
+  DebuggerMessageBreakpointsForLine,
+  DebuggerMessageConnect,
+  DebuggerMessageProgramLoaded,
+  DebuggerMessageScopes,
+  DebuggerMessageStack,
+  DebuggerMessageStopOnBreakpoint,
+  DebuggerMessageStopOnStep,
   DebuggerMessageType,
+  DebuggerMessageVariables,
+  DebuggerMessageVariableSet,
   HostMessage,
   HostMessageType,
-  IRuntimeStackFrame,
+  SourceLocation,
 } from "../shared/protocol-types";
 
-// Type definitions for SpiderMonkey Debugger API
-declare class Debugger {
-  static Object: any;
-  static Script: any;
-  static Environment: any;
-  static Frame: any;
-  constructor();
-  addAllGlobalsAsDebuggees(): void;
-  findScripts(): Debugger.Script[];
-  onNewScript: ((script: Debugger.Script, global?: any) => void) | undefined;
-  onEnterFrame: ((frame: Debugger.Frame) => void) | undefined;
-}
-
-declare namespace Debugger {
-  interface Script {
-    url: string;
-    startLine: number;
-    startColumn: number;
-    lineCount: number;
-    global: Object;
-    getOffsetMetadata(offset: number): {
-      lineNumber: number;
-      columnNumber: number;
-    };
-    getPossibleBreakpointOffsets(options: { line: number }): number[];
-    getChildScripts(): Script[];
-    setBreakpoint(offset: number, handler: BreakpointHandler): void;
-  }
-
-  interface Frame {
-    script: Script;
-    offset: number;
-    this?: Object;
-    type: string;
-    older?: Frame;
-    olderSavedFrame?: Frame;
-    callee?: { name: string };
-    environment: Environment;
-    onStep: (() => void) | undefined;
-    onPop: (() => void) | undefined;
-  }
-
-  interface Environment {
-    names(): string[];
-    getVariable(name: string): any;
-    setVariable(name: string, value: any): void;
-  }
-
-  interface Object {
-    class?: string;
-    getOwnPropertyNames(): string[];
-    getOwnPropertyDescriptor(name: string): PropertyDescriptor;
-    setProperty(name: string, value: any): void;
-  }
-
-  interface PropertyDescriptor {
-    value?: any;
-    get?: Object;
-    set?: Object;
-  }
-
-  interface BreakpointHandler {
-    hit(frame: Frame): void;
-  }
-}
+import { DebugProtocol } from "@vscode/debugprotocol";
+import { Debugger } from "./spidermonkey-debugger";
+import { StackFrame } from "@vscode/debugadapter/lib/debugSession";
 
 declare const socket: {
   send(data: string): void;
@@ -97,6 +46,7 @@ try {
   let varRefsIndex = OBJECT_REFS_START;
   let objectToId = new Map<Debugger.Object, number>();
   let idToObject = new Map<number, Debugger.Object>();
+  let breakpointId = 0;
 
   function addScript(script: Debugger.Script): void {
     let urlScripts = scripts.get(script.url);
@@ -121,7 +71,7 @@ try {
       addScript(script);
     }
     LOG && print(`Loaded script ${frame.script.url}`);
-    sendMessage(DebuggerMessageType.ProgramLoaded, path);
+    sendMessage({ type: DebuggerMessageType.ProgramLoaded, source: { path } });
     return handlePausedFrame(frame);
   };
 
@@ -234,13 +184,13 @@ try {
     if (!positionChanged(this)) {
       return;
     }
-    sendMessage(DebuggerMessageType.StopOnStep);
+    sendMessage({ type: DebuggerMessageType.StopOnStep,  });
     handlePausedFrame(this);
   }
 
   function handleStepIn(frame: Debugger.Frame): void {
     dbg.onEnterFrame = undefined;
-    sendMessage(DebuggerMessageType.StopOnStep);
+    sendMessage({ type: DebuggerMessageType.StopOnStep,  });
     handlePausedFrame(frame);
   }
 
@@ -255,71 +205,70 @@ try {
 
   const breakpointHandler: Debugger.BreakpointHandler = {
     hit(frame: Debugger.Frame): void {
-      sendMessage(DebuggerMessageType.StopOnBreakpoint, frame.offset);
+      // TODO: get the breakpoint ID instead of using offset here
+      sendMessage({ type: DebuggerMessageType.StopOnBreakpoint, id: frame.offset });
       return handlePausedFrame(frame);
     },
   };
 
-  interface BreakpointLocation {
+  interface InternalSourceLocation extends SourceLocation {
     script: Debugger.Script;
-    offsets: number[];
+    offset: number;
   }
 
   function getPossibleBreakpointsInScripts(
     scripts: Set<Debugger.Script> | undefined,
-    line: number
-  ): BreakpointLocation | null {
-    if (!scripts) {
-      return null;
+    line: number,
+    column: number,
+  ): InternalSourceLocation[] {
+    let locations = [];
+    for (let script of scripts ?? []) {
+      getPossibleBreakpointsInScriptRecursive(script, line, column, locations);
     }
-    for (let script of scripts) {
-      let result = getPossibleBreakpointsInScriptRecursive(script, line);
-      if (result) {
-        return result;
-      }
-    }
-    return null;
+    return locations;
   }
 
   function getPossibleBreakpointsInScriptRecursive(
     script: Debugger.Script,
-    line: number
-  ): BreakpointLocation | null {
-    let offsets = script.getPossibleBreakpointOffsets({ line });
-    if (offsets.length) {
-      return { script, offsets };
+    line: number,
+    column: number,
+    locations: InternalSourceLocation[]
+  ) {
+    let offsets = script.getPossibleBreakpointOffsets({
+      line,
+      minColumn: column,
+    });
+    for (let offset of offsets) {
+      let meta = script.getOffsetMetadata(offset);
+      locations.push({
+        script,
+        offset,
+        line: meta.lineNumber,
+        column: meta.columnNumber,
+      });
     }
 
     for (let child of script.getChildScripts()) {
-      let result = getPossibleBreakpointsInScriptRecursive(child, line);
-      if (result) {
-        return result;
-      }
+      getPossibleBreakpointsInScriptRecursive(child, line, column, locations);
     }
-    return null;
   }
 
   function getBreakpointsForLine({
     path,
     line,
+    column,
   }: {
     path: string;
     line: number;
+    column: number;
   }): void {
     let fileScripts = scripts.get(path);
-    let { script, offsets } =
-      getPossibleBreakpointsInScripts(fileScripts, line) || {};
-    let locations: { line: number; column: number }[] = [];
-    if (offsets) {
-      locations = offsets.map((offset) => {
-        let meta = script!.getOffsetMetadata(offset);
-        return {
-          line: meta.lineNumber,
-          column: meta.columnNumber,
-        };
-      });
-    }
-    sendMessage(DebuggerMessageType.BreakpointsForLine, locations);
+    let locations = getPossibleBreakpointsInScripts(fileScripts, line, column);
+    let externalLocations = locations.map(({ line, column}) => ({
+      line,
+      column,
+    }));
+    sendMessage({ type: DebuggerMessageType.BreakpointsForLine, locations: externalLocations });
   }
 
   function setBreakpoint({
@@ -334,53 +283,34 @@ try {
     let fileScripts = scripts.get(path);
     if (!fileScripts) {
       LOG && print(`Can't set breakpoint: no scripts found for file ${path}`);
-      sendMessage(DebuggerMessageType.BreakpointSet, { id: -1, line, column });
+      sendMessage({ type: DebuggerMessageType.BreakpointSet, id: -1, location: { line, column } });
       return;
     }
-    let { script, offsets } =
-      getPossibleBreakpointsInScripts(fileScripts, line) || {};
-    let offset = -1;
-    if (offsets) {
-      for (offset of offsets) {
-        let meta = script!.getOffsetMetadata(offset);
-        assert(
-          meta.lineNumber === line,
-          `Line number mismatch, should be ${line}, got ${meta.lineNumber}`
-        );
-        if (meta.columnNumber === column) {
-          break;
-        }
+    let locations = getPossibleBreakpointsInScripts(fileScripts, line, column);
+    let location;
+    for (location of locations) {
+      if (location.line === line && location.column === column) {
+        location.script.setBreakpoint(location.offset, breakpointHandler);
+        break;
       }
-      script!.setBreakpoint(offset, breakpointHandler);
     }
-    sendMessage(DebuggerMessageType.BreakpointSet, {
-      id: offset,
-      line,
-      column,
-    });
+    sendMessage({ type: DebuggerMessageType.BreakpointSet, id: ++breakpointId, location: { line, column } });
   }
 
   function getStack(index: number, count: number): void {
-    let stack: IRuntimeStackFrame[] = [];
+    let stack: DebugProtocol.StackFrame[] = [];
     assert(currentFrame);
     let frame = findFrame(currentFrame, index);
 
     while (stack.length < count) {
-      let entry: IRuntimeStackFrame = {
-        index: stack.length,
-      };
+      let entry = new StackFrame(stack.length, frame.callee ? frame.callee.name : frame.type);
       if (frame.script) {
         const offsetMeta = frame.script.getOffsetMetadata(frame.offset);
-        entry.path = frame.script.url;
+        entry.source = { path: frame.script.url };
         entry.line = offsetMeta.lineNumber;
         entry.column = offsetMeta.columnNumber;
       }
 
-      if (frame.callee) {
-        entry.name = frame.callee.name;
-      } else {
-        entry.name = frame.type;
-      }
       stack.push(entry);
       let nextFrame = frame.older || frame.olderSavedFrame;
       if (!nextFrame) {
@@ -388,28 +318,14 @@ try {
       }
       frame = nextFrame;
     }
-    sendMessage(DebuggerMessageType.Stack, stack);
-  }
-
-  interface Scope {
-    name: string;
-    presentationHint?: "arguments" | "locals" | "registers" | string;
-    variablesReference: number;
-    namedVariables?: number;
-    indexedVariables?: number;
-    expensive: boolean;
-    // source?: Source; TODO: support
-    line?: number;
-    column?: number;
-    endLine?: number;
-    endColumn?: number;
+    sendMessage({ type: DebuggerMessageType.Stack, stack });
   }
 
   function getScopes(index: number): void {
     assert(currentFrame);
     let frame = findFrame(currentFrame, index);
     let script = frame.script;
-    let scopes: Scope[] = [
+    let scopes: DebugProtocol.Scope[] = [
       {
         name: "Locals",
         presentationHint: "locals",
@@ -427,36 +343,29 @@ try {
       },
     ];
 
-    sendMessage(DebuggerMessageType.Scopes, scopes);
-  }
-
-  interface IVariable {
-    name: string;
-    value: string;
-    type: string;
-    variablesReference: number;
+    sendMessage({ type: DebuggerMessageType.Scopes, scopes });
   }
 
   function getVariables(reference: number): void {
     if (reference > MAX_FRAMES) {
       let object = idToObject.get(reference);
-      let locals = getMembers(object!);
-      sendMessage(DebuggerMessageType.Variables, locals);
+      let variables = getMembers(object!);
+      sendMessage({ type: DebuggerMessageType.Variables, variables });
       return;
     }
 
     assert(currentFrame);
     let frame = findFrame(currentFrame, reference - 1);
-    let locals: IVariable[] = [];
+    let variables: DebugProtocol.Variable[] = [];
 
     for (let name of frame.environment.names()) {
       let value = frame.environment.getVariable(name);
-      locals.push({ name, ...formatValue(value) });
+      variables.push({ name, ...formatValue(value) });
     }
 
     if (frame.this) {
       let { value, type, variablesReference } = formatValue(frame.this);
-      locals.push({
+      variables.push({
         name: "<this>",
         value,
         type,
@@ -464,7 +373,7 @@ try {
       });
     }
 
-    sendMessage(DebuggerMessageType.Variables, locals);
+    sendMessage({ type: DebuggerMessageType.Variables, variables });
   }
 
   function setVariable({
@@ -488,19 +397,19 @@ try {
       frame.environment.setVariable(name, value);
       newValue = formatValue(frame.environment.getVariable(name));
     }
-    sendMessage(DebuggerMessageType.VariableSet, newValue);
+    sendMessage({ type: DebuggerMessageType.VariableSet, newValue });
   }
 
-  function getMembers(object: Debugger.Object): any[] {
+  function getMembers(object: Debugger.Object): DebugProtocol.Variable[] {
     let names = object.getOwnPropertyNames();
-    let members: IVariable[] = [];
+    let members: DebugProtocol.Variable[] = [];
     for (let name of names) {
       members.push(getMember(object, name));
     }
     return members;
   }
 
-  function getMember(object: Debugger.Object, name: string): IVariable {
+  function getMember(object: Debugger.Object, name: string): DebugProtocol.Variable {
     let descriptor = object.getOwnPropertyDescriptor(name);
     return { name, ...formatDescriptor(descriptor) };
   }
@@ -578,8 +487,8 @@ try {
     return frame;
   }
 
-  function sendMessage(type: DebuggerMessageType, value?) {
-    const messageStr = JSON.stringify({ type, value });
+  function sendMessage(message: DebuggerMessage) {
+    const messageStr = JSON.stringify(message);
     LOG && print(`sending message: ${messageStr}`);
     socket.send(`${messageStr.length}\n${messageStr}`);
   }
@@ -632,7 +541,7 @@ try {
     }
   }
 
-  sendMessage(DebuggerMessageType.Connect);
+  sendMessage({ type: DebuggerMessageType.Connect,  });
   waitForSocket();
 } catch (e) {
   assert(e instanceof Error);

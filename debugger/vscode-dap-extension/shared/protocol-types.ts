@@ -1,15 +1,69 @@
-export interface IRuntimeStackFrame {
-  index: number;
-  name?: string;
-  path?: string;
-  line?: number;
-  column?: number;
-  instruction?: number;
+import { DebugProtocol } from "@vscode/debugprotocol";
+
+export interface SourceLocation {
+  line: number;
+  column: number;
 }
 
-export interface DebuggerMessage {
-  type: DebuggerMessageType;
-  value?: any;
+export type DebuggerMessage =
+    DebuggerMessageConnect
+  | DebuggerMessageProgramLoaded
+  | DebuggerMessageBreakpointSet
+  | DebuggerMessageStopOnBreakpoint
+  | DebuggerMessageStopOnStep
+  | DebuggerMessageBreakpointsForLine
+  | DebuggerMessageStack
+  | DebuggerMessageScopes
+  | DebuggerMessageVariables
+  | DebuggerMessageVariableSet;
+
+export interface DebuggerMessageConnect {
+  type: DebuggerMessageType.Connect;
+}
+
+export interface DebuggerMessageProgramLoaded {
+  type: DebuggerMessageType.ProgramLoaded;
+  source: DebugProtocol.Source;
+}
+
+export interface DebuggerMessageBreakpointsForLine {
+  type: DebuggerMessageType.BreakpointsForLine;
+  locations: SourceLocation[];
+}
+
+export interface DebuggerMessageBreakpointSet {
+  type: DebuggerMessageType.BreakpointSet;
+  id: number;
+  location: SourceLocation;
+}
+
+export interface DebuggerMessageStack {
+  type: DebuggerMessageType.Stack;
+  stack: DebugProtocol.StackFrame[];
+}
+
+export interface DebuggerMessageScopes {
+  type: DebuggerMessageType.Scopes;
+  scopes: DebugProtocol.Scope[];
+}
+
+export interface DebuggerMessageVariables {
+  type: DebuggerMessageType.Variables;
+  variables: DebugProtocol.Variable[];
+}
+
+export interface DebuggerMessageVariableSet {
+  type: DebuggerMessageType.VariableSet;
+  newValue: any;
+}
+
+export interface DebuggerMessageStopOnBreakpoint {
+  type: DebuggerMessageType.StopOnBreakpoint;
+  id: number;
+}
+
+export interface DebuggerMessageStopOnStep {
+  type: DebuggerMessageType.StopOnStep;
 }
 
 export enum DebuggerMessageType {

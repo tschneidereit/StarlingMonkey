@@ -259,37 +259,36 @@ export class StarlingMonkeyDebugSession extends LoggingDebugSession {
     this.sendResponse(response);
   }
 
-  protected stackTraceRequest(
+  protected async stackTraceRequest(
     response: DebugProtocol.StackTraceResponse,
     args: DebugProtocol.StackTraceArguments
-  ): void {
+  ) {
     const startFrame =
       typeof args.startFrame === "number" ? args.startFrame : 0;
     const maxLevels = typeof args.levels === "number" ? args.levels : 1000;
 
-    this._runtime.stack(startFrame, maxLevels).then((stk) => {
-      response.body = {
-        stackFrames: stk.frames.map((f, ix) => {
-          const sf: DebugProtocol.StackFrame = new StackFrame(
-            f.index,
-            f.name,
-            this.createSource(f.path),
-            this.convertDebuggerLineToClient(f.line)
-          );
-          if (typeof f.column === "number") {
-            sf.column = this.convertDebuggerColumnToClient(f.column);
-          }
+    let stk = await this._runtime.stack(startFrame, maxLevels);
+    response.body = {
+      stackFrames: stk.map((f, ix) => {
+        const sf: DebugProtocol.StackFrame = new StackFrame(
+          f.id,
+          f.name,
+          this.createSource(f.source!.path!),
+          this.convertDebuggerLineToClient(f.line)
+        );
+        if (typeof f.column === "number") {
+          sf.column = this.convertDebuggerColumnToClient(f.column);
+        }
 
-          return sf;
-        }),
-        // 4 options for 'totalFrames':
-        //omit totalFrames property: 	// VS Code has to probe/guess. Should result in a max. of two requests
-        totalFrames: stk.count, // stk.count is the correct size, should result in a max. of two requests
-        //totalFrames: 1000000 			// not the correct size, should result in a max. of two requests
-        //totalFrames: endFrame + 20 	// dynamically increases the size with every requested chunk, results in paging
-      };
-      this.sendResponse(response);
-    });
+        return sf;
+      }),
+      // 4 options for 'totalFrames':
+      //omit totalFrames property: 	// VS Code has to probe/guess. Should result in a max. of two requests
+      totalFrames: stk.length, // stk.length is the correct size, should result in a max. of two requests
+      //totalFrames: 1000000 			// not the correct size, should result in a max. of two requests
+      //totalFrames: endFrame + 20 	// dynamically increases the size with every requested chunk, results in paging
+    };
+    this.sendResponse(response);
   }
 
   protected async scopesRequest(

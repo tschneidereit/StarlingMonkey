@@ -10,7 +10,7 @@
       "name": "Debug main.js in Wasmtime",
       "program": "src/main.js",
       "component": "out/main.wasm",
-      "stopOnEntry": false,
+      "stopOnEntry": true,
       "trace": true,
       "componentRuntime.executable": "wasmtime",
       "componentRuntime.options": [

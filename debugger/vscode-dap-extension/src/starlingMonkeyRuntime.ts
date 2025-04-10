@@ -7,7 +7,8 @@ import { Terminal, TerminalShellExecution, window } from "vscode";
 import { ILaunchRequestArguments } from "./starlingMonkeyDebugger.js";
 import { SourceLocation, SourceMaps } from "./sourcemaps/sourceMaps.js";
 import { dirname } from "path";
-import { DebuggerMessageType, HostMessageType } from "../shared/protocol-types";
+import { DebuggerMessage, DebuggerMessageStack, DebuggerMessageType, HostMessageType } from "../shared/protocol-types";
+import { DebugProtocol } from "@vscode/debugprotocol";
 
 export interface FileAccessor {
   isWindows: boolean;
@@ -19,25 +20,6 @@ export interface IRuntimeBreakpoint {
   id: number;
   line: number;
   column: number;
-}
-
-interface IRuntimeStackFrame {
-  index: number;
-  name: string;
-  path: string;
-  line: number;
-  column?: number;
-  instruction?: number;
-}
-
-interface IRuntimeStack {
-  count: number;
-  frames: IRuntimeStackFrame[];
-}
-
-interface IRuntimeMessage {
-  type: string;
-  value: any;
 }
 
 interface IRuntimeVariable {
@@ -231,6 +213,7 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   private _debug!: boolean;
   private _stopOnEntry!: boolean;
   private _sourceMaps!: SourceMaps;
+  private _sendingBlocked: boolean = false;
   public get fileAccessor(): FileAccessor {
     return this._fileAccessor;
   }
@@ -241,7 +224,7 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   private _server!: Net.Server;
   private _socket!: Net.Socket;
 
-  private _messageReceived = new Signal<IRuntimeMessage, void>();
+  private _messageReceived = new Signal<DebuggerMessage, void>();
 
   private _sourceFile!: string;
   public get sourceFile() {
@@ -251,14 +234,18 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   constructor(
     private _workspaceDir: string,
     private _fileAccessor: FileAccessor,
-    private _baseConfig: IStarlingMonkeyRuntimeConfig,
+    private _baseConfig: IStarlingMonkeyRuntimeConfig
   ) {
     super();
   }
 
   public async start(args: ILaunchRequestArguments): Promise<void> {
     let config = applyLaunchArgs(this._baseConfig, args);
-    await ComponentRuntimeInstance.start(this._workspaceDir, config, args.component);
+    await ComponentRuntimeInstance.start(
+      this._workspaceDir,
+      config,
+      args.component
+    );
     this.startSessionServer();
     // TODO: tell StarlingMonkey not to debug if this is false.
     this._debug = args.noDebug ?? true;
@@ -266,18 +253,23 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     this._sourceFile = this.normalizePath(args.program);
     let message = await this._messageReceived.wait();
     assert.equal(
-      message.type, DebuggerMessageType.Connect,
+      message.type,
+      DebuggerMessageType.Connect,
       `expected "connect" message, got "${message.type}"`
     );
     if (args.trace) {
       this.sendMessage(HostMessageType.StartDebugLogging);
     }
-    message = await this.sendAndReceiveMessage(HostMessageType.LoadProgram, this._sourceFile);
+    message = await this.sendAndReceiveMessage(
+      HostMessageType.LoadProgram,
+      this._sourceFile
+    );
     assert.equal(
-      message.type, DebuggerMessageType.ProgramLoaded,
+      message.type,
+      DebuggerMessageType.ProgramLoaded,
       `expected "programLoaded" message, got "${message.type}"`
     );
-    await this.initSourceMaps(message.value);
+    await this.initSourceMaps(message.source.path!);
     this.emit("programLoaded");
   }
 
@@ -326,7 +318,9 @@ export class StarlingMonkeyRuntime extends EventEmitter {
           return;
         }
         let extensionDir = `${__dirname}/../`;
-        let debuggerScript = await this._fileAccessor.readFile(`${extensionDir}/dist/debugger.js`);
+        let debuggerScript = await this._fileAccessor.readFile(
+          `${extensionDir}/dist/debugger.js`
+        );
         this._socket.write(`${debuggerScript.length}\n${debuggerScript}`);
         debuggerScriptSent = true;
         return;
@@ -359,12 +353,14 @@ export class StarlingMonkeyRuntime extends EventEmitter {
         resetMessageState();
         this._messageReceived.resolve(parsed);
       } catch (e) {
-        console.warn(`Illformed message received. Error: ${e}, message: ${partialMessage}`);
+        console.warn(
+          `Illformed message received. Error: ${e}, message: ${partialMessage}`
+        );
         resetMessageState();
       }
-    }
+    };
 
-    this._server = Net.createServer(socket => {
+    this._server = Net.createServer((socket) => {
       this._socket = socket;
       console.debug("Debug session server accepted connection from client");
       socket.on("data", handleData);
@@ -375,6 +371,9 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   }
 
   private sendMessage(type: HostMessageType, value?: any, useRawValue = false) {
+    if (this._sendingBlocked) {
+      throw new Error("sending blocked");
+    }
     let message: string;
     if (useRawValue) {
       message = `{"type": "${type}", "value": ${value}}`;
@@ -385,13 +384,27 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     this._socket.write(`${message.length}\n${message}`);
   }
 
-  private sendAndReceiveMessage(
+  private async sendAndReceiveMessage<T extends DebuggerMessage>(
     type: HostMessageType,
+    responseType: DebuggerMessageType,
     value?: any,
     useRawValue = false
-  ): Promise<any> {
+  ): Promise<T> {
     this.sendMessage(type, value, useRawValue);
-    return this._messageReceived.wait();
+    let response = await this.waitForResponse();
+    assert.equal(
+      response.type,
+      responseType,
+      `expected "${responseType}" message, got "${response.type}"`
+    );
+    return response;
+  }
+
+  private async waitForResponse(): Promise<any> {
+    this._sendingBlocked = true;
+    let response = await this._messageReceived.wait();
+    this._sendingBlocked = false;
+    return response;
   }
 
   public async run() {
@@ -403,12 +416,8 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   }
 
   public async continue() {
-    let message = await this.sendAndReceiveMessage(HostMessageType.Continue);
     // TODO: handle other results, such as run to completion
-    assert.equal(
-      message.type, DebuggerMessageType.StopOnBreakpoint,
-      `expected "breakpointHit" message, got "${message.type}"`
-    );
+    await this.sendAndReceiveMessage(HostMessageType.Continue, DebuggerMessageType.StopOnBreakpoint);
     this.emit("stopOnBreakpoint");
   }
 
@@ -424,34 +433,28 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     this.handleStep(HostMessageType.StepOut);
   }
 
-  private async handleStep(type: HostMessageType.Next | HostMessageType.StepIn | HostMessageType.StepOut) {
-    let message = await this.sendAndReceiveMessage(type);
+  private async handleStep(
+    type:
+      | HostMessageType.Next
+      | HostMessageType.StepIn
+      | HostMessageType.StepOut
+  ) {
     // TODO: handle other results, such as run to completion
-    assert.equal(
-      message.type, DebuggerMessageType.StopOnStep,
-      `expected "stopOnStep" message, got "${message.type}"`
-    );
+    await this.sendAndReceiveMessage(type, DebuggerMessageType.StopOnStep);
     this.emit("stopOnStep");
   }
 
-  public async stack(index: number, count: number): Promise<IRuntimeStack> {
-    let message = await this.sendAndReceiveMessage(HostMessageType.GetStack, {
+  public async stack(index: number, count: number): Promise<DebugProtocol.StackFrame[]> {
+    let message = await this.sendAndReceiveMessage<DebuggerMessageStack>(HostMessageType.GetStack, DebuggerMessageType.Stack, {
       index,
       count,
     });
-    assert.equal(
-      message.type, DebuggerMessageType.Stack,
-      `expected "stack" message, got "${message.type}"`
-    );
-    let stack = message.value;
+    let stack = message.stack;
     for (let frame of stack) {
       await this._translateLocationFromContent(frame);
-      frame.path = this.qualifyPath(frame.path);
+      frame.source!.path = this.qualifyPath(frame.source!.path!);
     }
-    return {
-      count: stack.length,
-      frames: stack,
-    };
+    return stack;
   }
 
   private async _translateLocationFromContent(frame: any) {
@@ -465,19 +468,22 @@ export class StarlingMonkeyRuntime extends EventEmitter {
   }
 
   private async _translateLocationToContent(frame: any) {
+    if (this._sourceMaps) {
+      await this._sourceMaps.MapFromSource(frame);
+    }
     if (typeof frame.column === "number") {
       frame.column += 1;
     }
-    if (!this._sourceMaps) {
-      return true;
-    }
-    return await this._sourceMaps.MapFromSource(frame);
   }
 
   async getScopes(frameId: number): Promise<Scope[]> {
-    let message = await this.sendAndReceiveMessage(HostMessageType.GetScopes, frameId);
+    let message = await this.sendAndReceiveMessage(
+      HostMessageType.GetScopes,
+      frameId
+    );
     assert.equal(
-      message.type, DebuggerMessageType.Scopes,
+      message.type,
+      DebuggerMessageType.Scopes,
       `expected "scopes" message, got "${message.type}"`
     );
     return message.value;
@@ -487,14 +493,21 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     path: string,
     line: number
   ): Promise<{ line: number; column: number }[]> {
+    while (this._sendingBlocked) {
+      await this._messageReceived.wait();
+    }
     // TODO: support the full set of query params from BreakpointLocationsArguments
     path = this.normalizePath(path);
     let loc = new SourceLocation(path, line, 0);
     await this._translateLocationToContent(loc);
 
-    let message = await this.sendAndReceiveMessage(HostMessageType.GetBreakpointsForLine, loc);
+    let message = await this.sendAndReceiveMessage(
+      HostMessageType.GetBreakpointsForLine,
+      loc
+    );
     assert.equal(
-      message.type, DebuggerMessageType.BreakpointsForLine,
+      message.type,
+      DebuggerMessageType.BreakpointsForLine,
       `expected "breakpointsForLine" message, got "${message.type}"`
     );
     return message.value;
@@ -509,24 +522,31 @@ export class StarlingMonkeyRuntime extends EventEmitter {
     let loc = new SourceLocation(path, line, column ?? 0);
     await this._translateLocationToContent(loc);
 
-    let response = await this.sendAndReceiveMessage(HostMessageType.SetBreakpoint, loc);
+    let response = await this.sendAndReceiveMessage(
+      HostMessageType.SetBreakpoint,
+      loc
+    );
     assert.equal(
-      response.type, "breakpointSet",
+      response.type,
+      "breakpointSet",
       `expected "breakpointSet" message, got "${response.type}"`
     );
 
-    if (response.value.id !== -1) {
-      loc.line = response.value.line;
-      loc.column = response.value.column;
+    let bp = response.value;
+    if (bp.id !== -1) {
+      await this._translateLocationFromContent(bp);
     }
-    await this._translateLocationFromContent(loc);
-    return { id: response.value.id, ...loc };
+    return bp;
   }
 
   public async getVariables(reference: number): Promise<IRuntimeVariable[]> {
-    let message = await this.sendAndReceiveMessage(HostMessageType.GetVariables, reference);
+    let message = await this.sendAndReceiveMessage(
+      HostMessageType.GetVariables,
+      reference
+    );
     assert.equal(
-      message.type, DebuggerMessageType.Variables,
+      message.type,
+      DebuggerMessageType.Variables,
       `expected "variables" message, got "${message.type}"`
     );
     return message.value;
@@ -545,7 +565,8 @@ export class StarlingMonkeyRuntime extends EventEmitter {
       true
     );
     assert.equal(
-      message.type, DebuggerMessageType.VariableSet,
+      message.type,
+      DebuggerMessageType.VariableSet,
       `expected "variableSet" message, got "${message.type}"`
     );
     return message.value;
