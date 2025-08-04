@@ -48,6 +48,8 @@ jobs:
           echo "SM_TAG_EXISTS=false" >> "$GITHUB_OUTPUT"
           echo "SM_CACHE_KEY_${{ matrix.build }}=spidermonkey-cache-${{ matrix.build }}-${{ hashFiles('cmake/spidermonkey.cmake') }}" >> "$GITHUB_OUTPUT"
         fi
+      env:
+        GH_TOKEN: ${{ github.token }}
 
     - name: Cache SpiderMonkey tarball
       if: steps.check-sm-release.outputs.SM_TAG_EXISTS == 'false'
