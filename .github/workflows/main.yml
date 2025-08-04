@@ -21,14 +21,15 @@ concurrency:
 jobs:
   test:
     name: Test
-    outputs:
-      SM_TAG_EXISTS: ${{ steps.check-sm-release.outputs.SM_TAG_EXISTS }}
-      SM_TAG: ${{ steps.check-sm-release.outputs.SM_TAG }}
     strategy:
       fail-fast: false
       matrix:
         build: [release, debug]
         os: [ubuntu-latest]
+    outputs:
+      SM_TAG_EXISTS: ${{ steps.check-sm-release.outputs.SM_TAG_EXISTS }}
+      SM_TAG: ${{ steps.check-sm-release.outputs.SM_TAG }}
+      SM_CACHE_KEY_${{ matrix.build }}: ${{ steps.check-sm-release.outputs.SM_CACHE_KEY }}
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -109,6 +110,7 @@ jobs:
         else
         echo "SM_TAG_EXISTS=false" >> "$GITHUB_OUTPUT"
         echo "SM_TAG=${SM_TAG}" >> "$GITHUB_OUTPUT"
+        echo "SM_CACHE_KEY=spidermonkey-cache-${{ matrix.build }}-${{ hashFiles('cmake/spidermonkey.cmake') }}" >> "$GITHUB_OUTPUT"
         fi
 
   release-spidermonkey:
@@ -125,14 +127,14 @@ jobs:
       with:
         path: |
           spidermonkey-dist-debug
-        key: spidermonkey-cache-debug-${{ hashFiles('cmake/spidermonkey.cmake') }}
+        key: ${{ needs.test.outputs.SM_CACHE_KEY_debug }}
     - name: Restore SpiderMonkey Release Cache
       uses: actions/cache@v4
       id: sm-cache-release
       with:
         path: |
           spidermonkey-dist-release
-        key: spidermonkey-cache-release-${{ hashFiles('cmake/spidermonkey.cmake') }}
+        key: ${{ needs.test.outputs.SM_CACHE_KEY_release }}
 
     - name: Create SpiderMonkey Tar Balls
       run: |
