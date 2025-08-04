@@ -40,7 +40,7 @@ jobs:
       run: |
         SM_TAG="libspidermonkey_$(awk '/^set\(SM_TAG/ {gsub(/set\(SM_TAG |\)/, ""); print}' cmake/spidermonkey.cmake)"
         echo "SM_TAG=${SM_TAG}" >> "$GITHUB_OUTPUT"
-        if git rev-parse --verify "refs/tags/${SM_TAG}" >/dev/null 2>&1; then
+        if gh release view "${SM_TAG}" >/dev/null 2>&1; then
           echo "Found existing SpiderMonkey release tag: ${SM_TAG}"
           echo "SM_TAG_EXISTS=true" >> "$GITHUB_OUTPUT"
         else
