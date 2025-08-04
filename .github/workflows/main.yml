@@ -46,25 +46,25 @@ jobs:
           spidermonkey-dist
         key: spidermonkey-cache-${{ matrix.build }}-${{ hashFiles('cmake/spidermonkey.cmake') }}
 
-    #- name: Set env var to use cached SpiderMonkey tarball
-    #  if: steps.sm-cache.outputs.cache-hit == 'true'
-    #  run: |
-    #    tree spidermonkey-dist
-    #    echo "SPIDERMONKEY_BINARIES=$(pwd)/spidermonkey-dist" >> $GITHUB_ENV
+    - name: Set env var to use cached SpiderMonkey tarball
+      if: steps.sm-cache.outputs.cache-hit == 'true'
+      run: |
+        tree spidermonkey-dist
+        echo "SPIDERMONKEY_BINARIES=$(pwd)/spidermonkey-dist" >> $GITHUB_ENV
 
-    #- uses: actions/setup-node@v2
-    #  with:
-    #    node-version: 'lts/*'
+    - uses: actions/setup-node@v2
+      with:
+        node-version: 'lts/*'
 
-    #- name: Configure StarlingMonkey
-    #  run: |
-    #    cmake -S . -B cmake-build-${{ matrix.build }}\
-    #      -DCMAKE_BUILD_TYPE=${{ (matrix.build == 'release' || matrix.build == 'weval') && 'Release' || 'Debug' }}\
-    #      ${{matrix.build == 'weval' && '-DUSE_WASM_OPT=OFF -DWEVAL=ON' || ''}}
+    - name: Configure StarlingMonkey
+      run: |
+        cmake -S . -B cmake-build-${{ matrix.build }}\
+          -DCMAKE_BUILD_TYPE=${{ (matrix.build == 'release' || matrix.build == 'weval') && 'Release' || 'Debug' }}\
+          ${{matrix.build == 'weval' && '-DUSE_WASM_OPT=OFF -DWEVAL=ON' || ''}}
 
-    #- name: Build StarlingMonkey
-    #  run: |
-    #    cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target all
+    - name: Build StarlingMonkey
+      run: |
+        cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target all
 
     #- name: Build Integration Test Server
     #  run: |
