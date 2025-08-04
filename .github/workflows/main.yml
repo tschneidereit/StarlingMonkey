@@ -56,41 +56,41 @@ jobs:
           spidermonkey-dist-${{ matrix.build }}
         key: spidermonkey-cache-${{ matrix.build }}-${{ hashFiles('cmake/spidermonkey.cmake') }}
 
-    #- name: Set env var to use cached SpiderMonkey tarball
-    #  if: steps.check-sm-release.outputs.SM_TAG_EXISTS == 'false' && steps.sm-cache.outputs.cache-hit == 'true'
-    #  run: |
-    #    tree spidermonkey-dist-${{ matrix.build }}
-    #    echo "SPIDERMONKEY_BINARIES=$(pwd)/spidermonkey-dist-${{ matrix.build }}" >> $GITHUB_ENV
+    - name: Set env var to use cached SpiderMonkey tarball
+      if: steps.check-sm-release.outputs.SM_TAG_EXISTS == 'false' && steps.sm-cache.outputs.cache-hit == 'true'
+      run: |
+        tree spidermonkey-dist-${{ matrix.build }}
+        echo "SPIDERMONKEY_BINARIES=$(pwd)/spidermonkey-dist-${{ matrix.build }}" >> $GITHUB_ENV
 
-    #- uses: actions/setup-node@v2
-    #  with:
-    #    node-version: 'lts/*'
+    - uses: actions/setup-node@v2
+      with:
+        node-version: 'lts/*'
 
-    #- name: Configure StarlingMonkey
-    #  run: |
-    #    cmake -S . -B cmake-build-${{ matrix.build }}\
-    #      -DCMAKE_BUILD_TYPE=${{ (matrix.build == 'release' || matrix.build == 'weval') && 'Release' || 'Debug' }}\
-    #      ${{matrix.build == 'weval' && '-DUSE_WASM_OPT=OFF -DWEVAL=ON' || ''}}
+    - name: Configure StarlingMonkey
+      run: |
+        cmake -S . -B cmake-build-${{ matrix.build }}\
+          -DCMAKE_BUILD_TYPE=${{ (matrix.build == 'release' || matrix.build == 'weval') && 'Release' || 'Debug' }}\
+          ${{matrix.build == 'weval' && '-DUSE_WASM_OPT=OFF -DWEVAL=ON' || ''}}
 
-    #- name: Build StarlingMonkey
-    #  run: |
-    #    cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target all
+    - name: Build StarlingMonkey
+      run: |
+        cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target all
 
-    #- name: Build Integration Test Server
-    #  run: |
-    #    cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target integration-test-server
+    - name: Build Integration Test Server
+      run: |
+        cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target integration-test-server
 
-    #- name: Build WPT Runtime
-    #  run: |
-    #    cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target wpt-runtime
+    - name: Build WPT Runtime
+      run: |
+        cmake --build cmake-build-${{ matrix.build }} --parallel $(nproc) --target wpt-runtime
 
-    #- name: Prepare WPT hosts
-    #  run: |
-    #    cat deps/wpt-hosts | sudo tee -a /etc/hosts
+    - name: Prepare WPT hosts
+      run: |
+        cat deps/wpt-hosts | sudo tee -a /etc/hosts
 
-    #- name: StarlingMonkey E2E, Integration, and WPT Tests
-    #  run: |
-    #    CTEST_OUTPUT_ON_FAILURE=1 ctest --test-dir cmake-build-${{ matrix.build }} -j$(nproc) --verbose
+    - name: StarlingMonkey E2E, Integration, and WPT Tests
+      run: |
+        CTEST_OUTPUT_ON_FAILURE=1 ctest --test-dir cmake-build-${{ matrix.build }} -j$(nproc) --verbose
 
     - name: Set up cacheable SpiderMonkey artifacts
       if: steps.sm-cache.outputs.cache-hit != 'true'
