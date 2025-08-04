@@ -113,7 +113,7 @@ jobs:
 
   release-spidermonkey:
     needs: test
-    if: needs.test.outputs.SM_TAG_EXISTS == "false" && (github.event_name == 'push' && 
+    if: needs.test.outputs.SM_TAG_EXISTS == 'false' && (github.event_name == 'push' && 
           (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
     runs-on: ubuntu-latest
     permissions:
