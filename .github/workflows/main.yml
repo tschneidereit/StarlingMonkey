@@ -45,14 +45,14 @@ jobs:
       id: sm-cache
       with:
         path: |
-          spidermonkey-dist
+          spidermonkey-dist-${{ matrix.build }}
         key: spidermonkey-cache-${{ matrix.build }}-${{ hashFiles('cmake/spidermonkey.cmake') }}
 
     - name: Set env var to use cached SpiderMonkey tarball
       if: steps.sm-cache.outputs.cache-hit == 'true'
       run: |
-        tree spidermonkey-dist
-        echo "SPIDERMONKEY_BINARIES=$(pwd)/spidermonkey-dist" >> $GITHUB_ENV
+        tree spidermonkey-dist-${{ matrix.build }}
+        echo "SPIDERMONKEY_BINARIES=$(pwd)/spidermonkey-dist-${{ matrix.build }}" >> $GITHUB_ENV
 
     - uses: actions/setup-node@v2
       with:
@@ -87,10 +87,10 @@ jobs:
     - name: Set up cacheable SpiderMonkey artifacts
       if: steps.sm-cache.outputs.cache-hit != 'true'
       run: |
-        mkdir -p spidermonkey-dist
-        cp -a cmake-build-${{ matrix.build }}/spidermonkey-obj/dist/libspidermonkey.a spidermonkey-dist/
-        cp -aL cmake-build-${{ matrix.build }}/spidermonkey-obj/dist/include spidermonkey-dist/
-        tree spidermonkey-dist
+        mkdir -p spidermonkey-dist-${{ matrix.build }}
+        cp -a cmake-build-${{ matrix.build }}/spidermonkey-obj/dist/libspidermonkey.a spidermonkey-dist-${{ matrix.build }}/
+        cp -aL cmake-build-${{ matrix.build }}/spidermonkey-obj/dist/include spidermonkey-dist-${{ matrix.build }}/
+        tree spidermonkey-dist-${{ matrix.build }}
 
       # Upload tarball as an artifact of the github action run, so the output
       # can be inspected for pull requests.
@@ -100,7 +100,7 @@ jobs:
         && steps.sm-cache.outputs.cache-hit != 'true'
       with:
         name: spidermonkey-${{ matrix.build }}
-        path: spidermonkey-dist/*
+        path: spidermonkey-dist-${{ matrix.build }}/*
 
     - name: Check if SpiderMonkey Release is Needed
       id: check-sm-release
@@ -123,19 +123,21 @@ jobs:
       contents: write
     steps:
     - name: Restore SpiderMonkey Debug Cache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       id: sm-cache-debug
       with:
         path: |
           spidermonkey-dist-debug
         key: ${{ needs.test.outputs.SM_CACHE_KEY_debug }}
+        fail-on-cache-miss: true
     - name: Restore SpiderMonkey Release Cache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       id: sm-cache-release
       with:
         path: |
           spidermonkey-dist-release
         key: ${{ needs.test.outputs.SM_CACHE_KEY_release }}
+        fail-on-cache-miss: true
 
     - name: Create SpiderMonkey Tar Balls
       run: |
