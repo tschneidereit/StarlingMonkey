@@ -256,7 +256,8 @@ bool create_content_global(JSContext * cx) {
   JS::RealmOptions options;
   options.creationOptions().setStreamsEnabled(true);
 
-  JS::DisableIncrementalGC(cx);
+  // TODO: restore
+  // JS::DisableIncrementalGC(cx);
   // JS_SetGCParameter(cx, JSGC_MAX_EMPTY_CHUNK_COUNT, 1);
 
   RootedObject global(
@@ -518,6 +519,7 @@ EngineState Engine::state() { return state_; }
 bool Engine::debugging_enabled() {
   return config_->debugging;
 }
+bool Engine::wpt_mode() { return config_->wpt_mode; }
 
 void Engine::finish_pre_initialization() {
   MOZ_ASSERT(state_ == EngineState::ScriptPreInitializing);
