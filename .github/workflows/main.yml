@@ -41,6 +41,7 @@ jobs:
         SM_TAG="libspidermonkey_$(awk '/^set\(SM_TAG/ {gsub(/set\(SM_TAG |\)/, ""); print}' cmake/spidermonkey.cmake)"
         echo "SM_TAG=${SM_TAG}" >> "$GITHUB_OUTPUT"
         if git rev-parse --verify "refs/tags/${SM_TAG}" >/dev/null 2>&1; then
+          echo "Found existing SpiderMonkey release tag: ${SM_TAG}"
           echo "SM_TAG_EXISTS=true" >> "$GITHUB_OUTPUT"
         else
           echo "SM_TAG_EXISTS=false" >> "$GITHUB_OUTPUT"
@@ -93,7 +94,7 @@ jobs:
         CTEST_OUTPUT_ON_FAILURE=1 ctest --test-dir cmake-build-${{ matrix.build }} -j$(nproc) --verbose
 
     - name: Set up cacheable SpiderMonkey artifacts
-      if: steps.sm-cache.outputs.cache-hit != 'true'
+      if: steps.check-sm-release.outputs.SM_TAG_EXISTS == 'false' && steps.sm-cache.outputs.cache-hit != 'true'
       run: |
         mkdir -p spidermonkey-dist-${{ matrix.build }}
         cp -a cmake-build-${{ matrix.build }}/spidermonkey-obj/dist/libspidermonkey.a spidermonkey-dist-${{ matrix.build }}/
@@ -105,7 +106,7 @@ jobs:
     - name: Upload SpiderMonkey tarball
       uses: actions/upload-artifact@v4
       if: (github.event_name != 'push' || (github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v')))
-        && steps.sm-cache.outputs.cache-hit != 'true'
+        && steps.check-sm-release.outputs.SM_TAG_EXISTS == 'false' && steps.sm-cache.outputs.cache-hit != 'true'
       with:
         name: spidermonkey-${{ matrix.build }}
         path: spidermonkey-dist-${{ matrix.build }}/*
