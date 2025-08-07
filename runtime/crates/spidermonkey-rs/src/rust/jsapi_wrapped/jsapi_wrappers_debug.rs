@@ -5,7 +5,6 @@ mod raw {
   pub use crate::raw::JS::dbg::*;
   pub use crate::raw::JS::detail::*;
   pub use crate::raw::js::*;
-  pub use crate::raw::jsglue::*;
 }
 
 wrap!(raw: pub fn ToBooleanSlow(v: raw::JS::HandleValue) -> bool);

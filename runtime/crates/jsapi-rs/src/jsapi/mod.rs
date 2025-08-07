@@ -4,3 +4,4 @@
 #[cfg_attr(not(feature = "debugmozjs"), path = "bindings_release.rs")]
 mod bindings;
 pub use bindings::root::*;
+pub use bindings::root::jsglue::*;

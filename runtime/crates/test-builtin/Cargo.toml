@@ -11,6 +11,7 @@ edition.workspace = true
 [dependencies]
 starlingmonkey-rs.workspace = true
 spidermonkey-rs.workspace = true
+spidermonkey-macros = { path = "../spidermonkey-macros" }
 
 [features]
 debugmozjs = ['spidermonkey-rs/debugmozjs']
