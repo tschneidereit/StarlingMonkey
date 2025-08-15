@@ -387,7 +387,7 @@ class BodyWriteAllTask final : public api::AsyncTask {
   PollableHandle outgoing_pollable_;
 
   api::TaskCompletionCallback cb_;
-  Heap<JSObject *> cb_receiver_;
+  JS::Heap<JSObject *> cb_receiver_;
   HostBytes bytes_;
   size_t offset_ = 0;
 
@@ -467,7 +467,7 @@ class BodyAppendTask final : public api::AsyncTask {
   PollableHandle outgoing_pollable_;
 
   api::TaskCompletionCallback cb_;
-  Heap<JSObject *> cb_receiver_;
+  JS::Heap<JSObject *> cb_receiver_;
   State state_;
 
   void set_state(JSContext *cx, const State state) {
@@ -838,7 +838,7 @@ Result<optional<HttpIncomingResponse *>> FutureHttpIncomingResponse::maybe_respo
 }
 
 Result<PollableHandle> FutureHttpIncomingResponse::subscribe() {
-  if (pollable_handle_ == INVALID_POLLABLE_HANDLE) {
+  if (pollable_handle_ == api::INVALID_POLLABLE_HANDLE) {
     Borrow<FutureHttpIncomingResponse> borrow(handle_state_.get());
     auto pollable = wasi_http_types_method_future_incoming_response_subscribe(borrow);
     pollable_handle_ = pollable.__handle;
@@ -846,9 +846,9 @@ Result<PollableHandle> FutureHttpIncomingResponse::subscribe() {
   return Result<PollableHandle>::ok(pollable_handle_);
 }
 void FutureHttpIncomingResponse::unsubscribe() {
-  if (pollable_handle_ != INVALID_POLLABLE_HANDLE) {
+  if (pollable_handle_ != api::INVALID_POLLABLE_HANDLE) {
     wasi_io_poll_pollable_drop_own(own_pollable_t{pollable_handle_});
-    pollable_handle_ = INVALID_POLLABLE_HANDLE;
+    pollable_handle_ = api::INVALID_POLLABLE_HANDLE;
   }
 }
 

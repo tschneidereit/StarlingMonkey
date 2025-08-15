@@ -327,7 +327,7 @@ class HttpHeaders;
 
 class FutureHttpIncomingResponse final : public Pollable {
 private:
-  PollableHandle pollable_handle_ = INVALID_POLLABLE_HANDLE;
+  PollableHandle pollable_handle_ = api::INVALID_POLLABLE_HANDLE;
 
 public:
   FutureHttpIncomingResponse() = delete;

@@ -123,7 +123,7 @@ HostString TCPSocket::receive(uint32_t chunk_size) {
   mozilla::DebugOnly<bool> success;
   success = wasi_io_streams_method_input_stream_blocking_read(borrow, chunk_size, &ret, &err);
   MOZ_ASSERT(success, "Why you not handle errors");
-  UniqueChars chars((char*)ret.ptr);
+  JS::UniqueChars chars((char*)ret.ptr);
   return HostString(std::move(chars), ret.len);
 }
 

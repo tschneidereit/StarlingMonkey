@@ -38,7 +38,7 @@ struct Terminator : AbortAlgorithm {
 
   bool run(JSContext *cx) override {
     if (auto t = task.get()) {
-      return t->abort(ENGINE);
+      return t->abort(&api::Engine::from_context(cx));
     }
     return true;
   }

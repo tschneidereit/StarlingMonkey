@@ -137,7 +137,7 @@ bool set_timeout_or_interval(JSContext *cx, HandleObject handler, JS::HandleValu
   // Convert delay from milliseconds to nanoseconds, as that's what Timers operate on.
   const int64_t delay = static_cast<int64_t>(delay_ms) * 1000000;
   const auto timer = new TimerTask(delay, repeat, handler, handle_args);
-  ENGINE->queue_async_task(timer);
+  api::Engine::from_context(cx).queue_async_task(timer);
 
   *timer_id = timer->timer_id();
   return true;
@@ -210,12 +210,12 @@ template <bool interval> bool clearTimeout_or_interval(JSContext *cx, unsigned a
     return false;
   }
 
-  clear_timeout_or_interval(id);
+  clear_timeout_or_interval(cx, id);
   args.rval().setUndefined();
   return true;
 }
 
-void clear_timeout_or_interval(int32_t timer_id) { TimerTask::clear(timer_id); }
+void clear_timeout_or_interval(JSContext *cx, int32_t timer_id) { TimerTask::clear(api::Engine::from_context(cx), timer_id); }
 
 constexpr JSFunctionSpec methods[] = {
     JS_FN("setInterval", setTimeout_or_interval<true>, 1, JSPROP_ENUMERATE),
