@@ -10,7 +10,6 @@
 #include "../url.h"
 #include "fetch-utils.h"
 #include "encode.h"
-#include "extension-api.h"
 #include "fetch_event.h"
 #include "host_api.h"
 #include "js/String.h"

@@ -1,7 +1,7 @@
 #ifndef BUILTINS_WEB_BASE64_H
 #define BUILTINS_WEB_BASE64_H
 
-#include "extension-api.h"
+#include "builtin.h"
 
 namespace builtins {
 namespace web {

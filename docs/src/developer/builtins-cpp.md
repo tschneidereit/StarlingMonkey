@@ -6,8 +6,8 @@ Adding builtins is as simple as calling `add_builtin` in the importing project's
 Say you want to add a builtin defined in the file `my-builtin.cpp`, like so:
 
 ```cpp
-// The extension API is automatically on the include path for builtins.
-#include "extension-api.h"
+// The `builtin` header is automatically on the include path for builtins.
+#include "builtin.h"
 
 // The namespace name must match the name passed to `add_builtin` in the CMakeLists.txt
 namespace my_project::my_builtin {

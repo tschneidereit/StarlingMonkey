@@ -52,21 +52,9 @@ using HeapValue = JS::Heap<Value>;
 std::optional<std::span<uint8_t>> value_to_buffer(JSContext *cx, HandleValue val,
                                                   const char *val_desc);
 
-#define DEF_ERR(name, exception, format, count)                                                    \
-  static constexpr JSErrorFormatString name = {#name, format, count, exception};
-
-namespace api {
-#include "errors.h"
-}
-
 bool hasWizeningFinished();
 bool isWizening();
 void finishWizening();
-
-#define DBG(...)                                                                                   \
-  printf("%s#%d: ", __func__, __LINE__);                                                           \
-  printf(__VA_ARGS__);                                                                             \
-  fflush(stdout);
 
 // Define this to make most methods print their name to stderr when invoked.
 // #define TRACE_METHOD_CALLS

@@ -1,7 +1,7 @@
 #ifndef BUILTINS_WEB_TIMERS_H
 #define BUILTINS_WEB_TIMERS_H
 
-#include "extension-api.h"
+#include "builtin.h"
 
 namespace builtins::web::timers {
 

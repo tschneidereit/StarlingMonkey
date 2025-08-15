@@ -2,7 +2,6 @@
 #define BUILTINS_WEB_BLOB_H
 
 #include "builtin.h"
-#include "extension-api.h"
 #include "js/AllocPolicy.h"
 #include "js/Vector.h"
 

@@ -1,5 +1,4 @@
 #include "form-data-encoder.h"
-#include "extension-api.h"
 #include "form-data.h"
 
 #include "../base64.h"

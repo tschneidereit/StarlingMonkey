@@ -3,7 +3,6 @@
 #include <string>
 
 #include "builtin.h"
-#include "extension-api.h"
 #include "config-parser.h"
 #include "host_api.h"
 #include "wasi/libc-environ.h"

@@ -2,7 +2,6 @@
 #define BUILTINS_WEB_FETCH_FETCH_EVENT_H
 
 #include "builtin.h"
-#include "extension-api.h"
 #include "host_api.h"
 
 #include "../event/event.h"

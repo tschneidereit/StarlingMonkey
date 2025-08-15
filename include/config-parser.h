@@ -1,7 +1,7 @@
 #ifndef CONFIG_PARSER_H
 #define CONFIG_PARSER_H
 
-#include "extension-api.h"
+#include "builtin.h"
 #include <string_view>
 
 #include <iostream>

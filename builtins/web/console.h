@@ -1,7 +1,7 @@
 #ifndef BUILTINS_WEB_CONSOLE_H
 #define BUILTINS_WEB_CONSOLE_H
 
-#include "extension-api.h"
+#include "builtin.h"
 
 namespace builtins::web::console {
 

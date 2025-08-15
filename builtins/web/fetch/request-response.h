@@ -3,7 +3,7 @@
 
 #include "fetch-errors.h"
 #include "headers.h"
-#include "host_api.h"
+#include "builtin.h"
 
 namespace builtins {
 namespace web {

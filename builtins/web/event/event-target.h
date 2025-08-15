@@ -2,7 +2,6 @@
 #define BUILTINS_WEB_EVENT_TARGET_H_
 
 #include "builtin.h"
-#include "extension-api.h"
 
 #include "js/RefCounted.h"
 #include "mozilla/RefPtr.h"

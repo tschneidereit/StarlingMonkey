@@ -1,7 +1,7 @@
 #ifndef GLOBAL_SELF_H
 #define GLOBAL_SELF_H
 
-#include "extension-api.h"
+#include "builtin.h"
 
 namespace builtins::web::global_self {
 

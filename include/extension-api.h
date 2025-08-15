@@ -2,7 +2,7 @@
 #define EXTENSION_API_H
 #include <vector>
 
-#include "builtin.h"
+// #include "builtin.h"
 #include "mozilla/WeakPtr.h"
 
 // TODO: remove these once the warnings are fixed
@@ -27,7 +27,16 @@ using JS::PersistentRootedVector;
 
 using std::optional;
 
+#define DBG(...)                                                                                   \
+  printf("%s#%d: ", __func__, __LINE__);                                                           \
+  printf(__VA_ARGS__);                                                                             \
+  fflush(stdout);
+
+#define DEF_ERR(name, exception, format, count)                                                    \
+static constexpr JSErrorFormatString name = {#name, format, count, exception};
+
 namespace api {
+#include "errors.h"
 
 typedef int32_t PollableHandle;
 constexpr PollableHandle INVALID_POLLABLE_HANDLE = -1;

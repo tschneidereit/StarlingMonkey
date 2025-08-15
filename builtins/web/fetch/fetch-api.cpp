@@ -1,7 +1,6 @@
 #include "fetch-api.h"
 #include "builtin.h"
 #include "encode.h"
-#include "extension-api.h"
 #include "fetch-utils.h"
 #include "headers.h"
 #include "mozilla/Assertions.h"

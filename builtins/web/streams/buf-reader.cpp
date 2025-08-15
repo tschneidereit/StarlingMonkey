@@ -1,5 +1,4 @@
 #include "buf-reader.h"
-#include "extension-api.h"
 #include "native-stream-source.h"
 
 #include "js/Stream.h"
