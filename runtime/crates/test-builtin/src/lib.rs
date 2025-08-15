@@ -1,31 +1,273 @@
-use spidermonkey_rs::jsval::ObjectValue;
-use spidermonkey_rs::raw::JSCLASS_FOREGROUND_FINALIZE;
-use spidermonkey_rs::conversions::{ConversionBehavior, ConversionResult, FromJSValConvertible, ToJSValConvertible};
-use spidermonkey_rs::raw::JS::{CallArgs, HandleObject, Value};
-use spidermonkey_rs::raw::{JSClass, JSClassOps, JSContext, JSFunctionSpec, JSNativeWrapper, JSObject, JSPropertySpec, JSPropertySpec_Name, JS_NewObjectWithGivenProto, JSCLASS_RESERVED_SLOTS_MASK, JSCLASS_RESERVED_SLOTS_SHIFT, JSPROP_ENUMERATE};
-use spidermonkey_rs::rust::wrapped::JS_InitClass;
+use lock::ThreadUnsafeOnceLock;
+use std::ffi::{c_void, CStr};
+use std::mem::ManuallyDrop;
+// use spidermonkey_macros::js_class;
+use spidermonkey_macros::error_type;
+use spidermonkey_rs::conversions::{
+    ConversionBehavior, ConversionResult, FromJSValConvertible, ToJSValConvertible,
+};
+use spidermonkey_rs::raw::JS::{CallArgs, GCContext, GCOptions, GCReason, HandleObject, Value};
+use spidermonkey_rs::raw::{
+    CallObjectTracer, CreateBuiltinClass, GetClass, JSErrorFormatString, JSNativeWrapper,
+    JSPropertySpec_Name, JS_DefineFunction, JS_IsExceptionPending, JS_NewObjectForConstructor,
+    NativeProperties, JS, JSCLASS_FOREGROUND_FINALIZE, JSPROP_ENUMERATE,
+};
+use spidermonkey_rs::raw::{
+    JSClass, JSClassOps, JSContext, JSFunctionSpec, JSObject, JSPropertySpec, JSTracer,
+    JS_GetReservedSlot, JS_SetReservedSlot, JSCLASS_IS_WRAPPED_NATIVE,
+    JSCLASS_RESERVED_SLOTS_SHIFT,
+};
 use spidermonkey_rs::rust::{Handle, MutableHandle};
-use spidermonkey_macros::impl_js_class;
 
-use starlingmonkey_rs::Engine;
+use crate::js_helpers::return_result;
+use spidermonkey_rs::gc::Traceable;
+use spidermonkey_rs::raw::js::GetFunctionNativeReserved;
+use spidermonkey_rs::raw::JSExnType::JSEXN_TYPEERR;
+use spidermonkey_rs::{jsval, root};
+use starlingmonkey_rs::{throw_error, Engine};
 use std::ptr;
+
+mod lock;
+
+error_type!(
+    WrongReceiver,
+    JSEXN_TYPEERR,
+    "Method '{0}' called on receiver that's not an instance of {1}"
+);
+error_type!(
+    CtorCalledWithoutNew,
+    JSEXN_TYPEERR,
+    "{0} constructor called without 'new'"
+);
+error_type!(
+    NoCtorBuiltin,
+    JSEXN_TYPEERR,
+    "{0} builtin can't be instantiated directly"
+);
+error_type!(TypeError, JSEXN_TYPEERR, "{0}: {1} must {2}");
+
+#[repr(transparent)]
+pub struct GCRef<T: Traceable> {
+    ptr: ptr::NonNull<T>,
+}
+
+mod adder {
+    use super::*;
+    use spidermonkey_rs::raw::JS::Heap;
+    use std::cell::UnsafeCell;
+
+    #[derive(Debug)]
+    pub struct Adder {
+        pub(super) object: Heap<*mut JSObject>,
+    }
+
+    impl Adder {
+        pub fn static_add(a: i32, b: i32) -> i32 {
+            a + b
+        }
+        unsafe extern "C" fn static_add_method_wrapper(
+            cx: *mut JSContext,
+            argc: u32,
+            vp: *mut Value,
+        ) -> bool {
+            let args = CallArgs::from_vp(vp, argc);
+            let a: Option<i32> = js_helpers::get_arg_typed(cx, &args, 0);
+            if a.is_none() {
+                return throw_type_error(cx, c"Adder.add", c"argument 'a'", c"a Number");
+            }
+            let b: Option<i32> = js_helpers::get_arg_typed(cx, &args, 1);
+            if b.is_none() {
+                return throw_type_error(cx, c"Adder.add", c"argument 'b'", c"a Number");
+            }
+            let result = Adder::static_add(a.unwrap(), b.unwrap());
+            js_helpers::return_result(cx, &args, result);
+            true
+        }
+
+        pub fn add(&self, cx: *mut JSContext, args: &CallArgs) -> bool {
+            let a: Option<i32> = js_helpers::get_arg_typed(cx, args, 0);
+            if a.is_none() {
+                return throw_type_error(cx, c"Adder.add", c"argument 'a'", c"a Number");
+            }
+            let b: Option<i32> = js_helpers::get_arg_typed(cx, args, 1);
+            if b.is_none() {
+                return throw_type_error(cx, c"Adder.add", c"argument 'b'", c"a Number");
+            }
+            let result = a.unwrap() + b.unwrap();
+            js_helpers::return_result(cx, args, result)
+        }
+
+        unsafe extern "C" fn add_method_wrapper(
+            cx: *mut JSContext,
+            argc: u32,
+            vp: *mut Value,
+        ) -> bool {
+            let args = CallArgs::from_vp(vp, argc);
+
+            let native_this: &Adder = if let Ok(value) = js_helpers::native_receiver(cx, &args) {
+                value
+            } else {
+                return false;
+            };
+            let res = native_this.add(cx, &args);
+            if !res {
+                assert!(
+                    JS_IsExceptionPending(cx),
+                    "Method call failed but no exception was set"
+                );
+            }
+            // TODO: add check for whether rval was set.
+            true
+        }
+    }
+
+    static JS_CLASS: ThreadUnsafeOnceLock<JSClass> = ThreadUnsafeOnceLock::new();
+    static CLASS_OPS: ThreadUnsafeOnceLock<JSClassOps> = ThreadUnsafeOnceLock::new();
+
+    impl JSBuiltinClass for Adder {
+        unsafe fn init_js_class() {
+            CLASS_OPS.set(JSClassOps {
+                addProperty: None,
+                delProperty: None,
+                enumerate: None,
+                newEnumerate: None,
+                resolve: None,
+                mayResolve: None,
+                finalize: Some(Self::finalize_hook),
+                call: None,
+                construct: None,
+                trace: Some(Self::trace_hook),
+            });
+            JS_CLASS.set(JSClass {
+                name: c"Adder".as_ptr() as *const i8,
+                flags: JSCLASS_IS_WRAPPED_NATIVE
+                    | 1 << JSCLASS_RESERVED_SLOTS_SHIFT
+                    | JSCLASS_FOREGROUND_FINALIZE,
+                cOps: CLASS_OPS.get(),
+                spec: ptr::null(),
+                ext: ptr::null(),
+                oOps: ptr::null(),
+            });
+        }
+
+        unsafe fn js_class() -> &'static JSClass {
+            JS_CLASS.get()
+        }
+        unsafe fn class_ops() -> &'static JSClassOps {
+            CLASS_OPS.get()
+        }
+
+        unsafe extern "C" fn from_call_args(
+            _cx: *mut JSContext,
+            obj: HandleObject,
+            args: *mut CallArgs,
+        ) -> Value {
+            let args = &*args;
+            assert!(args.constructing_());
+            let adder = ManuallyDrop::new(Box::new(Adder {
+                object: Heap {
+                    ptr: UnsafeCell::new(obj.get()),
+                },
+            }));
+            jsval::PrivateValue(ptr::addr_of!(adder) as *const c_void)
+            // adder.to_jsval(cx, MutableHandle::from_raw(args.rval()));
+            // let mut adder = ManuallyDrop::new(Adder::new());
+            // ptr::addr_of_mut!(adder) as *mut c_void
+            // Alternatively, if you want to use a reserved slot:
+            // c_void::try_from(adder.deref_mut() as *mut Adder)
+            //     .expect("Failed to convert Adder to c_void")
+            // adder.deref_mut() as *mut c_void
+            // std::mem::forget(Adder::new()) as *const c_void
+        }
+
+        fn methods() -> &'static [JSFunctionSpec] {
+            static METHODS: [JSFunctionSpec; 2] = [
+                JSFunctionSpec {
+                    name: JSPropertySpec_Name {
+                        string_: c"add".as_ptr(),
+                    },
+                    call: JSNativeWrapper {
+                        op: Some(Adder::add_method_wrapper),
+                        info: ptr::null(),
+                    },
+                    nargs: 2,
+                    flags: JSPROP_ENUMERATE as u16,
+                    selfHostedName: ptr::null(),
+                },
+                JSFunctionSpec::ZERO,
+            ];
+            &METHODS
+        }
+
+        fn static_methods() -> &'static [JSFunctionSpec] {
+            static METHODS: [JSFunctionSpec; 2] = [
+                JSFunctionSpec {
+                    name: JSPropertySpec_Name {
+                        string_: c"static_add".as_ptr(),
+                    },
+                    call: JSNativeWrapper {
+                        op: Some(Adder::static_add_method_wrapper),
+                        info: ptr::null(),
+                    },
+                    nargs: 2,
+                    flags: JSPROP_ENUMERATE as u16,
+                    selfHostedName: ptr::null(),
+                },
+                JSFunctionSpec::ZERO,
+            ];
+            &METHODS
+        }
+    }
+}
+
+unsafe impl Traceable for adder::Adder {
+    unsafe fn trace(&self, trc: *mut JSTracer) {
+        // Trace the JSObject stored in the Adder instance
+        println!("Tracing Adder instance: {:?}", self.object.get());
+        CallObjectTracer(
+            trc,
+            self.object.get() as *mut _,
+            c"Adder instance reflector".as_ptr(),
+        );
+    }
+}
 
 // Helper functions for common operations
 mod js_helpers {
-use spidermonkey_rs::jsval::Int32Value;
-use spidermonkey_rs::raw::{JS_GetReservedSlot, JS_SetReservedSlot};
-use super::*;
+    use super::*;
 
-    pub unsafe fn return_error(cx: *mut JSContext, args: &CallArgs, message: &str) {
-        let error_msg = format!("Error: {}", message);
-        error_msg.to_jsval(cx, MutableHandle::from_raw(args.rval()));
+    pub unsafe fn native_receiver<'a, T: JSBuiltinClass>(
+        cx: *mut JSContext,
+        args: &'a CallArgs,
+    ) -> Result<&'a T, bool> {
+        if !args.thisv().is_object() || GetClass(args.thisv().to_object()) != T::js_class() {
+            return Err(throw_wrong_receiver(cx, c"add", c"T"));
+        }
+        let this_obj = args.thisv().to_object();
+
+        this_object(this_obj)
     }
 
-    pub unsafe fn return_result<T: ToJSValConvertible>(cx: *mut JSContext, args: &CallArgs, result: T) {
-        result.to_jsval(cx, MutableHandle::from_raw(args.rval()));
+    unsafe fn this_object<'a, T: JSBuiltinClass>(this_obj: *mut JSObject) -> Result<&'a T, bool> {
+        assert!(GetClass(this_obj) == T::js_class());
+        let mut this_val = Value::default();
+        JS_GetReservedSlot(this_obj, 0, &mut this_val as *mut Value);
+        Ok(&*(this_val.to_private() as *const T))
     }
 
-    pub unsafe fn get_arg_typed<T>(cx: *mut JSContext, args: &CallArgs, index: u32) -> Option<T>
+    pub fn return_result<T: ToJSValConvertible>(
+        cx: *mut JSContext,
+        args: &CallArgs,
+        result: T,
+    ) -> bool {
+        unsafe {
+            assert!(!JS_IsExceptionPending(cx));
+            result.to_jsval(cx, MutableHandle::from_raw(args.rval()));
+            !JS_IsExceptionPending(cx)
+        }
+    }
+
+    pub fn get_arg_typed<T>(cx: *mut JSContext, args: &CallArgs, index: u32) -> Option<T>
     where
         T: FromJSValConvertible<Config = ConversionBehavior>,
     {
@@ -33,153 +275,42 @@ use super::*;
             return None;
         }
         let val = args.get(index);
-        match T::from_jsval(cx, Handle::from_raw(val), ConversionBehavior::Default) {
-            Ok(ConversionResult::Success(value)) => Some(value),
-            _ => None,
-        }
-    }
-
-    // Reserved slot helpers
-    pub unsafe fn get_reserved_slot_i32(obj: *mut JSObject, slot: u32) -> i32 {
-        let mut val = Value::default();
-        JS_GetReservedSlot(obj, slot, &mut val as *mut Value);
-        if val.is_int32() {
-            val.to_int32()
-        } else {
-            0
-        }
-    }
-
-    pub unsafe fn set_reserved_slot_i32(obj: *mut JSObject, slot: u32, value: i32) {
-        let val = Int32Value(value);
-        JS_SetReservedSlot(obj, slot, &val as *const Value);
-    }
-
-    pub unsafe fn get_this_object(args: &CallArgs) -> Option<*mut JSObject> {
-        let this_val = args.thisv();
-        if this_val.is_object() {
-            Some(this_val.to_object())
-        } else {
-            None
+        unsafe {
+            match T::from_jsval(cx, Handle::from_raw(val), ConversionBehavior::Default) {
+                Ok(ConversionResult::Success(value)) => Some(value),
+                _ => None,
+            }
         }
     }
 }
 
-// Trait for defining JavaScript classes in Rust
-pub trait JSClassTrait {
-    const CLASS_NAME: &'static str;
-    const JS_CLASS: &'static JSClass;
-    const CLASS_OPS: JSClassOps = JSClassOps {
-        addProperty: None,
-        delProperty: None,
-        enumerate: None,
-        newEnumerate: None,
-        resolve: None,
-        mayResolve: None,
-        finalize: None,
-        call: None,
-        construct: None,
-        trace: None,
-    };
+pub trait JSBuiltinClass {
+    unsafe fn init_js_class();
+    unsafe fn js_class() -> &'static JSClass;
+    unsafe fn class_ops() -> &'static JSClassOps;
     const CONSTRUCTOR_ARGC: u32 = 0;
-    const RESERVED_SLOTS: u32 = 0;
 
-    fn class_flags() -> u32 {
-        let mut flags = 0u32;
-        if Self::RESERVED_SLOTS > 0 {
-            flags |= (Self::RESERVED_SLOTS & JSCLASS_RESERVED_SLOTS_MASK) << JSCLASS_RESERVED_SLOTS_SHIFT;
-            // Add foreground finalize flag as required by SpiderMonkey for objects with reserved slots
-            flags |= JSCLASS_FOREGROUND_FINALIZE;
-        }
-        flags
+    unsafe extern "C" fn finalize_hook(_gcx: *mut GCContext, obj: *mut JSObject) {
+        let cls = GetClass(obj);
+        assert!(!cls.is_null(), "Class can't be null");
+        println!(
+            "Finalizing class instance: {:?}",
+            CStr::from_ptr((*cls).name)
+        );
     }
 
-    fn class_ops() -> JSClassOps {
-        JSClassOps {
-            addProperty: None,
-            delProperty: None,
-            enumerate: None,
-            newEnumerate: None,
-            resolve: None,
-            mayResolve: None,
-            finalize: None,
-            call: None,
-            construct: None,
-            trace: None,
-        }
+    unsafe extern "C" fn trace_hook(_trc: *mut JSTracer, _obj: *mut JSObject) {
+        println!("Tracing class instance");
+        // No-op for now, can be overridden if needed
     }
 
     fn methods() -> &'static [JSFunctionSpec] {
-        static METHODS: [JSFunctionSpec; 4] = [
-            JSFunctionSpec {
-                name: JSPropertySpec_Name {
-                    string_: b"getValue\0".as_ptr() as *const i8,
-                },
-                call: JSNativeWrapper {
-                    op: Some(Counter::get_value),
-                    info: ptr::null(),
-                },
-                nargs: 0,
-                flags: JSPROP_ENUMERATE as u16,
-                selfHostedName: ptr::null(),
-            },
-            JSFunctionSpec {
-                name: JSPropertySpec_Name {
-                    string_: b"setValue\0".as_ptr() as *const i8,
-                },
-                call: JSNativeWrapper {
-                    op: Some(Counter::set_value),
-                    info: ptr::null(),
-                },
-                nargs: 1,
-                flags: JSPROP_ENUMERATE as u16,
-                selfHostedName: ptr::null(),
-            },
-            JSFunctionSpec {
-                name: JSPropertySpec_Name {
-                    string_: b"increment\0".as_ptr() as *const i8,
-                },
-                call: JSNativeWrapper {
-                    op: Some(Counter::increment),
-                    info: ptr::null(),
-                },
-                nargs: 0,
-                flags: JSPROP_ENUMERATE as u16,
-                selfHostedName: ptr::null(),
-            },
-            JSFunctionSpec::ZERO,
-        ];
+        static METHODS: [JSFunctionSpec; 1] = [JSFunctionSpec::ZERO];
         &METHODS
     }
 
     fn static_methods() -> &'static [JSFunctionSpec] {
-        static STATIC_METHODS: [JSFunctionSpec; 3] = [
-            JSFunctionSpec {
-                name: JSPropertySpec_Name {
-                    string_: b"create\0".as_ptr() as *const i8,
-                },
-                call: JSNativeWrapper {
-                    op: Some(Counter::static_create),
-                    info: ptr::null(),
-                },
-                nargs: 1,
-                flags: JSPROP_ENUMERATE as u16,
-                selfHostedName: ptr::null(),
-            },
-            JSFunctionSpec {
-                name: JSPropertySpec_Name {
-                    string_: b"version\0".as_ptr() as *const i8,
-                },
-                call: JSNativeWrapper {
-                    op: Some(Counter::static_version),
-                    info: ptr::null(),
-                },
-                nargs: 0,
-                flags: JSPROP_ENUMERATE as u16,
-                selfHostedName: ptr::null(),
-            },
-            JSFunctionSpec::ZERO,
-        ];
+        static STATIC_METHODS: [JSFunctionSpec; 1] = [JSFunctionSpec::ZERO];
         &STATIC_METHODS
     }
 
@@ -192,158 +323,93 @@ pub trait JSClassTrait {
         static EMPTY: [JSPropertySpec; 1] = [JSPropertySpec::ZERO];
         &EMPTY
     }
+    unsafe extern "C" fn from_call_args(
+        cx: *mut JSContext,
+        obj: HandleObject,
+        args: *mut CallArgs,
+    ) -> Value;
 
-    unsafe extern "C" fn constructor(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool;
+    unsafe extern "C" fn js_constructor(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
+        let mut args = CallArgs::from_vp(vp, argc);
+        if !args.constructing_() {
+            return throw_ctor_called_without_new(cx, c"Adder");
+        }
+        let ctor_obj = args.callee();
+        assert!(
+            !ctor_obj.is_null(),
+            "Constructor called without a valid 'this' object"
+        );
+        let cls = GetFunctionNativeReserved(ctor_obj, 0)
+            .as_ref()
+            .unwrap()
+            .to_private() as *const JSClass;
+        assert!(!cls.is_null(), "Class can't be null");
+
+        root!(cx, let obj = JS_NewObjectForConstructor(cx, cls, &args));
+        if obj.is_null() {
+            return false;
+        }
+
+        let this = Self::from_call_args(cx, obj.handle().into(), &mut args);
+        assert!(
+            !this.is_null(),
+            "Native constructor returned a null instance"
+        );
+        // Store the instance in the reserved slot
+        JS_SetReservedSlot(obj.get(), 0, &this);
+        return_result(cx, &args, obj.get());
+        true
+    }
 
     unsafe fn install_class(cx: *mut JSContext, global: HandleObject) -> bool {
-        let proto = JS_InitClass(
+        let properties = NativeProperties {
+            methods: Self::methods().as_ptr(),
+            properties: Self::properties().as_ptr(),
+            constants: ptr::null(),
+        };
+
+        let ctor_properties = NativeProperties {
+            methods: Self::static_methods().as_ptr(),
+            properties: Self::static_properties().as_ptr(),
+            constants: ptr::null(),
+        };
+        Self::init_js_class();
+
+        let proto = CreateBuiltinClass(
             cx,
-            global,
-            Self::JS_CLASS,
-            HandleObject::null(),
-            Self::CLASS_NAME.as_ptr() as *const i8,
-            Some(Self::constructor),
+            Some(Self::js_constructor),
             Self::CONSTRUCTOR_ARGC,
-            Self::properties().as_ptr(),
-            Self::methods().as_ptr(),
-            Self::static_properties().as_ptr(),
-            Self::static_methods().as_ptr(),
+            Self::js_class(),
+            &properties as *const _,
+            &ctor_properties as *const _,
+            Self::js_class(), // TODO: this should be a different class for the prototype
+            HandleObject::null(),
+            global,
+            true,
         );
 
         !proto.is_null()
     }
 }
 
-// Counter class with simplified storage
-struct Counter;
-
-#[impl_js_class]
-impl JSClassTrait for Counter {
-    const CLASS_NAME: &'static str = "Counter";
-    const CONSTRUCTOR_ARGC: u32 = 1;
-    const RESERVED_SLOTS: u32 = 2; // Slot 0: value, Slot 1: name/id
-
-    unsafe extern "C" fn constructor(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
-        let args = CallArgs::from_vp(vp, argc);
-
-        if !args.constructing_() {
-            js_helpers::return_error(cx, &args, "Counter must be called with new");
-            return false;
-        }
-
-        let initial_value: i32 = js_helpers::get_arg_typed(cx, &args, 0).unwrap_or(0);
-
-        let obj = JS_NewObjectWithGivenProto(cx, Self::JS_CLASS, HandleObject::null());
-        if obj.is_null() {
-            js_helpers::return_error(cx, &args, "Failed to create Counter object");
-            return false;
-        }
-
-        // Initialize reserved slots
-        js_helpers::set_reserved_slot_i32(obj, 0, initial_value); // Value in slot 0
-        js_helpers::set_reserved_slot_i32(obj, 1, 42); // Some ID/metadata in slot 1
-
-        args.rval().set(ObjectValue(obj));
-        true
-    }
-
-    fn methods() -> &'static [JSFunctionSpec] {
-        static METHODS: [JSFunctionSpec; 1] = [
-            JSFunctionSpec::ZERO,
-        ];
-        &METHODS
-    }
-
-    fn static_methods() -> &'static [JSFunctionSpec] {
-        static STATIC_METHODS: [JSFunctionSpec; 1] = [
-            JSFunctionSpec::ZERO,
-        ];
-        &STATIC_METHODS
-    }
-}
-
-impl Counter {
-    unsafe extern "C" fn get_value(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
-        let args = CallArgs::from_vp(vp, argc);
-
-        if let Some(obj) = js_helpers::get_this_object(&args) {
-            let value = js_helpers::get_reserved_slot_i32(obj, 0);
-            js_helpers::return_result(cx, &args, value);
-        } else {
-            js_helpers::return_error(cx, &args, "getValue called on non-Counter object");
-        }
-        true
-    }
-
-    unsafe extern "C" fn set_value(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
-        let args = CallArgs::from_vp(vp, argc);
-
-        if let Some(obj) = js_helpers::get_this_object(&args) {
-            if let Some(new_value) = js_helpers::get_arg_typed::<i32>(cx, &args, 0) {
-                js_helpers::set_reserved_slot_i32(obj, 0, new_value);
-                js_helpers::return_result(cx, &args, new_value);
-            } else {
-                js_helpers::return_error(cx, &args, "setValue requires a number argument");
-            }
-        } else {
-            js_helpers::return_error(cx, &args, "setValue called on non-Counter object");
-        }
-        true
-    }
-
-    unsafe extern "C" fn increment(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
-        let args = CallArgs::from_vp(vp, argc);
-
-        if let Some(obj) = js_helpers::get_this_object(&args) {
-            let current_value = js_helpers::get_reserved_slot_i32(obj, 0);
-            let new_value = current_value + 1;
-            js_helpers::set_reserved_slot_i32(obj, 0, new_value);
-            js_helpers::return_result(cx, &args, new_value);
-        } else {
-            js_helpers::return_error(cx, &args, "increment called on non-Counter object");
-        }
-        true
-    }
-
-    unsafe extern "C" fn static_create(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
-        let args = CallArgs::from_vp(vp, argc);
-
-        let initial_value: i32 = js_helpers::get_arg_typed(cx, &args, 0).unwrap_or(0);
-
-        let obj = JS_NewObjectWithGivenProto(cx, Self::JS_CLASS, HandleObject::null());
-        if obj.is_null() {
-            js_helpers::return_error(cx, &args, "Failed to create Counter object");
-            return false;
-        }
-
-        js_helpers::set_reserved_slot_i32(obj, 0, initial_value);
-        js_helpers::set_reserved_slot_i32(obj, 1, 999); // Different ID for static creation
-
-        args.rval().set(ObjectValue(obj));
-        true
-    }
-
-    unsafe extern "C" fn static_version(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
-        let args = CallArgs::from_vp(vp, argc);
-        js_helpers::return_result(cx, &args, "Counter v1.0 - Rust Implementation".to_string());
-        true
-    }
-}
-
-// Enhanced framework installation
-unsafe fn install_rust_framework(engine: &mut Engine) -> bool {
-
-    // Test minimal JS_InitClass
-    Counter::install_class(engine.cx(), engine.global());
-
-    println!("Installed Rust JS Framework with JS_InitClass and reserved slots!");
+unsafe extern "C" fn gc(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool {
+    JS::NonIncrementalGC(cx, GCOptions::Normal, GCReason::API);
+    let args = CallArgs::from_vp(vp, argc);
+    args.rval().set(jsval::UndefinedValue());
     true
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn builtin_test_builtin_install(engine: &mut Engine) -> bool {
-    install_rust_framework(engine);
+    adder::Adder::install_class(engine.cx(), engine.global());
+    JS_DefineFunction(
+        engine.cx(),
+        engine.global(),
+        c"gc".as_ptr(),
+        Some(gc),
+        0,
+        JSPROP_ENUMERATE.into(),
+    );
 
-    println!("test_builtin_install completed - JS_InitClass framework");
     true
 }

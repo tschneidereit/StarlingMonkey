@@ -11,6 +11,7 @@ members = [
     "spidermonkey-rs",
     "starlingmonkey-rs",
     "generate-bindings",
+    "spidermonkey-macros",
 ]
 resolver = "2"
 

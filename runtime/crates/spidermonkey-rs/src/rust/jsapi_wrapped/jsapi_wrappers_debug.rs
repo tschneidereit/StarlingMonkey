@@ -1,10 +1,11 @@
+#[allow(unused_imports)]
 mod raw {
-  #[allow(unused_imports)]
   pub use crate::raw::*;
   pub use crate::raw::JS::*;
   pub use crate::raw::JS::dbg::*;
   pub use crate::raw::JS::detail::*;
   pub use crate::raw::js::*;
+  pub use crate::raw::jsglue::*;
 }
 
 wrap!(raw: pub fn ToBooleanSlow(v: raw::JS::HandleValue) -> bool);
@@ -298,6 +299,12 @@ wrap!(raw: pub fn JS_GetRegExpFlags(cx: *mut raw::JSContext, obj: raw::JS::Handl
 wrap!(raw: pub fn EncodeStringToUTF8(cx: *mut raw::JSContext, str_: raw::JS::HandleString, cb: raw::jsglue::EncodedStringCallback));
 wrap!(raw: pub fn SetDataPropertyDescriptor(desc: raw::JS::MutableHandle<raw::JS::PropertyDescriptor>, value: raw::JS::HandleValue, attrs: u32));
 wrap!(raw: pub fn SetAccessorPropertyDescriptor(desc: raw::JS::MutableHandle<raw::JS::PropertyDescriptor>, getter: raw::JS::HandleObject, setter: raw::JS::HandleObject, attrs: u32));
+wrap!(raw: pub fn CreateBuiltinFunctionForConstructor(cx: *mut raw::JSContext, jsCtor: raw::JSNative, argc: ::std::os::raw::c_uint, cls: *const raw::JSClass, name: raw::JS::HandleId, proto: raw::JS::HandleObject) -> *mut raw::JSObject);
+wrap!(raw: pub fn DefineConstructor(cx: *mut raw::JSContext, global: raw::JS::HandleObject, name: raw::JS::HandleId, constructor: raw::JS::HandleObject) -> bool);
+wrap!(raw: pub fn DefineConstants(cx: *mut raw::JSContext, obj: raw::JS::HandleObject, cs: *const raw::jsglue::ConstantSpec) -> bool);
+wrap!(raw: pub fn InitProperties(cx: *mut raw::JSContext, obj: raw::JS::HandleObject, properties: *const raw::jsglue::NativeProperties) -> bool);
+wrap!(raw: pub fn DefineToStringTag(cx: *mut raw::JSContext, obj: raw::JS::Handle<*mut raw::JSObject>, class_name: raw::JS::Handle<*mut raw::JSString>) -> bool);
+wrap!(raw: pub fn CreateBuiltinClass(cx: *mut raw::JSContext, jsCtor: raw::JSNative, argc: ::std::os::raw::c_uint, cls: *const raw::JSClass, properties: *const raw::jsglue::NativeProperties, ctorProperties: *const raw::jsglue::NativeProperties, protoClass: *const raw::JSClass, protoProto: raw::JS::HandleObject, global: raw::JS::HandleObject, defineOnGlobal: bool) -> *mut raw::JSObject);
 wrap!(raw: pub fn JS_Utf8BufferIsCompilableUnit(cx: *mut raw::JSContext, obj: raw::JS::Handle<*mut raw::JSObject>, utf8: *const ::std::os::raw::c_char, length: usize) -> bool);
 wrap!(raw: pub fn JS_ExecuteScript(cx: *mut raw::JSContext, script: raw::JS::Handle<*mut raw::JSScript>, rval: raw::JS::MutableHandle<raw::JS::Value>) -> bool);
 wrap!(raw: pub fn JS_ExecuteScript1(cx: *mut raw::JSContext, script: raw::JS::Handle<*mut raw::JSScript>) -> bool);

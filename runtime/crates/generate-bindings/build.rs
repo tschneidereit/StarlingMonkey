@@ -194,8 +194,8 @@ impl BindingsProcessor {
 
 fn generate_wrapper_file_content(functions: &[String]) -> String {
     let mut output = String::from(
-        r#"mod raw {
-  #[allow(unused_imports)]
+        r#"#[allow(unused_imports)]
+mod raw {
   pub use crate::raw::*;
   pub use crate::raw::JS::*;
   pub use crate::raw::JS::dbg::*;

@@ -7883,9 +7883,21 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub type RootedObject = root::JS::Rooted<*mut root::JSObject>;
         pub type RootedFunction = root::JS::Rooted<*mut root::JSFunction>;
         pub type RootedScript = root::JS::Rooted<*mut root::JSScript>;
+        /** Local variable of type T whose value is always rooted. This is typically
+ used for local variables, or for non-rooted values being passed to a
+ function that requires a handle, e.g. Foo(Root<T>(cx, x)).
+
+ If you want to add additional methods to Rooted for a specific
+ specialization, define a RootedOperations<T> specialization containing them.*/
         pub type RootedString = root::JS::Rooted<*mut root::JSString>;
         pub type RootedSymbol = root::JS::Rooted<*mut root::JS::Symbol>;
         pub type RootedBigInt = root::JS::Rooted<*mut root::JS::BigInt>;
+        /** Local variable of type T whose value is always rooted. This is typically
+ used for local variables, or for non-rooted values being passed to a
+ function that requires a handle, e.g. Foo(Root<T>(cx, x)).
+
+ If you want to add additional methods to Rooted for a specific
+ specialization, define a RootedOperations<T> specialization containing them.*/
         pub type RootedId = root::JS::Rooted<root::JS::PropertyKey>;
         /** Local variable of type T whose value is always rooted. This is typically
  used for local variables, or for non-rooted values being passed to a
@@ -22308,6 +22320,19 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub type EncodedStringCallback = ::std::option::Option<
             unsafe extern "C" fn(arg1: *const ::std::os::raw::c_char),
         >;
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct ConstantSpec {
+            pub name: *const ::std::os::raw::c_char,
+            pub value: root::JS::Value,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct NativeProperties {
+            pub methods: *const root::JSFunctionSpec,
+            pub properties: *const root::JSPropertySpec,
+            pub constants: *const root::jsglue::ConstantSpec,
+        }
         unsafe extern "C" {
             #[link_name = "\u{1}_ZN6jsglue7JS_InitEv"]
             pub fn JS_Init() -> bool;
@@ -22464,6 +22489,7 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn CreateWrapperProxyHandler(
                 aTraps: *const root::jsglue::ProxyTraps,
             ) -> *const ::std::os::raw::c_void;
+            pub fn GetClass(obj: *const root::JSObject) -> *const root::JSClass;
             pub fn GetCrossCompartmentWrapper() -> *const ::std::os::raw::c_void;
             pub fn GetSecurityWrapper() -> *const ::std::os::raw::c_void;
             pub fn DeleteCompileOptions(aOpts: *mut root::JS::ReadOnlyCompileOptions);
@@ -22818,6 +22844,49 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 setter: root::JS::HandleObject,
                 attrs: u32,
             );
+            #[link_name = "\u{1}_ZN6jsglueL35CreateBuiltinFunctionForConstructorEP9JSContextPFbS1_jPN2JS5ValueEEjPK7JSClassNS2_6HandleINS2_11PropertyKeyEEENSA_IP8JSObjectEE"]
+            pub fn CreateBuiltinFunctionForConstructor(
+                cx: *mut root::JSContext,
+                jsCtor: root::JSNative,
+                argc: ::std::os::raw::c_uint,
+                cls: *const root::JSClass,
+                name: root::JS::HandleId,
+                proto: root::JS::HandleObject,
+            ) -> *mut root::JSObject;
+            #[link_name = "\u{1}_ZN6jsglueL17DefineConstructorEP9JSContextN2JS6HandleIP8JSObjectEENS3_INS2_11PropertyKeyEEES6_"]
+            pub fn DefineConstructor(
+                cx: *mut root::JSContext,
+                global: root::JS::HandleObject,
+                name: root::JS::HandleId,
+                constructor: root::JS::HandleObject,
+            ) -> bool;
+            pub fn DefineConstants(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                cs: *const root::jsglue::ConstantSpec,
+            ) -> bool;
+            pub fn InitProperties(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                properties: *const root::jsglue::NativeProperties,
+            ) -> bool;
+            pub fn DefineToStringTag(
+                cx: *mut root::JSContext,
+                obj: root::JS::Handle<*mut root::JSObject>,
+                class_name: root::JS::Handle<*mut root::JSString>,
+            ) -> bool;
+            pub fn CreateBuiltinClass(
+                cx: *mut root::JSContext,
+                jsCtor: root::JSNative,
+                argc: ::std::os::raw::c_uint,
+                cls: *const root::JSClass,
+                properties: *const root::jsglue::NativeProperties,
+                ctorProperties: *const root::jsglue::NativeProperties,
+                protoClass: *const root::JSClass,
+                protoProto: root::JS::HandleObject,
+                global: root::JS::HandleObject,
+                defineOnGlobal: bool,
+            ) -> *mut root::JSObject;
         }
     }
     pub type __builtin_va_list = *mut ::std::os::raw::c_void;
