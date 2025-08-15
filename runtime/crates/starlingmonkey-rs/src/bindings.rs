@@ -179,17 +179,6 @@ pub mod root {
                 Engine_has_pending_async_tasks(self)
             }
             #[inline]
-            pub unsafe fn queue_async_task(&mut self, task: *mut root::api::AsyncTask) {
-                Engine_queue_async_task(self, task)
-            }
-            #[inline]
-            pub unsafe fn cancel_async_task(
-                &mut self,
-                task: *mut root::api::AsyncTask,
-            ) -> bool {
-                Engine_cancel_async_task(self, task)
-            }
-            #[inline]
             pub unsafe fn has_unhandled_promise_rejections(&mut self) -> bool {
                 Engine_has_unhandled_promise_rejections(self)
             }
@@ -262,9 +251,9 @@ pub mod root {
         #[repr(C)]
         pub struct AsyncTask__bindgen_vtable(::std::os::raw::c_void);
         #[repr(C)]
-        #[derive(Debug, PartialEq)]
         pub struct AsyncTask {
             pub vtable_: *const AsyncTask__bindgen_vtable,
+            pub __bindgen_padding_0: [u32; 2usize],
             pub handle_: root::api::PollableHandle,
         }
         unsafe extern "C" {
@@ -375,16 +364,6 @@ pub mod root {
             ) -> root::JS::HandleValue;
             #[link_name = "\u{1}_ZN3api6Engine23has_pending_async_tasksEv"]
             pub fn Engine_has_pending_async_tasks(this: *mut root::api::Engine) -> bool;
-            #[link_name = "\u{1}_ZN3api6Engine16queue_async_taskEPNS_9AsyncTaskE"]
-            pub fn Engine_queue_async_task(
-                this: *mut root::api::Engine,
-                task: *mut root::api::AsyncTask,
-            );
-            #[link_name = "\u{1}_ZN3api6Engine17cancel_async_taskEPNS_9AsyncTaskE"]
-            pub fn Engine_cancel_async_task(
-                this: *mut root::api::Engine,
-                task: *mut root::api::AsyncTask,
-            ) -> bool;
             #[link_name = "\u{1}_ZN3api6Engine32has_unhandled_promise_rejectionsEv"]
             pub fn Engine_has_unhandled_promise_rejections(
                 this: *mut root::api::Engine,

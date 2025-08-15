@@ -620,8 +620,12 @@ impl BindgenConfig for StarlingBindgenConfig {
         "JS::.*",
         "js::.*",
         "JS.*",
+        "RefPtr.*",
+        "MozRefCountType",
         // Bindgen can't handle the use of std::vector here.
         "api::AsyncTask_select",
+        ".*queue_async_task",
+        ".*cancel_async_task",
     ];
 
     const OPAQUE_TYPES: &'static [&'static str] = &[
