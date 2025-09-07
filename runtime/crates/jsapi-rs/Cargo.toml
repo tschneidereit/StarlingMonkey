@@ -18,6 +18,7 @@ profilemozjs = []
 jitspew = []
 streams = []
 oom_with_hook = []
+crown = []
 default = ["streams"]
 
 [dependencies]

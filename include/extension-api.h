@@ -110,6 +110,35 @@ public:
   }
 
   /**
+   * Reserve a new globally unique id for a builtin prototype object.
+   *
+   * This id can then be used to register and retrieve the prototype object
+   * for the a specific global.
+   */
+  static size_t reserve_builtin_proto_id();
+
+  /**
+   * Register a builtin prototype object for the given global.
+   *
+   * This allows builtins to retrieve their prototype object for the current global, even
+   * if a prototype was created for multiple globals.
+   *
+   * @param global The global the prototype is associated with
+   * @param proto The prototype object to register
+   * @param id The globally unique id for the prototype, acquired using `reserve_builtin_proto
+   */
+  static void register_builtin_proto(JSObject *global, JSObject *proto, size_t id);
+
+  /**
+   * Retrieve a previously registered builtin prototype object for the given global.
+   *
+   * @param global The global to retrieve the prototype for
+   * @param id The globally unique id for the prototype, acquired using `reserve_builtin_proto`
+   * @return The prototype object registered for the given global and id
+   */
+  static JS::HandleObject get_builtin_proto(JSObject *global, size_t id);
+
+  /**
    * Returns the `JSContext` associated with the `Engine` instance.
    *
    * Currently, StarlingMonkey uses exactly one `Engine` and one `JSContext`. Since that might

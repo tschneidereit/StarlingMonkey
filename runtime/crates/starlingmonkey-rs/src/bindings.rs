@@ -102,6 +102,25 @@ pub mod root {
                 Engine_get(cx)
             }
             #[inline]
+            pub unsafe fn reserve_builtin_proto_id() -> usize {
+                Engine_reserve_builtin_proto_id()
+            }
+            #[inline]
+            pub unsafe fn register_builtin_proto(
+                global: *mut root::JSObject,
+                proto: *mut root::JSObject,
+                id: usize,
+            ) {
+                Engine_register_builtin_proto(global, proto, id)
+            }
+            #[inline]
+            pub unsafe fn get_builtin_proto(
+                global: *mut root::JSObject,
+                id: usize,
+            ) -> root::JS::HandleObject {
+                Engine_get_builtin_proto(global, id)
+            }
+            #[inline]
             pub unsafe fn cx(&mut self) -> *mut root::JSContext {
                 Engine_cx(self)
             }
@@ -268,6 +287,36 @@ pub mod root {
             ) -> bool;
             #[link_name = "\u{1}_ZN3api6Engine3getEP9JSContext"]
             pub fn Engine_get(cx: *mut root::JSContext) -> *mut root::api::Engine;
+            /** Reserve a new globally unique id for a builtin prototype object.
+
+ This id can then be used to register and retrieve the prototype object
+ for the a specific global.*/
+            #[link_name = "\u{1}_ZN3api6Engine24reserve_builtin_proto_idEv"]
+            pub fn Engine_reserve_builtin_proto_id() -> usize;
+            /** Register a builtin prototype object for the given global.
+
+ This allows builtins to retrieve their prototype object for the current global, even
+ if a prototype was created for multiple globals.
+
+ @param global The global the prototype is associated with
+ @param proto The prototype object to register
+ @param id The globally unique id for the prototype, acquired using `reserve_builtin_proto*/
+            #[link_name = "\u{1}_ZN3api6Engine22register_builtin_protoEP8JSObjectS2_m"]
+            pub fn Engine_register_builtin_proto(
+                global: *mut root::JSObject,
+                proto: *mut root::JSObject,
+                id: usize,
+            );
+            /** Retrieve a previously registered builtin prototype object for the given global.
+
+ @param global The global to retrieve the prototype for
+ @param id The globally unique id for the prototype, acquired using `reserve_builtin_proto`
+ @return The prototype object registered for the given global and id*/
+            #[link_name = "\u{1}_ZN3api6Engine17get_builtin_protoEP8JSObjectm"]
+            pub fn Engine_get_builtin_proto(
+                global: *mut root::JSObject,
+                id: usize,
+            ) -> root::JS::HandleObject;
             /** Returns the `JSContext` associated with the `Engine` instance.
 
  Currently, StarlingMonkey uses exactly one `Engine` and one `JSContext`. Since that might

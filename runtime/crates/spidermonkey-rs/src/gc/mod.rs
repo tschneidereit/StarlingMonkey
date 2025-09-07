@@ -2,8 +2,8 @@ pub use collections::*;
 pub use custom::*;
 pub use root::*;
 pub use trace::*;
-pub use jsapi_rs::jsgc::{GCMethods, RootKind};
-
+pub use jsapi_rs::jsgc::{GCMethods, Initialize, RootKind, Rootable};
+pub use jsapi_rs::trace::Traceable;
 mod collections;
 mod custom;
 mod macros;

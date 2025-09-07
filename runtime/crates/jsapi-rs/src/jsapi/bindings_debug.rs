@@ -182,29 +182,29 @@ pub mod root {
     #[allow(unused_imports)]
     use self::super::root;
     pub type FILE = ::libc::FILE;
-    pub const JS_DEBUG: u8 = 1;
-    pub const JS_GC_ZEAL: u8 = 1;
-    pub const JS_NUNBOX32: u8 = 1;
-    pub const JS_BITS_PER_WORD: u8 = 32;
-    pub const JSVAL_INT_BITS: u8 = 32;
-    pub const JSVAL_TAG_SHIFT: u8 = 32;
-    pub const JS_STRUCTURED_CLONE_VERSION: u8 = 8;
-    pub const JS_SCERR_RECURSION: u8 = 0;
-    pub const JS_SCERR_TRANSFERABLE: u8 = 1;
-    pub const JS_SCERR_DUP_TRANSFERABLE: u8 = 2;
-    pub const JS_SCERR_UNSUPPORTED_TYPE: u8 = 3;
-    pub const JS_SCERR_SHMEM_TRANSFERABLE: u8 = 4;
-    pub const JS_SCERR_TYPED_ARRAY_DETACHED: u8 = 5;
-    pub const JS_SCERR_WASM_NO_TRANSFER: u8 = 6;
-    pub const JS_SCERR_NOT_CLONABLE: u8 = 7;
-    pub const JS_SCERR_NOT_CLONABLE_WITH_COOP_COEP: u8 = 8;
-    pub const JS_SCERR_TRANSFERABLE_TWICE: u8 = 9;
-    pub const JSITER_PRIVATE: u8 = 4;
-    pub const JSITER_OWNONLY: u8 = 8;
-    pub const JSITER_HIDDEN: u8 = 16;
-    pub const JSITER_SYMBOLS: u8 = 32;
-    pub const JSITER_SYMBOLSONLY: u8 = 64;
-    pub const JSITER_FORAWAITOF: u8 = 128;
+    pub const JS_DEBUG: u32 = 1;
+    pub const JS_GC_ZEAL: u32 = 1;
+    pub const JS_NUNBOX32: u32 = 1;
+    pub const JS_BITS_PER_WORD: u32 = 32;
+    pub const JSVAL_INT_BITS: u32 = 32;
+    pub const JSVAL_TAG_SHIFT: u32 = 32;
+    pub const JS_STRUCTURED_CLONE_VERSION: u32 = 8;
+    pub const JS_SCERR_RECURSION: u32 = 0;
+    pub const JS_SCERR_TRANSFERABLE: u32 = 1;
+    pub const JS_SCERR_DUP_TRANSFERABLE: u32 = 2;
+    pub const JS_SCERR_UNSUPPORTED_TYPE: u32 = 3;
+    pub const JS_SCERR_SHMEM_TRANSFERABLE: u32 = 4;
+    pub const JS_SCERR_TYPED_ARRAY_DETACHED: u32 = 5;
+    pub const JS_SCERR_WASM_NO_TRANSFER: u32 = 6;
+    pub const JS_SCERR_NOT_CLONABLE: u32 = 7;
+    pub const JS_SCERR_NOT_CLONABLE_WITH_COOP_COEP: u32 = 8;
+    pub const JS_SCERR_TRANSFERABLE_TWICE: u32 = 9;
+    pub const JSITER_PRIVATE: u32 = 4;
+    pub const JSITER_OWNONLY: u32 = 8;
+    pub const JSITER_HIDDEN: u32 = 16;
+    pub const JSITER_SYMBOLS: u32 = 32;
+    pub const JSITER_SYMBOLSONLY: u32 = 64;
+    pub const JSITER_FORAWAITOF: u32 = 128;
     pub mod std {
         #[allow(unused_imports)]
         use self::super::super::root;
@@ -1123,71 +1123,9 @@ pub mod root {
             pub struct MutexImpl_PlatformData {
                 _unused: [u8; 0],
             }
-            impl MutexImpl {
-                #[inline]
-                pub unsafe fn lock(&mut self) {
-                    MutexImpl_lock(self)
-                }
-                #[inline]
-                pub unsafe fn unlock(&mut self) {
-                    MutexImpl_unlock(self)
-                }
-                #[inline]
-                pub unsafe fn tryLock(&mut self) -> bool {
-                    MutexImpl_tryLock(self)
-                }
-                #[inline]
-                pub unsafe fn new() -> Self {
-                    let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                    MutexImpl_MutexImpl(__bindgen_tmp.as_mut_ptr());
-                    __bindgen_tmp.assume_init()
-                }
-                #[inline]
-                pub unsafe fn destruct(&mut self) {
-                    MutexImpl_MutexImpl_destructor(self)
-                }
-            }
             #[repr(C)]
             pub struct RWLockImpl {
                 pub mRWLock: root::pthread_rwlock_t,
-            }
-            impl RWLockImpl {
-                #[inline]
-                #[must_use]
-                pub unsafe fn tryReadLock(&mut self) -> bool {
-                    RWLockImpl_tryReadLock(self)
-                }
-                #[inline]
-                pub unsafe fn readLock(&mut self) {
-                    RWLockImpl_readLock(self)
-                }
-                #[inline]
-                pub unsafe fn readUnlock(&mut self) {
-                    RWLockImpl_readUnlock(self)
-                }
-                #[inline]
-                #[must_use]
-                pub unsafe fn tryWriteLock(&mut self) -> bool {
-                    RWLockImpl_tryWriteLock(self)
-                }
-                #[inline]
-                pub unsafe fn writeLock(&mut self) {
-                    RWLockImpl_writeLock(self)
-                }
-                #[inline]
-                pub unsafe fn writeUnlock(&mut self) {
-                    RWLockImpl_writeUnlock(self)
-                }
-                #[inline]
-                pub unsafe fn new() -> Self {
-                    let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                    RWLockImpl_RWLockImpl(__bindgen_tmp.as_mut_ptr());
-                    __bindgen_tmp.assume_init()
-                }
-                #[inline]
-                pub unsafe fn destruct(&mut self) {
-                    RWLockImpl_RWLockImpl_destructor(self)
-                }
             }
             #[repr(C)]
             #[derive(Debug, Copy, Clone, PartialEq)]
@@ -1290,54 +1228,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 pub fn supports_os_test() -> root::std::false_type;
                 #[link_name = "\u{1}_ZN7mozilla6detail15gTwoCharEscapesE"]
                 pub static gTwoCharEscapes: [::std::os::raw::c_char; 256usize];
-                #[link_name = "\u{1}_ZN7mozilla6detail9MutexImpl4lockEv"]
-                pub fn MutexImpl_lock(this: *mut root::mozilla::detail::MutexImpl);
-                #[link_name = "\u{1}_ZN7mozilla6detail9MutexImpl6unlockEv"]
-                pub fn MutexImpl_unlock(this: *mut root::mozilla::detail::MutexImpl);
-                #[link_name = "\u{1}_ZN7mozilla6detail9MutexImpl7tryLockEv"]
-                pub fn MutexImpl_tryLock(
-                    this: *mut root::mozilla::detail::MutexImpl,
-                ) -> bool;
-                #[link_name = "\u{1}_ZN7mozilla6detail9MutexImplC1Ev"]
-                pub fn MutexImpl_MutexImpl(
-                    this: *mut root::mozilla::detail::MutexImpl,
-                ) -> *mut ::std::os::raw::c_void;
-                #[link_name = "\u{1}_ZN7mozilla6detail9MutexImplD1Ev"]
-                pub fn MutexImpl_MutexImpl_destructor(
-                    this: *mut root::mozilla::detail::MutexImpl,
-                );
-                #[must_use]
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImpl11tryReadLockEv"]
-                pub fn RWLockImpl_tryReadLock(
-                    this: *mut root::mozilla::detail::RWLockImpl,
-                ) -> bool;
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImpl8readLockEv"]
-                pub fn RWLockImpl_readLock(this: *mut root::mozilla::detail::RWLockImpl);
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImpl10readUnlockEv"]
-                pub fn RWLockImpl_readUnlock(
-                    this: *mut root::mozilla::detail::RWLockImpl,
-                );
-                #[must_use]
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImpl12tryWriteLockEv"]
-                pub fn RWLockImpl_tryWriteLock(
-                    this: *mut root::mozilla::detail::RWLockImpl,
-                ) -> bool;
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImpl9writeLockEv"]
-                pub fn RWLockImpl_writeLock(
-                    this: *mut root::mozilla::detail::RWLockImpl,
-                );
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImpl11writeUnlockEv"]
-                pub fn RWLockImpl_writeUnlock(
-                    this: *mut root::mozilla::detail::RWLockImpl,
-                );
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImplC1Ev"]
-                pub fn RWLockImpl_RWLockImpl(
-                    this: *mut root::mozilla::detail::RWLockImpl,
-                ) -> *mut ::std::os::raw::c_void;
-                #[link_name = "\u{1}_ZN7mozilla6detail10RWLockImplD1Ev"]
-                pub fn RWLockImpl_RWLockImpl_destructor(
-                    this: *mut root::mozilla::detail::RWLockImpl,
-                );
                 #[link_name = "\u{1}_ZN7mozilla6detail11IsValidUtf8EPKvm"]
                 pub fn IsValidUtf8(
                     aCodeUnits: *const ::std::os::raw::c_void,
@@ -1558,54 +1448,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct PrintfTarget {
             pub vtable_: *const PrintfTarget__bindgen_vtable,
             pub mEmitted: usize,
-        }
-        impl PrintfTarget {
-            #[inline]
-            pub unsafe fn vprint(
-                &mut self,
-                fmt: *const ::std::os::raw::c_char,
-                arg1: root::va_list,
-            ) -> bool {
-                PrintfTarget_vprint(self, fmt, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntDec(&mut self, arg1: i32) -> bool {
-                PrintfTarget_appendIntDec(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntDec1(&mut self, arg1: u32) -> bool {
-                PrintfTarget_appendIntDec1(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntOct(&mut self, arg1: u32) -> bool {
-                PrintfTarget_appendIntOct(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntHex(&mut self, arg1: u32) -> bool {
-                PrintfTarget_appendIntHex(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntDec2(&mut self, arg1: i64) -> bool {
-                PrintfTarget_appendIntDec2(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntDec3(&mut self, arg1: u64) -> bool {
-                PrintfTarget_appendIntDec3(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntOct1(&mut self, arg1: u64) -> bool {
-                PrintfTarget_appendIntOct1(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn appendIntHex1(&mut self, arg1: u64) -> bool {
-                PrintfTarget_appendIntHex1(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn new() -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                PrintfTarget_PrintfTarget(__bindgen_tmp.as_mut_ptr());
-                __bindgen_tmp.assume_init()
-            }
         }
         pub type SmprintfPolicyPointer = u8;
         pub type SmprintfPointer = u8;
@@ -2349,24 +2191,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct BaseTimeDurationPlatformUtils {
             pub _address: u8,
         }
-        impl BaseTimeDurationPlatformUtils {
-            #[inline]
-            pub unsafe fn ToSeconds(aTicks: i64) -> f64 {
-                BaseTimeDurationPlatformUtils_ToSeconds(aTicks)
-            }
-            #[inline]
-            pub unsafe fn ToSecondsSigDigits(aTicks: i64) -> f64 {
-                BaseTimeDurationPlatformUtils_ToSecondsSigDigits(aTicks)
-            }
-            #[inline]
-            pub unsafe fn TicksFromMilliseconds(aMilliseconds: f64) -> i64 {
-                BaseTimeDurationPlatformUtils_TicksFromMilliseconds(aMilliseconds)
-            }
-            #[inline]
-            pub unsafe fn ResolutionInTicks() -> i64 {
-                BaseTimeDurationPlatformUtils_ResolutionInTicks()
-            }
-        }
         /** Instances of this class represent the length of an interval of time.
  Negative durations are allowed, meaning the end is before the start.
 
@@ -2430,28 +2254,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  The ValueCalculator template parameter determines how arithmetic
  operations are performed on the integer count of ticks (mValue).*/
         pub type TimeStamp_DurationType = root::mozilla::TimeDuration;
-        impl TimeStamp {
-            #[inline]
-            pub unsafe fn ProcessCreation() -> root::mozilla::TimeStamp {
-                TimeStamp_ProcessCreation()
-            }
-            #[inline]
-            pub unsafe fn FirstTimeStamp() -> root::mozilla::TimeStamp {
-                TimeStamp_FirstTimeStamp()
-            }
-            #[inline]
-            pub unsafe fn RecordProcessRestart() {
-                TimeStamp_RecordProcessRestart()
-            }
-            #[inline]
-            pub unsafe fn Startup() {
-                TimeStamp_Startup()
-            }
-            #[inline]
-            pub unsafe fn Shutdown() {
-                TimeStamp_Shutdown()
-            }
-        }
         pub type fallible_t = root::std::nothrow_t;
         pub type UniqueFreePtr = u8;
         #[repr(C)]
@@ -2941,41 +2743,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 pub mStringTableWriter: root::mozilla::baseprofiler::SpliceableChunkedJSONWriter,
                 pub mStringHashToIndexMap: root::__BindgenOpaqueArray<u64, 5usize>,
             }
-            impl UniqueJSONStrings {
-                #[inline]
-                pub unsafe fn SpliceStringTableElements(
-                    &mut self,
-                    aWriter: *mut root::mozilla::baseprofiler::SpliceableJSONWriter,
-                ) {
-                    UniqueJSONStrings_SpliceStringTableElements(self, aWriter)
-                }
-                #[inline]
-                pub unsafe fn new(
-                    aFailureLatch: *mut root::mozilla::FailureLatch,
-                ) -> Self {
-                    let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                    UniqueJSONStrings_UniqueJSONStrings(
-                        __bindgen_tmp.as_mut_ptr(),
-                        aFailureLatch,
-                    );
-                    __bindgen_tmp.assume_init()
-                }
-                #[inline]
-                pub unsafe fn new1(
-                    aFailureLatch: *mut root::mozilla::FailureLatch,
-                    aOther: *const root::mozilla::baseprofiler::UniqueJSONStrings,
-                    aProgressLogger: root::mozilla::ProgressLogger,
-                ) -> Self {
-                    let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                    UniqueJSONStrings_UniqueJSONStrings1(
-                        __bindgen_tmp.as_mut_ptr(),
-                        aFailureLatch,
-                        aOther,
-                        aProgressLogger,
-                    );
-                    __bindgen_tmp.assume_init()
-                }
-            }
             impl root::mozilla::baseprofiler::ProfilingCategoryPair {
                 pub const LAST: root::mozilla::baseprofiler::ProfilingCategoryPair = ProfilingCategoryPair::TELEMETRY;
             }
@@ -3306,27 +3073,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 }
             }
             unsafe extern "C" {
-                #[link_name = "\u{1}_ZN7mozilla12baseprofiler17UniqueJSONStrings25SpliceStringTableElementsERNS0_20SpliceableJSONWriterE"]
-                pub fn UniqueJSONStrings_SpliceStringTableElements(
-                    this: *mut root::mozilla::baseprofiler::UniqueJSONStrings,
-                    aWriter: *mut root::mozilla::baseprofiler::SpliceableJSONWriter,
-                );
-                #[link_name = "\u{1}_ZN7mozilla12baseprofiler17UniqueJSONStringsC1ERNS_12FailureLatchE"]
-                pub fn UniqueJSONStrings_UniqueJSONStrings(
-                    this: *mut root::mozilla::baseprofiler::UniqueJSONStrings,
-                    aFailureLatch: *mut root::mozilla::FailureLatch,
-                ) -> *mut ::std::os::raw::c_void;
-                #[link_name = "\u{1}_ZN7mozilla12baseprofiler17UniqueJSONStringsC1ERNS_12FailureLatchERKS1_NS_14ProgressLoggerE"]
-                pub fn UniqueJSONStrings_UniqueJSONStrings1(
-                    this: *mut root::mozilla::baseprofiler::UniqueJSONStrings,
-                    aFailureLatch: *mut root::mozilla::FailureLatch,
-                    aOther: *const root::mozilla::baseprofiler::UniqueJSONStrings,
-                    aProgressLogger: root::mozilla::ProgressLogger,
-                ) -> *mut ::std::os::raw::c_void;
-                #[link_name = "\u{1}_ZN7mozilla12baseprofiler17UniqueJSONStringsD1Ev"]
-                pub fn UniqueJSONStrings_UniqueJSONStrings_destructor(
-                    this: *mut root::mozilla::baseprofiler::UniqueJSONStrings,
-                );
                 #[link_name = "\u{1}_ZN7mozilla12baseprofiler24GetProfilingCategoryListEv"]
                 pub fn GetProfilingCategoryList() -> u8;
                 #[link_name = "\u{1}_ZN7mozilla12baseprofiler28GetProfilingCategoryPairInfoENS0_21ProfilingCategoryPairE"]
@@ -3980,16 +3726,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub mType: root::mozilla::MarkerSchema_GraphType,
             pub mColor: root::__BindgenOpaqueArray<u32, 2usize>,
         }
-        impl MarkerSchema {
-            #[inline]
-            pub unsafe fn Stream(
-                &mut self,
-                aWriter: *mut root::mozilla::JSONWriter,
-                aName: *const root::__BindgenOpaqueArray<u32, 2usize>,
-            ) {
-                MarkerSchema_Stream(self, aWriter, aName)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct BaseMarkerType {
@@ -4229,62 +3965,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub mValue: ::std::os::raw::c_char,
         }
         unsafe extern "C" {
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget5printEPKcz"]
-            pub fn PrintfTarget_print(
-                this: *mut root::mozilla::PrintfTarget,
-                format: *const ::std::os::raw::c_char,
-                ...
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget6vprintEPKcPv"]
-            pub fn PrintfTarget_vprint(
-                this: *mut root::mozilla::PrintfTarget,
-                fmt: *const ::std::os::raw::c_char,
-                arg1: root::va_list,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntDecEi"]
-            pub fn PrintfTarget_appendIntDec(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: i32,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntDecEj"]
-            pub fn PrintfTarget_appendIntDec1(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: u32,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntOctEj"]
-            pub fn PrintfTarget_appendIntOct(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: u32,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntHexEj"]
-            pub fn PrintfTarget_appendIntHex(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: u32,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntDecEx"]
-            pub fn PrintfTarget_appendIntDec2(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: i64,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntDecEy"]
-            pub fn PrintfTarget_appendIntDec3(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: u64,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntOctEy"]
-            pub fn PrintfTarget_appendIntOct1(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: u64,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTarget12appendIntHexEy"]
-            pub fn PrintfTarget_appendIntHex1(
-                this: *mut root::mozilla::PrintfTarget,
-                arg1: u64,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla12PrintfTargetC2Ev"]
-            pub fn PrintfTarget_PrintfTarget(
-                this: *mut root::mozilla::PrintfTarget,
-            ) -> *mut ::std::os::raw::c_void;
             #[must_use]
             /** Hash some number of bytes.
 
@@ -4365,53 +4045,12 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  all be exactly represented in single precision).*/
             #[link_name = "\u{1}_ZN7mozilla22IsFloat32RepresentableEd"]
             pub fn IsFloat32Representable(aValue: f64) -> bool;
-            #[link_name = "\u{1}_ZN7mozilla29BaseTimeDurationPlatformUtils9ToSecondsEx"]
-            pub fn BaseTimeDurationPlatformUtils_ToSeconds(aTicks: i64) -> f64;
-            #[link_name = "\u{1}_ZN7mozilla29BaseTimeDurationPlatformUtils18ToSecondsSigDigitsEx"]
-            pub fn BaseTimeDurationPlatformUtils_ToSecondsSigDigits(aTicks: i64) -> f64;
-            #[link_name = "\u{1}_ZN7mozilla29BaseTimeDurationPlatformUtils21TicksFromMillisecondsEd"]
-            pub fn BaseTimeDurationPlatformUtils_TicksFromMilliseconds(
-                aMilliseconds: f64,
-            ) -> i64;
-            #[link_name = "\u{1}_ZN7mozilla29BaseTimeDurationPlatformUtils17ResolutionInTicksEv"]
-            pub fn BaseTimeDurationPlatformUtils_ResolutionInTicks() -> i64;
-            /** Return a timestamp representing the time when the current process was
- created which will be comparable with other timestamps taken with this
- class.
-
- @returns A timestamp representing the time when the process was created*/
-            #[link_name = "\u{1}_ZN7mozilla9TimeStamp15ProcessCreationEv"]
-            pub fn TimeStamp_ProcessCreation() -> root::mozilla::TimeStamp;
-            /** Return the very first timestamp that was taken. This can be used instead
- of TimeStamp::ProcessCreation() by code that might not allow running the
- complex logic required to compute the real process creation. This will
- necessarily have been recorded sometimes after TimeStamp::ProcessCreation()
- or at best should be equal to it.
-
- @returns The first tiemstamp that was taken by this process*/
-            #[link_name = "\u{1}_ZN7mozilla9TimeStamp14FirstTimeStampEv"]
-            pub fn TimeStamp_FirstTimeStamp() -> root::mozilla::TimeStamp;
-            /** Records a process restart. After this call ProcessCreation() will return
- the time when the browser was restarted instead of the actual time when
- the process was created.*/
-            #[link_name = "\u{1}_ZN7mozilla9TimeStamp20RecordProcessRestartEv"]
-            pub fn TimeStamp_RecordProcessRestart();
-            #[link_name = "\u{1}_ZN7mozilla9TimeStamp7StartupEv"]
-            pub fn TimeStamp_Startup();
-            #[link_name = "\u{1}_ZN7mozilla9TimeStamp8ShutdownEv"]
-            pub fn TimeStamp_Shutdown();
             #[link_name = "\u{1}_ZN7mozillaL8fallibleE"]
             pub static mut fallible: *const root::mozilla::fallible_t;
             #[link_name = "\u{1}_ZN7mozilla6UnusedE"]
             pub static Unused: root::mozilla::unused_t;
             #[link_name = "\u{1}index"]
             pub static VariantIndex_index: usize;
-            #[link_name = "\u{1}_ZNO7mozilla12MarkerSchema6StreamERNS_10JSONWriterERKNS_4SpanIKcLm4294967295EEE"]
-            pub fn MarkerSchema_Stream(
-                this: *mut root::mozilla::MarkerSchema,
-                aWriter: *mut root::mozilla::JSONWriter,
-                aName: *const root::__BindgenOpaqueArray<u32, 2usize>,
-            );
         }
     }
     pub mod fmt {
@@ -4466,28 +4105,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 StackOOM = 2,
                 Interrupt = 3,
             }
-            impl FailureSimulator {
-                #[inline]
-                pub unsafe fn simulateFailureAfter(
-                    &mut self,
-                    kind: root::js::oom::FailureSimulator_Kind,
-                    checks: u64,
-                    thread: u32,
-                    always: bool,
-                ) {
-                    FailureSimulator_simulateFailureAfter(
-                        self,
-                        kind,
-                        checks,
-                        thread,
-                        always,
-                    )
-                }
-                #[inline]
-                pub unsafe fn reset(&mut self) {
-                    FailureSimulator_reset(self)
-                }
-            }
             unsafe extern "C" {
                 #[link_name = "\u{1}_ZN2js3oomL21FirstThreadTypeToTestE"]
                 pub static FirstThreadTypeToTest: root::js::ThreadType;
@@ -4499,18 +4116,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 pub fn SetThreadType(arg1: root::js::ThreadType);
                 #[link_name = "\u{1}_ZN2js3oom13GetThreadTypeEv"]
                 pub fn GetThreadType() -> u32;
-                #[link_name = "\u{1}_ZN2js3oom16FailureSimulator20simulateFailureAfterENS1_4KindEyjb"]
-                pub fn FailureSimulator_simulateFailureAfter(
-                    this: *mut root::js::oom::FailureSimulator,
-                    kind: root::js::oom::FailureSimulator_Kind,
-                    checks: u64,
-                    thread: u32,
-                    always: bool,
-                );
-                #[link_name = "\u{1}_ZN2js3oom16FailureSimulator5resetEv"]
-                pub fn FailureSimulator_reset(
-                    this: *mut root::js::oom::FailureSimulator,
-                );
                 #[link_name = "\u{1}_ZN2js3oom9simulatorE"]
                 pub static mut simulator: root::js::oom::FailureSimulator;
             }
@@ -4868,16 +4473,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 pub freeCommittedArenas: root::js::gc::ChunkArenaBitmap,
                 pub decommittedPages: root::js::gc::ChunkPageBitmap,
             }
-            impl ArenaChunkBase {
-                #[inline]
-                pub unsafe fn initAsCommitted(&mut self) {
-                    ArenaChunkBase_initAsCommitted(self)
-                }
-                #[inline]
-                pub unsafe fn initAsDecommitted(&mut self) {
-                    ArenaChunkBase_initAsDecommitted(self)
-                }
-            }
             pub const ArenaCellIndexBytes: usize = 8;
             pub const MaxArenaCellIndex: usize = 512;
             pub const ChunkStoreBufferOffset: usize = 0;
@@ -4890,36 +4485,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 #[allow(unused_imports)]
                 use self::super::super::super::super::root;
                 unsafe extern "C" {
-                    #[link_name = "\u{1}_ZN2js2gc6detailL21GetGCAddressChunkBaseEPKv"]
-                    pub fn GetGCAddressChunkBase(
-                        addr: *const ::std::os::raw::c_void,
-                    ) -> *mut root::js::gc::ChunkBase;
-                    #[link_name = "\u{1}_ZN2js2gc6detailL16GetCellChunkBaseEPKNS0_4CellE"]
-                    pub fn GetCellChunkBase(
-                        cell: *const root::js::gc::Cell,
-                    ) -> *mut root::js::gc::ChunkBase;
-                    #[link_name = "\u{1}_ZN2js2gc6detailL16GetCellChunkBaseEPKNS0_11TenuredCellE"]
-                    pub fn GetCellChunkBase1(
-                        cell: *const root::js::gc::TenuredCell,
-                    ) -> *mut root::js::gc::ArenaChunkBase;
-                    #[link_name = "\u{1}_ZN2js2gc6detailL21GetTenuredGCThingZoneEPKv"]
-                    pub fn GetTenuredGCThingZone(
-                        ptr: *const ::std::os::raw::c_void,
-                    ) -> *mut root::JS::Zone;
-                    #[link_name = "\u{1}_ZN2js2gc6detailL24TenuredCellIsMarkedBlackEPKNS0_11TenuredCellE"]
-                    pub fn TenuredCellIsMarkedBlack(
-                        cell: *const root::js::gc::TenuredCell,
-                    ) -> bool;
-                    #[link_name = "\u{1}_ZN2js2gc6detailL24NonBlackCellIsMarkedGrayEPKNS0_11TenuredCellE"]
-                    pub fn NonBlackCellIsMarkedGray(
-                        cell: *const root::js::gc::TenuredCell,
-                    ) -> bool;
-                    #[link_name = "\u{1}_ZN2js2gc6detailL23TenuredCellIsMarkedGrayEPKNS0_11TenuredCellE"]
-                    pub fn TenuredCellIsMarkedGray(
-                        cell: *const root::js::gc::TenuredCell,
-                    ) -> bool;
-                    #[link_name = "\u{1}_ZN2js2gc6detailL16CellIsMarkedGrayEPKNS0_4CellE"]
-                    pub fn CellIsMarkedGray(cell: *const root::js::gc::Cell) -> bool;
                     #[link_name = "\u{1}_ZN2js2gc6detail16CanCheckGrayBitsEPKNS0_11TenuredCellE"]
                     pub fn CanCheckGrayBits(
                         cell: *const root::js::gc::TenuredCell,
@@ -4962,14 +4527,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 pub static MarkBitmap_FirstThingAdjustmentBits: usize;
                 #[link_name = "\u{1}FirstThingAdjustmentWords"]
                 pub static MarkBitmap_FirstThingAdjustmentWords: usize;
-                #[link_name = "\u{1}_ZN2js2gc14ArenaChunkBase15initAsCommittedEv"]
-                pub fn ArenaChunkBase_initAsCommitted(
-                    this: *mut root::js::gc::ArenaChunkBase,
-                );
-                #[link_name = "\u{1}_ZN2js2gc14ArenaChunkBase17initAsDecommittedEv"]
-                pub fn ArenaChunkBase_initAsDecommitted(
-                    this: *mut root::js::gc::ArenaChunkBase,
-                );
                 #[link_name = "\u{1}_ZN2js2gc20AssertGCThingHasTypeEPNS0_4CellEN2JS9TraceKindE"]
                 pub fn AssertGCThingHasType(
                     cell: *mut root::js::gc::Cell,
@@ -4977,12 +4534,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 );
                 #[link_name = "\u{1}_ZN2js2gc29PerformIncrementalReadBarrierEN2JS9GCCellPtrE"]
                 pub fn PerformIncrementalReadBarrier(thing: root::JS::GCCellPtr);
-                #[link_name = "\u{1}_ZN2js2gcL23ExposeGCThingToActiveJSEN2JS9GCCellPtrE"]
-                pub fn ExposeGCThingToActiveJS(thing: root::JS::GCCellPtr);
-                #[link_name = "\u{1}_ZN2js2gcL22IncrementalReadBarrierEN2JS9GCCellPtrE"]
-                pub fn IncrementalReadBarrier(thing: root::JS::GCCellPtr);
-                #[link_name = "\u{1}_ZN2js2gcL25EdgeNeedsSweepUnbarrieredEPP8JSObject"]
-                pub fn EdgeNeedsSweepUnbarriered(objp: *mut *mut root::JSObject) -> bool;
                 #[link_name = "\u{1}_ZN2js2gc23GetProfilerMemoryCountsEv"]
                 pub fn GetProfilerMemoryCounts() -> root::js::gc::ProfilerMemoryCounts;
                 #[link_name = "\u{1}_ZN2js2gc17TraceExternalEdgeEP8JSTracerPPN2JS6BigIntEPKc"]
@@ -5126,12 +4677,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub context_bits_: usize,
         }
         pub const TempAllocPolicy_JsContextTag: usize = 1;
-        impl TempAllocPolicy {
-            #[inline]
-            pub unsafe fn reportAllocOverflow(&self) {
-                TempAllocPolicy_reportAllocOverflow(self)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct MallocAllocPolicy {
@@ -5198,28 +4743,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             FLAGS_MASK = 65535,
         }
         pub const ProfilingStackFrame_NullPCOffset: i32 = -1;
-        impl ProfilingStackFrame {
-            #[inline]
-            pub unsafe fn script(&self) -> *mut root::JSScript {
-                ProfilingStackFrame_script(self)
-            }
-            #[inline]
-            pub unsafe fn function(&self) -> *mut root::JSFunction {
-                ProfilingStackFrame_function(self)
-            }
-            #[inline]
-            pub unsafe fn pc(&self) -> *mut root::jsbytecode {
-                ProfilingStackFrame_pc(self)
-            }
-            #[inline]
-            pub unsafe fn setPC(&mut self, pc: *mut root::jsbytecode) {
-                ProfilingStackFrame_setPC(self, pc)
-            }
-            #[inline]
-            pub unsafe fn trace(&mut self, trc: *mut root::JSTracer) {
-                ProfilingStackFrame_trace(self, trc)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone)]
         pub struct AutoGeckoProfilerEntry {
@@ -5240,42 +4763,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct GeckoProfilerThread {
             pub profilingStack_: *mut root::ProfilingStack,
             pub profilingStackIfEnabled_: *mut root::ProfilingStack,
-        }
-        impl GeckoProfilerThread {
-            #[inline]
-            pub unsafe fn setProfilingStack(
-                &mut self,
-                profilingStack: *mut root::ProfilingStack,
-                enabled: bool,
-            ) {
-                GeckoProfilerThread_setProfilingStack(self, profilingStack, enabled)
-            }
-            #[inline]
-            pub unsafe fn trace(&mut self, trc: *mut root::JSTracer) {
-                GeckoProfilerThread_trace(self, trc)
-            }
-            #[inline]
-            pub unsafe fn enter(
-                &mut self,
-                cx: *mut root::JSContext,
-                script: *mut root::JSScript,
-            ) -> bool {
-                GeckoProfilerThread_enter(self, cx, script)
-            }
-            #[inline]
-            pub unsafe fn exit(
-                &mut self,
-                cx: *mut root::JSContext,
-                script: *mut root::JSScript,
-            ) {
-                GeckoProfilerThread_exit(self, cx, script)
-            }
-            #[inline]
-            pub unsafe fn new() -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                GeckoProfilerThread_GeckoProfilerThread(__bindgen_tmp.as_mut_ptr());
-                __bindgen_tmp.assume_init()
-            }
         }
         pub type UniquePtr = u8;
         #[repr(C)]
@@ -5396,11 +4883,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         >;
         #[repr(C)]
         #[derive(Debug, Copy, Clone)]
-        pub struct GenericPrinter {
-            _unused: [u8; 0],
-        }
-        #[repr(C)]
-        #[derive(Debug, Copy, Clone)]
         pub struct JSONPrinter {
             _unused: [u8; 0],
         }
@@ -5488,20 +4970,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub enum ElementAdder_GetBehavior {
             CheckHasElemPreserveHoles = 0,
             GetElement = 1,
-        }
-        impl ElementAdder {
-            #[inline]
-            pub unsafe fn append(
-                &mut self,
-                cx: *mut root::JSContext,
-                v: root::JS::HandleValue,
-            ) -> bool {
-                ElementAdder_append(self, cx, v)
-            }
-            #[inline]
-            pub unsafe fn appendHole(&mut self) {
-                ElementAdder_appendHole(self)
-            }
         }
         pub type GetElementsOp = ::std::option::Option<
             unsafe extern "C" fn(
@@ -5623,21 +5091,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub _address: u8,
         }
         pub type InefficientNonFlatteningStringHashPolicy_Lookup = *mut root::JSString;
-        impl InefficientNonFlatteningStringHashPolicy {
-            #[inline]
-            pub unsafe fn hash(
-                l: *const root::js::InefficientNonFlatteningStringHashPolicy_Lookup,
-            ) -> root::js::HashNumber {
-                InefficientNonFlatteningStringHashPolicy_hash(l)
-            }
-            #[inline]
-            pub unsafe fn match_(
-                k: *const *const root::JSString,
-                l: *const root::js::InefficientNonFlatteningStringHashPolicy_Lookup,
-            ) -> bool {
-                InefficientNonFlatteningStringHashPolicy_match(k, l)
-            }
-        }
         #[repr(C)]
         pub struct BaseProxyHandler__bindgen_vtable(::std::os::raw::c_void);
         #[repr(C)]
@@ -5691,30 +5144,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub prev: *mut root::js::AutoEnterPolicy,
         }
         pub type AutoEnterPolicy_Action = root::js::BaseProxyHandler_Action;
-        impl AutoEnterPolicy {
-            #[inline]
-            pub unsafe fn reportErrorIfExceptionIsNotPending(
-                &mut self,
-                cx: *mut root::JSContext,
-                id: root::JS::HandleId,
-            ) {
-                AutoEnterPolicy_reportErrorIfExceptionIsNotPending(self, cx, id)
-            }
-            #[inline]
-            pub unsafe fn recordEnter(
-                &mut self,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                act: root::js::AutoEnterPolicy_Action,
-            ) {
-                AutoEnterPolicy_recordEnter(self, cx, proxy, id, act)
-            }
-            #[inline]
-            pub unsafe fn recordLeave(&mut self) {
-                AutoEnterPolicy_recordLeave(self)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, PartialEq)]
         pub struct AutoWaivePolicy {
@@ -5729,41 +5158,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         #[derive(Debug, PartialEq)]
         pub struct SharedArrayRawBufferRefs {
             pub refs_: root::__BindgenOpaqueArray<u32, 5usize>,
-        }
-        impl SharedArrayRawBufferRefs {
-            #[inline]
-            #[must_use]
-            pub unsafe fn acquire(
-                &mut self,
-                cx: *mut root::JSContext,
-                rawbuf: *mut root::js::SharedArrayRawBuffer,
-            ) -> bool {
-                SharedArrayRawBufferRefs_acquire(self, cx, rawbuf)
-            }
-            #[inline]
-            #[must_use]
-            pub unsafe fn acquireAll(
-                &mut self,
-                cx: *mut root::JSContext,
-                that: *const root::js::SharedArrayRawBufferRefs,
-            ) -> bool {
-                SharedArrayRawBufferRefs_acquireAll(self, cx, that)
-            }
-            #[inline]
-            pub unsafe fn takeOwnership(
-                &mut self,
-                arg1: *mut root::js::SharedArrayRawBufferRefs,
-            ) {
-                SharedArrayRawBufferRefs_takeOwnership(self, arg1)
-            }
-            #[inline]
-            pub unsafe fn releaseAll(&mut self) {
-                SharedArrayRawBufferRefs_releaseAll(self)
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                SharedArrayRawBufferRefs_SharedArrayRawBufferRefs_destructor(self)
-            }
         }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -5824,31 +5218,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub enum Wrapper_Flags {
             CROSS_COMPARTMENT = 1,
         }
-        impl Wrapper {
-            #[inline]
-            pub unsafe fn New(
-                cx: *mut root::JSContext,
-                obj: *mut root::JSObject,
-                handler: *const root::js::Wrapper,
-                options: *const root::js::WrapperOptions,
-            ) -> *mut root::JSObject {
-                Wrapper_New(cx, obj, handler, options)
-            }
-            #[inline]
-            pub unsafe fn Renew(
-                existing: *mut root::JSObject,
-                obj: *mut root::JSObject,
-                handler: *const root::js::Wrapper,
-            ) -> *mut root::JSObject {
-                Wrapper_Renew(existing, obj, handler)
-            }
-            #[inline]
-            pub unsafe fn wrappedObject(
-                wrapper: *mut root::JSObject,
-            ) -> *mut root::JSObject {
-                Wrapper_wrappedObject(wrapper)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct CrossCompartmentWrapper {
@@ -5874,6 +5243,146 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             root::js::CrossCompartmentWrapper,
         >;
         pub type EnableIfABOVType = root::std::enable_if_t;
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone)]
+        pub struct LifoAlloc {
+            _unused: [u8; 0],
+        }
+        #[repr(C)]
+        pub struct GenericPrinter__bindgen_vtable(::std::os::raw::c_void);
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct GenericPrinter {
+            pub vtable_: *const GenericPrinter__bindgen_vtable,
+            pub hadOOM_: bool,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct StringPrinter {
+            pub _base: root::js::GenericPrinter,
+            pub maybeCx: *mut root::JSContext,
+            pub initialized: bool,
+            pub shouldReportOOM: bool,
+            pub base: *mut ::std::os::raw::c_char,
+            pub size: usize,
+            pub offset: isize,
+            pub arena: root::arena_id_t,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct StringPrinter_InvariantChecker {
+            pub parent: *const root::js::StringPrinter,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct Sprinter {
+            pub _base: root::js::StringPrinter,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct JSSprinter {
+            pub _base: root::js::StringPrinter,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct Fprinter {
+            pub _base: root::js::GenericPrinter,
+            pub file_: *mut root::FILE,
+            pub init_: bool,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct SEprinter {
+            pub _base: root::js::GenericPrinter,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct LSprinter {
+            pub _base: root::js::GenericPrinter,
+            pub alloc_: *mut root::js::LifoAlloc,
+            pub head_: *mut root::js::LSprinter_Chunk,
+            pub tail_: *mut root::js::LSprinter_Chunk,
+            pub unused_: usize,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct LSprinter_Chunk {
+            pub next: *mut root::js::LSprinter_Chunk,
+            pub length: usize,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct EscapePrinter<Delegate, Escape> {
+            pub _phantom_0: ::std::marker::PhantomData<
+                ::std::cell::UnsafeCell<Delegate>,
+            >,
+            pub _phantom_1: ::std::marker::PhantomData<::std::cell::UnsafeCell<Escape>>,
+            pub _base: root::js::GenericPrinter,
+            pub out: *mut Delegate,
+            pub esc: *mut Escape,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct JSONEscape {
+            pub _address: u8,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct StringEscape {
+            pub quote: ::std::os::raw::c_char,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct WATStringEscape {
+            pub _address: u8,
+        }
+        #[repr(C)]
+        pub struct StructuredPrinter {
+            pub _base: root::js::GenericPrinter,
+            pub out_: *mut root::js::GenericPrinter,
+            pub indentAmount_: ::std::os::raw::c_int,
+            pub pendingIndent_: bool,
+            pub expandedDepth_: ::std::os::raw::c_int,
+            pub buffer_: root::__BindgenOpaqueArray<u32, 25usize>,
+            pub breaks_: root::__BindgenOpaqueArray<u32, 37usize>,
+            pub scopes_: root::__BindgenOpaqueArray<u32, 37usize>,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct StructuredPrinter_Break {
+            pub bufferPos: u32,
+            pub isCollapsed: bool,
+            pub collapsed: *const ::std::os::raw::c_char,
+            pub expanded: *const ::std::os::raw::c_char,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct StructuredPrinter_ScopeInfo {
+            pub startPos: u32,
+            pub indent: ::std::os::raw::c_int,
+        }
+        #[repr(C)]
+        #[derive(Debug, PartialEq)]
+        pub struct StructuredPrinter_Scope {
+            pub printer_: *mut root::js::StructuredPrinter,
+        }
+        #[repr(i32)]
+        #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+        pub enum QuoteTarget {
+            String = 0,
+            JSON = 1,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone)]
+        pub struct InterpreterFrame {
+            _unused: [u8; 0],
+        }
+        #[repr(u32)]
+        #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+        pub enum DumpHeapNurseryBehaviour {
+            CollectNurseryBeforeDump = 0,
+            IgnoreNurseryObjects = 1,
+        }
         pub mod gcstats {
             #[allow(unused_imports)]
             use self::super::super::super::root;
@@ -6018,21 +5527,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub context_: *mut root::JSContext,
             pub prevAllowContentJS_: bool,
         }
-        impl AutoAssertNoContentJS {
-            #[inline]
-            pub unsafe fn new(cx: *mut root::JSContext) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                AutoAssertNoContentJS_AutoAssertNoContentJS(
-                    __bindgen_tmp.as_mut_ptr(),
-                    cx,
-                );
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                AutoAssertNoContentJS_AutoAssertNoContentJS_destructor(self)
-            }
-        }
         #[repr(u8)]
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub enum MemoryUse {
@@ -6078,10 +5572,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn ReportOutOfMemory1(fc: *mut root::js::FrontendContext);
             #[link_name = "\u{1}_ZN2js22ReportLargeOutOfMemoryEP9JSContext"]
             pub fn ReportLargeOutOfMemory(cx: *mut root::JSContext);
-            #[link_name = "\u{1}_ZNK2js15TempAllocPolicy19reportAllocOverflowEv"]
-            pub fn TempAllocPolicy_reportAllocOverflow(
-                this: *const root::js::TempAllocPolicy,
-            );
             #[link_name = "\u{1}_ZN2js26CurrentThreadCanAccessZoneEPN2JS4ZoneE"]
             pub fn CurrentThreadCanAccessZone(zone: *mut root::JS::Zone) -> bool;
             #[link_name = "\u{1}_ZN2js32UnsafeTraceManuallyBarrieredEdgeEP8JSTracerPP8JSObjectPKc"]
@@ -6092,28 +5582,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             );
             #[link_name = "\u{1}_ZN2js23RuntimeIsBeingDestroyedEv"]
             pub fn RuntimeIsBeingDestroyed() -> bool;
-            #[link_name = "\u{1}_ZNK2js19ProfilingStackFrame6scriptEv"]
-            pub fn ProfilingStackFrame_script(
-                this: *const root::js::ProfilingStackFrame,
-            ) -> *mut root::JSScript;
-            #[link_name = "\u{1}_ZNK2js19ProfilingStackFrame8functionEv"]
-            pub fn ProfilingStackFrame_function(
-                this: *const root::js::ProfilingStackFrame,
-            ) -> *mut root::JSFunction;
-            #[link_name = "\u{1}_ZNK2js19ProfilingStackFrame2pcEv"]
-            pub fn ProfilingStackFrame_pc(
-                this: *const root::js::ProfilingStackFrame,
-            ) -> *mut root::jsbytecode;
-            #[link_name = "\u{1}_ZN2js19ProfilingStackFrame5setPCEPh"]
-            pub fn ProfilingStackFrame_setPC(
-                this: *mut root::js::ProfilingStackFrame,
-                pc: *mut root::jsbytecode,
-            );
-            #[link_name = "\u{1}_ZN2js19ProfilingStackFrame5traceEP8JSTracer"]
-            pub fn ProfilingStackFrame_trace(
-                this: *mut root::js::ProfilingStackFrame,
-                trc: *mut root::JSTracer,
-            );
             #[link_name = "\u{1}_ZN2js24SetContextProfilingStackEP9JSContextP14ProfilingStack"]
             pub fn SetContextProfilingStack(
                 cx: *mut root::JSContext,
@@ -6140,35 +5608,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                     ),
                 >,
             );
-            #[link_name = "\u{1}_ZN2js19GeckoProfilerThread17setProfilingStackEP14ProfilingStackb"]
-            pub fn GeckoProfilerThread_setProfilingStack(
-                this: *mut root::js::GeckoProfilerThread,
-                profilingStack: *mut root::ProfilingStack,
-                enabled: bool,
-            );
-            #[link_name = "\u{1}_ZN2js19GeckoProfilerThread5traceEP8JSTracer"]
-            pub fn GeckoProfilerThread_trace(
-                this: *mut root::js::GeckoProfilerThread,
-                trc: *mut root::JSTracer,
-            );
-            #[link_name = "\u{1}_ZN2js19GeckoProfilerThread5enterEP9JSContextP8JSScript"]
-            pub fn GeckoProfilerThread_enter(
-                this: *mut root::js::GeckoProfilerThread,
-                cx: *mut root::JSContext,
-                script: *mut root::JSScript,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2js19GeckoProfilerThread4exitEP9JSContextP8JSScript"]
-            pub fn GeckoProfilerThread_exit(
-                this: *mut root::js::GeckoProfilerThread,
-                cx: *mut root::JSContext,
-                script: *mut root::JSScript,
-            );
-            #[link_name = "\u{1}_ZN2js19GeckoProfilerThreadC1Ev"]
-            pub fn GeckoProfilerThread_GeckoProfilerThread(
-                this: *mut root::js::GeckoProfilerThread,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2jsL19PoisonedObjectValueEm"]
-            pub fn PoisonedObjectValue(poison: usize) -> root::JS::Value;
             #[link_name = "\u{1}_ZN2js26ReportBadValueTypeAndCrashERKN2JS5ValueE"]
             pub fn ReportBadValueTypeAndCrash(val: *const root::JS::Value) -> !;
             #[link_name = "\u{1}_ZN2js13ToBooleanSlowEN2JS6HandleINS0_5ValueEEE"]
@@ -6242,14 +5681,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub static FunctionClassPtr: *const root::JSClass;
             #[link_name = "\u{1}_ZN2js24FunctionExtendedClassPtrE"]
             pub static FunctionExtendedClassPtr: *const root::JSClass;
-            #[link_name = "\u{1}_ZN2js12ElementAdder6appendEP9JSContextN2JS6HandleINS3_5ValueEEE"]
-            pub fn ElementAdder_append(
-                this: *mut root::js::ElementAdder,
-                cx: *mut root::JSContext,
-                v: root::JS::HandleValue,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2js12ElementAdder10appendHoleEv"]
-            pub fn ElementAdder_appendHole(this: *mut root::js::ElementAdder);
             #[link_name = "\u{1}_ZN2js5UnboxEP9JSContextN2JS6HandleIP8JSObjectEENS2_13MutableHandleINS2_5ValueEEE"]
             pub fn Unbox(
                 cx: *mut root::JSContext,
@@ -6267,195 +5698,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  generates the memory reports, because NotableStringInfo uses this value.*/
             #[link_name = "\u{1}_ZN2js32MemoryReportingSundriesThresholdEv"]
             pub fn MemoryReportingSundriesThreshold() -> usize;
-            #[link_name = "\u{1}_ZN2js40InefficientNonFlatteningStringHashPolicy4hashERKP8JSString"]
-            pub fn InefficientNonFlatteningStringHashPolicy_hash(
-                l: *const root::js::InefficientNonFlatteningStringHashPolicy_Lookup,
-            ) -> root::js::HashNumber;
-            #[link_name = "\u{1}_ZN2js40InefficientNonFlatteningStringHashPolicy5matchERKPK8JSStringRKPS1_"]
-            pub fn InefficientNonFlatteningStringHashPolicy_match(
-                k: *const *const root::JSString,
-                l: *const root::js::InefficientNonFlatteningStringHashPolicy_Lookup,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler5enterEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEjbPb"]
-            pub fn BaseProxyHandler_enter(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                act: root::js::BaseProxyHandler_Action,
-                mayThrow: bool,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler12getPrototypeEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleIS6_EE"]
-            pub fn BaseProxyHandler_getPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                protop: root::JS::MutableHandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler12setPrototypeEP9JSContextN2JS6HandleIP8JSObjectEES7_RNS3_14ObjectOpResultE"]
-            pub fn BaseProxyHandler_setPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                proto: root::JS::HandleObject,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler21setImmutablePrototypeEP9JSContextN2JS6HandleIP8JSObjectEEPb"]
-            pub fn BaseProxyHandler_setImmutablePrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                succeeded: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler3hasEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn BaseProxyHandler_has(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler3getEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_5ValueEEENS4_INS3_11PropertyKeyEEENS3_13MutableHandleIS8_EE"]
-            pub fn BaseProxyHandler_get(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                receiver: root::JS::HandleValue,
-                id: root::JS::HandleId,
-                vp: root::JS::MutableHandleValue,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler3setEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS4_INS3_5ValueEEESB_RNS3_14ObjectOpResultE"]
-            pub fn BaseProxyHandler_set(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                v: root::JS::HandleValue,
-                receiver: root::JS::HandleValue,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler4callEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn BaseProxyHandler_call(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler9constructEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn BaseProxyHandler_construct(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler9enumerateEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn BaseProxyHandler_enumerate(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler6hasOwnEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn BaseProxyHandler_hasOwn(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler28getOwnEnumerablePropertyKeysEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn BaseProxyHandler_getOwnEnumerablePropertyKeys(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler10nativeCallEP9JSContextPFbN2JS6HandleINS3_5ValueEEEEPFbS2_RKNS3_8CallArgsEESB_"]
-            pub fn BaseProxyHandler_nativeCall(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                test: root::JS::IsAcceptableThis,
-                impl_: root::JS::NativeImpl,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler15getBuiltinClassEP9JSContextN2JS6HandleIP8JSObjectEEPNS_7ESClassE"]
-            pub fn BaseProxyHandler_getBuiltinClass(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                cls: *mut root::js::ESClass,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler7isArrayEP9JSContextN2JS6HandleIP8JSObjectEEPNS3_13IsArrayAnswerE"]
-            pub fn BaseProxyHandler_isArray(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                answer: *mut root::JS::IsArrayAnswer,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler9classNameEP9JSContextN2JS6HandleIP8JSObjectEE"]
-            pub fn BaseProxyHandler_className(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-            ) -> *const ::std::os::raw::c_char;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler12fun_toStringEP9JSContextN2JS6HandleIP8JSObjectEEb"]
-            pub fn BaseProxyHandler_fun_toString(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                isToSource: bool,
-            ) -> *mut root::JSString;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler15regexp_toSharedEP9JSContextN2JS6HandleIP8JSObjectEE"]
-            pub fn BaseProxyHandler_regexp_toShared(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-            ) -> *mut root::js::RegExpShared;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler16boxedValue_unboxEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_5ValueEEE"]
-            pub fn BaseProxyHandler_boxedValue_unbox(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                vp: root::JS::MutableHandleValue,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler5traceEP8JSTracerP8JSObject"]
-            pub fn BaseProxyHandler_trace(
-                this: *mut ::std::os::raw::c_void,
-                trc: *mut root::JSTracer,
-                proxy: *mut root::JSObject,
-            );
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler8finalizeEPN2JS9GCContextEP8JSObject"]
-            pub fn BaseProxyHandler_finalize(
-                this: *mut ::std::os::raw::c_void,
-                gcx: *mut root::JS::GCContext,
-                proxy: *mut root::JSObject,
-            );
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler11objectMovedEP8JSObjectS2_"]
-            pub fn BaseProxyHandler_objectMoved(
-                this: *mut ::std::os::raw::c_void,
-                proxy: *mut root::JSObject,
-                old: *mut root::JSObject,
-            ) -> usize;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler10isCallableEP8JSObject"]
-            pub fn BaseProxyHandler_isCallable(
-                this: *mut ::std::os::raw::c_void,
-                obj: *mut root::JSObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler13isConstructorEP8JSObject"]
-            pub fn BaseProxyHandler_isConstructor(
-                this: *mut ::std::os::raw::c_void,
-                obj: *mut root::JSObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js16BaseProxyHandler11getElementsEP9JSContextN2JS6HandleIP8JSObjectEEjjPNS_12ElementAdderE"]
-            pub fn BaseProxyHandler_getElements(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                begin: u32,
-                end: u32,
-                adder: *mut root::js::ElementAdder,
-            ) -> bool;
             #[link_name = "\u{1}_ZN2js10ProxyClassE"]
             pub static ProxyClass: root::JSClass;
             #[link_name = "\u{1}_ZN2js14NewProxyObjectEP9JSContextPKNS_16BaseProxyHandlerEN2JS6HandleINS5_5ValueEEEP8JSObjectRKNS_12ProxyOptionsE"]
@@ -6473,22 +5715,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 handler: *mut root::js::BaseProxyHandler,
                 priv_: *const root::JS::Value,
             ) -> *mut root::JSObject;
-            #[link_name = "\u{1}_ZN2js15AutoEnterPolicy34reportErrorIfExceptionIsNotPendingEP9JSContextN2JS6HandleINS3_11PropertyKeyEEE"]
-            pub fn AutoEnterPolicy_reportErrorIfExceptionIsNotPending(
-                this: *mut root::js::AutoEnterPolicy,
-                cx: *mut root::JSContext,
-                id: root::JS::HandleId,
-            );
-            #[link_name = "\u{1}_ZN2js15AutoEnterPolicy11recordEnterEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEj"]
-            pub fn AutoEnterPolicy_recordEnter(
-                this: *mut root::js::AutoEnterPolicy,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                act: root::js::AutoEnterPolicy_Action,
-            );
-            #[link_name = "\u{1}_ZN2js15AutoEnterPolicy11recordLeaveEv"]
-            pub fn AutoEnterPolicy_recordLeave(this: *mut root::js::AutoEnterPolicy);
             #[link_name = "\u{1}_ZN2js19assertEnteredPolicyEP9JSContextP8JSObjectN2JS11PropertyKeyEj"]
             pub fn assertEnteredPolicy(
                 cx: *mut root::JSContext,
@@ -6524,230 +5750,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 savedFrame: root::JS::Handle<*mut root::JSObject>,
                 selfHosted: root::JS::SavedFrameSelfHosted,
             ) -> *mut root::JSObject;
-            #[must_use]
-            #[link_name = "\u{1}_ZN2js24SharedArrayRawBufferRefs7acquireEP9JSContextPNS_20SharedArrayRawBufferE"]
-            pub fn SharedArrayRawBufferRefs_acquire(
-                this: *mut root::js::SharedArrayRawBufferRefs,
-                cx: *mut root::JSContext,
-                rawbuf: *mut root::js::SharedArrayRawBuffer,
-            ) -> bool;
-            #[must_use]
-            #[link_name = "\u{1}_ZN2js24SharedArrayRawBufferRefs10acquireAllEP9JSContextRKS0_"]
-            pub fn SharedArrayRawBufferRefs_acquireAll(
-                this: *mut root::js::SharedArrayRawBufferRefs,
-                cx: *mut root::JSContext,
-                that: *const root::js::SharedArrayRawBufferRefs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2js24SharedArrayRawBufferRefs13takeOwnershipEOS0_"]
-            pub fn SharedArrayRawBufferRefs_takeOwnership(
-                this: *mut root::js::SharedArrayRawBufferRefs,
-                arg1: *mut root::js::SharedArrayRawBufferRefs,
-            );
-            #[link_name = "\u{1}_ZN2js24SharedArrayRawBufferRefs10releaseAllEv"]
-            pub fn SharedArrayRawBufferRefs_releaseAll(
-                this: *mut root::js::SharedArrayRawBufferRefs,
-            );
-            #[link_name = "\u{1}_ZN2js24SharedArrayRawBufferRefsD1Ev"]
-            pub fn SharedArrayRawBufferRefs_SharedArrayRawBufferRefs_destructor(
-                this: *mut root::js::SharedArrayRawBufferRefs,
-            );
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler24getOwnPropertyDescriptorEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS3_13MutableHandleIN7mozilla5MaybeINS3_18PropertyDescriptorEEEEE"]
-            pub fn ForwardingProxyHandler_getOwnPropertyDescriptor(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                desc: u32,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler14definePropertyEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS4_INS3_18PropertyDescriptorEEERNS3_14ObjectOpResultE"]
-            pub fn ForwardingProxyHandler_defineProperty(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                desc: root::JS::Handle<root::JS::PropertyDescriptor>,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler15ownPropertyKeysEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn ForwardingProxyHandler_ownPropertyKeys(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler7delete_EP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEERNS3_14ObjectOpResultE"]
-            pub fn ForwardingProxyHandler_delete_(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler9enumerateEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn ForwardingProxyHandler_enumerate(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler12getPrototypeEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleIS6_EE"]
-            pub fn ForwardingProxyHandler_getPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                protop: root::JS::MutableHandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler12setPrototypeEP9JSContextN2JS6HandleIP8JSObjectEES7_RNS3_14ObjectOpResultE"]
-            pub fn ForwardingProxyHandler_setPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                proto: root::JS::HandleObject,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler22getPrototypeIfOrdinaryEP9JSContextN2JS6HandleIP8JSObjectEEPbNS3_13MutableHandleIS6_EE"]
-            pub fn ForwardingProxyHandler_getPrototypeIfOrdinary(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                isOrdinary: *mut bool,
-                protop: root::JS::MutableHandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler21setImmutablePrototypeEP9JSContextN2JS6HandleIP8JSObjectEEPb"]
-            pub fn ForwardingProxyHandler_setImmutablePrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                succeeded: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler17preventExtensionsEP9JSContextN2JS6HandleIP8JSObjectEERNS3_14ObjectOpResultE"]
-            pub fn ForwardingProxyHandler_preventExtensions(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler12isExtensibleEP9JSContextN2JS6HandleIP8JSObjectEEPb"]
-            pub fn ForwardingProxyHandler_isExtensible(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                extensible: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler3hasEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn ForwardingProxyHandler_has(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler3getEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_5ValueEEENS4_INS3_11PropertyKeyEEENS3_13MutableHandleIS8_EE"]
-            pub fn ForwardingProxyHandler_get(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                receiver: root::JS::HandleValue,
-                id: root::JS::HandleId,
-                vp: root::JS::MutableHandleValue,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler3setEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS4_INS3_5ValueEEESB_RNS3_14ObjectOpResultE"]
-            pub fn ForwardingProxyHandler_set(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                v: root::JS::HandleValue,
-                receiver: root::JS::HandleValue,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler4callEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn ForwardingProxyHandler_call(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler9constructEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn ForwardingProxyHandler_construct(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler6hasOwnEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn ForwardingProxyHandler_hasOwn(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler28getOwnEnumerablePropertyKeysEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn ForwardingProxyHandler_getOwnEnumerablePropertyKeys(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler10nativeCallEP9JSContextPFbN2JS6HandleINS3_5ValueEEEEPFbS2_RKNS3_8CallArgsEESB_"]
-            pub fn ForwardingProxyHandler_nativeCall(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                test: root::JS::IsAcceptableThis,
-                impl_: root::JS::NativeImpl,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler15getBuiltinClassEP9JSContextN2JS6HandleIP8JSObjectEEPNS_7ESClassE"]
-            pub fn ForwardingProxyHandler_getBuiltinClass(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                cls: *mut root::js::ESClass,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler7isArrayEP9JSContextN2JS6HandleIP8JSObjectEEPNS3_13IsArrayAnswerE"]
-            pub fn ForwardingProxyHandler_isArray(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                answer: *mut root::JS::IsArrayAnswer,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler9classNameEP9JSContextN2JS6HandleIP8JSObjectEE"]
-            pub fn ForwardingProxyHandler_className(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-            ) -> *const ::std::os::raw::c_char;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler12fun_toStringEP9JSContextN2JS6HandleIP8JSObjectEEb"]
-            pub fn ForwardingProxyHandler_fun_toString(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                isToSource: bool,
-            ) -> *mut root::JSString;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler15regexp_toSharedEP9JSContextN2JS6HandleIP8JSObjectEE"]
-            pub fn ForwardingProxyHandler_regexp_toShared(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-            ) -> *mut root::js::RegExpShared;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler16boxedValue_unboxEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_5ValueEEE"]
-            pub fn ForwardingProxyHandler_boxedValue_unbox(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                vp: root::JS::MutableHandleValue,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler10isCallableEP8JSObject"]
-            pub fn ForwardingProxyHandler_isCallable(
-                this: *mut ::std::os::raw::c_void,
-                obj: *mut root::JSObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js22ForwardingProxyHandler13isConstructorEP8JSObject"]
-            pub fn ForwardingProxyHandler_isConstructor(
-                this: *mut ::std::os::raw::c_void,
-                obj: *mut root::JSObject,
-            ) -> bool;
             #[link_name = "\u{1}_ZN2js7Wrapper6familyE"]
             pub static Wrapper_family: ::std::os::raw::c_char;
             #[link_name = "\u{1}_ZN2js7Wrapper9singletonE"]
@@ -6756,373 +5758,12 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub static Wrapper_singletonWithPrototype: root::js::Wrapper;
             #[link_name = "\u{1}_ZN2js7Wrapper12defaultProtoE"]
             pub static Wrapper_defaultProto: *mut root::JSObject;
-            #[link_name = "\u{1}_ZN2js7Wrapper3NewEP9JSContextP8JSObjectPKS0_RKNS_14WrapperOptionsE"]
-            pub fn Wrapper_New(
-                cx: *mut root::JSContext,
-                obj: *mut root::JSObject,
-                handler: *const root::js::Wrapper,
-                options: *const root::js::WrapperOptions,
-            ) -> *mut root::JSObject;
-            #[link_name = "\u{1}_ZN2js7Wrapper5RenewEP8JSObjectS2_PKS0_"]
-            pub fn Wrapper_Renew(
-                existing: *mut root::JSObject,
-                obj: *mut root::JSObject,
-                handler: *const root::js::Wrapper,
-            ) -> *mut root::JSObject;
-            #[link_name = "\u{1}_ZN2js7Wrapper13wrappedObjectEP8JSObject"]
-            pub fn Wrapper_wrappedObject(
-                wrapper: *mut root::JSObject,
-            ) -> *mut root::JSObject;
-            #[link_name = "\u{1}_ZNK2js7Wrapper20finalizeInBackgroundERKN2JS5ValueE"]
-            pub fn Wrapper_finalizeInBackground(
-                this: *mut ::std::os::raw::c_void,
-                priv_: *const root::JS::Value,
-            ) -> bool;
             #[link_name = "\u{1}_ZN2js23CrossCompartmentWrapper9singletonE"]
             pub static CrossCompartmentWrapper_singleton: root::js::CrossCompartmentWrapper;
             #[link_name = "\u{1}_ZN2js23CrossCompartmentWrapper22singletonWithPrototypeE"]
             pub static CrossCompartmentWrapper_singletonWithPrototype: root::js::CrossCompartmentWrapper;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper24getOwnPropertyDescriptorEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS3_13MutableHandleIN7mozilla5MaybeINS3_18PropertyDescriptorEEEEE"]
-            pub fn CrossCompartmentWrapper_getOwnPropertyDescriptor(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                desc: u32,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper14definePropertyEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS4_INS3_18PropertyDescriptorEEERNS3_14ObjectOpResultE"]
-            pub fn CrossCompartmentWrapper_defineProperty(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                desc: root::JS::Handle<root::JS::PropertyDescriptor>,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper15ownPropertyKeysEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn CrossCompartmentWrapper_ownPropertyKeys(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper7delete_EP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEERNS3_14ObjectOpResultE"]
-            pub fn CrossCompartmentWrapper_delete_(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper9enumerateEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn CrossCompartmentWrapper_enumerate(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper12getPrototypeEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleIS6_EE"]
-            pub fn CrossCompartmentWrapper_getPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                protop: root::JS::MutableHandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper12setPrototypeEP9JSContextN2JS6HandleIP8JSObjectEES7_RNS3_14ObjectOpResultE"]
-            pub fn CrossCompartmentWrapper_setPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                proto: root::JS::HandleObject,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper22getPrototypeIfOrdinaryEP9JSContextN2JS6HandleIP8JSObjectEEPbNS3_13MutableHandleIS6_EE"]
-            pub fn CrossCompartmentWrapper_getPrototypeIfOrdinary(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                isOrdinary: *mut bool,
-                protop: root::JS::MutableHandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper21setImmutablePrototypeEP9JSContextN2JS6HandleIP8JSObjectEEPb"]
-            pub fn CrossCompartmentWrapper_setImmutablePrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                succeeded: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper17preventExtensionsEP9JSContextN2JS6HandleIP8JSObjectEERNS3_14ObjectOpResultE"]
-            pub fn CrossCompartmentWrapper_preventExtensions(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper12isExtensibleEP9JSContextN2JS6HandleIP8JSObjectEEPb"]
-            pub fn CrossCompartmentWrapper_isExtensible(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                extensible: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper3hasEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn CrossCompartmentWrapper_has(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper3getEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_5ValueEEENS4_INS3_11PropertyKeyEEENS3_13MutableHandleIS8_EE"]
-            pub fn CrossCompartmentWrapper_get(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                receiver: root::JS::HandleValue,
-                id: root::JS::HandleId,
-                vp: root::JS::MutableHandleValue,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper3setEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS4_INS3_5ValueEEESB_RNS3_14ObjectOpResultE"]
-            pub fn CrossCompartmentWrapper_set(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                v: root::JS::HandleValue,
-                receiver: root::JS::HandleValue,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper4callEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn CrossCompartmentWrapper_call(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper9constructEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn CrossCompartmentWrapper_construct(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper6hasOwnEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn CrossCompartmentWrapper_hasOwn(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper28getOwnEnumerablePropertyKeysEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn CrossCompartmentWrapper_getOwnEnumerablePropertyKeys(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper10nativeCallEP9JSContextPFbN2JS6HandleINS3_5ValueEEEEPFbS2_RKNS3_8CallArgsEESB_"]
-            pub fn CrossCompartmentWrapper_nativeCall(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                test: root::JS::IsAcceptableThis,
-                impl_: root::JS::NativeImpl,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper9classNameEP9JSContextN2JS6HandleIP8JSObjectEE"]
-            pub fn CrossCompartmentWrapper_className(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-            ) -> *const ::std::os::raw::c_char;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper12fun_toStringEP9JSContextN2JS6HandleIP8JSObjectEEb"]
-            pub fn CrossCompartmentWrapper_fun_toString(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                isToSource: bool,
-            ) -> *mut root::JSString;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper15regexp_toSharedEP9JSContextN2JS6HandleIP8JSObjectEE"]
-            pub fn CrossCompartmentWrapper_regexp_toShared(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-            ) -> *mut root::js::RegExpShared;
-            #[link_name = "\u{1}_ZNK2js23CrossCompartmentWrapper16boxedValue_unboxEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_5ValueEEE"]
-            pub fn CrossCompartmentWrapper_boxedValue_unbox(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                vp: root::JS::MutableHandleValue,
-            ) -> bool;
             #[link_name = "\u{1}_ZN2js29OpaqueCrossCompartmentWrapper9singletonE"]
             pub static OpaqueCrossCompartmentWrapper_singleton: root::js::OpaqueCrossCompartmentWrapper;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper24getOwnPropertyDescriptorEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS3_13MutableHandleIN7mozilla5MaybeINS3_18PropertyDescriptorEEEEE"]
-            pub fn OpaqueCrossCompartmentWrapper_getOwnPropertyDescriptor(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                desc: u32,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper14definePropertyEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS4_INS3_18PropertyDescriptorEEERNS3_14ObjectOpResultE"]
-            pub fn OpaqueCrossCompartmentWrapper_defineProperty(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                desc: root::JS::Handle<root::JS::PropertyDescriptor>,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper15ownPropertyKeysEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn OpaqueCrossCompartmentWrapper_ownPropertyKeys(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper7delete_EP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEERNS3_14ObjectOpResultE"]
-            pub fn OpaqueCrossCompartmentWrapper_delete_(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper9enumerateEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn OpaqueCrossCompartmentWrapper_enumerate(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper12getPrototypeEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleIS6_EE"]
-            pub fn OpaqueCrossCompartmentWrapper_getPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                protop: root::JS::MutableHandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper12setPrototypeEP9JSContextN2JS6HandleIP8JSObjectEES7_RNS3_14ObjectOpResultE"]
-            pub fn OpaqueCrossCompartmentWrapper_setPrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                proto: root::JS::HandleObject,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper22getPrototypeIfOrdinaryEP9JSContextN2JS6HandleIP8JSObjectEEPbNS3_13MutableHandleIS6_EE"]
-            pub fn OpaqueCrossCompartmentWrapper_getPrototypeIfOrdinary(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                isOrdinary: *mut bool,
-                protop: root::JS::MutableHandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper21setImmutablePrototypeEP9JSContextN2JS6HandleIP8JSObjectEEPb"]
-            pub fn OpaqueCrossCompartmentWrapper_setImmutablePrototype(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                succeeded: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper17preventExtensionsEP9JSContextN2JS6HandleIP8JSObjectEERNS3_14ObjectOpResultE"]
-            pub fn OpaqueCrossCompartmentWrapper_preventExtensions(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper12isExtensibleEP9JSContextN2JS6HandleIP8JSObjectEEPb"]
-            pub fn OpaqueCrossCompartmentWrapper_isExtensible(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                extensible: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper3hasEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn OpaqueCrossCompartmentWrapper_has(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper3getEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_5ValueEEENS4_INS3_11PropertyKeyEEENS3_13MutableHandleIS8_EE"]
-            pub fn OpaqueCrossCompartmentWrapper_get(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                receiver: root::JS::HandleValue,
-                id: root::JS::HandleId,
-                vp: root::JS::MutableHandleValue,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper3setEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEENS4_INS3_5ValueEEESB_RNS3_14ObjectOpResultE"]
-            pub fn OpaqueCrossCompartmentWrapper_set(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                v: root::JS::HandleValue,
-                receiver: root::JS::HandleValue,
-                result: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper4callEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn OpaqueCrossCompartmentWrapper_call(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper9constructEP9JSContextN2JS6HandleIP8JSObjectEERKNS3_8CallArgsE"]
-            pub fn OpaqueCrossCompartmentWrapper_construct(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                args: *const root::JS::CallArgs,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper6hasOwnEP9JSContextN2JS6HandleIP8JSObjectEENS4_INS3_11PropertyKeyEEEPb"]
-            pub fn OpaqueCrossCompartmentWrapper_hasOwn(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                id: root::JS::HandleId,
-                bp: *mut bool,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper28getOwnEnumerablePropertyKeysEP9JSContextN2JS6HandleIP8JSObjectEENS3_13MutableHandleINS3_13StackGCVectorINS3_11PropertyKeyENS_15TempAllocPolicyEEEEE"]
-            pub fn OpaqueCrossCompartmentWrapper_getOwnEnumerablePropertyKeys(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                props: root::JS::MutableHandleIdVector,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper15getBuiltinClassEP9JSContextN2JS6HandleIP8JSObjectEEPNS_7ESClassE"]
-            pub fn OpaqueCrossCompartmentWrapper_getBuiltinClass(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-                cls: *mut root::js::ESClass,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper7isArrayEP9JSContextN2JS6HandleIP8JSObjectEEPNS3_13IsArrayAnswerE"]
-            pub fn OpaqueCrossCompartmentWrapper_isArray(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                obj: root::JS::HandleObject,
-                answer: *mut root::JS::IsArrayAnswer,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper9classNameEP9JSContextN2JS6HandleIP8JSObjectEE"]
-            pub fn OpaqueCrossCompartmentWrapper_className(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                wrapper: root::JS::HandleObject,
-            ) -> *const ::std::os::raw::c_char;
-            #[link_name = "\u{1}_ZNK2js29OpaqueCrossCompartmentWrapper12fun_toStringEP9JSContextN2JS6HandleIP8JSObjectEEb"]
-            pub fn OpaqueCrossCompartmentWrapper_fun_toString(
-                this: *mut ::std::os::raw::c_void,
-                cx: *mut root::JSContext,
-                proxy: root::JS::HandleObject,
-                isToSource: bool,
-            ) -> *mut root::JSString;
             #[link_name = "\u{1}_ZN2js24TransparentObjectWrapperEP9JSContextN2JS6HandleIP8JSObjectEES6_"]
             pub fn TransparentObjectWrapper(
                 cx: *mut root::JSContext,
@@ -7253,6 +5894,97 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn UnwrapFloat16Array(
                 maybeWrapped: *mut root::JSObject,
             ) -> *mut root::JSObject;
+            #[link_name = "\u{1}_ZN2js13StringPrinter11DefaultSizeE"]
+            pub static StringPrinter_DefaultSize: usize;
+            #[link_name = "\u{1}_ZN2js12js_EscapeMapE"]
+            pub static js_EscapeMap: [::std::os::raw::c_char; 0usize];
+            #[link_name = "\u{1}_ZN2js11QuoteStringEP9JSContextP8JSStringc"]
+            pub fn QuoteString(
+                cx: *mut root::JSContext,
+                str_: *mut root::JSString,
+                quote: ::std::os::raw::c_char,
+            ) -> root::JS::UniqueChars;
+            #[link_name = "\u{1}_ZN2js11QuoteStringEPNS_8SprinterEP8JSStringc"]
+            pub fn QuoteString1(
+                sp: *mut root::js::Sprinter,
+                str_: *mut root::JSString,
+                quote: ::std::os::raw::c_char,
+            );
+            #[link_name = "\u{1}_ZN2js15JSONQuoteStringEPNS_13StringPrinterEP8JSString"]
+            pub fn JSONQuoteString(
+                sp: *mut root::js::StringPrinter,
+                str_: *mut root::JSString,
+            );
+            #[link_name = "\u{1}_ZN2js10DumpStringEP8JSStringP8_IO_FILE"]
+            pub fn DumpString(str_: *mut root::JSString, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js8DumpAtomEP6JSAtomP8_IO_FILE"]
+            pub fn DumpAtom(atom: *mut root::JSAtom, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js10DumpObjectEP8JSObjectP8_IO_FILE"]
+            pub fn DumpObject(obj: *mut root::JSObject, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js9DumpCharsEPKDsmP8_IO_FILE"]
+            pub fn DumpChars(s: *const u16, n: usize, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js10DumpBigIntEPN2JS6BigIntEP8_IO_FILE"]
+            pub fn DumpBigInt(bi: *mut root::JS::BigInt, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js9DumpValueERKN2JS5ValueEP8_IO_FILE"]
+            pub fn DumpValue(val: *const root::JS::Value, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js6DumpIdEN2JS11PropertyKeyEP8_IO_FILE"]
+            pub fn DumpId(id: root::JS::PropertyKey, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js6DumpPCEP9JSContextP8_IO_FILE"]
+            pub fn DumpPC(cx: *mut root::JSContext, fp: *mut root::FILE) -> bool;
+            #[link_name = "\u{1}_ZN2js10DumpScriptEP9JSContextP8JSScriptP8_IO_FILE"]
+            pub fn DumpScript(
+                cx: *mut root::JSContext,
+                scriptArg: *mut root::JSScript,
+                fp: *mut root::FILE,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN2js10DumpStringEP8JSString"]
+            pub fn DumpString1(str_: *mut root::JSString);
+            #[link_name = "\u{1}_ZN2js8DumpAtomEP6JSAtom"]
+            pub fn DumpAtom1(atom: *mut root::JSAtom);
+            #[link_name = "\u{1}_ZN2js10DumpObjectEP8JSObject"]
+            pub fn DumpObject1(obj: *mut root::JSObject);
+            #[link_name = "\u{1}_ZN2js9DumpCharsEPKDsm"]
+            pub fn DumpChars1(s: *const u16, n: usize);
+            #[link_name = "\u{1}_ZN2js10DumpBigIntEPN2JS6BigIntE"]
+            pub fn DumpBigInt1(bi: *mut root::JS::BigInt);
+            #[link_name = "\u{1}_ZN2js9DumpValueERKN2JS5ValueE"]
+            pub fn DumpValue1(val: *const root::JS::Value);
+            #[link_name = "\u{1}_ZN2js6DumpIdEN2JS11PropertyKeyE"]
+            pub fn DumpId1(id: root::JS::PropertyKey);
+            #[link_name = "\u{1}_ZN2js20DumpInterpreterFrameEP9JSContextPNS_16InterpreterFrameE"]
+            pub fn DumpInterpreterFrame(
+                cx: *mut root::JSContext,
+                start: *mut root::js::InterpreterFrame,
+            );
+            #[link_name = "\u{1}_ZN2js6DumpPCEP9JSContext"]
+            pub fn DumpPC1(cx: *mut root::JSContext) -> bool;
+            #[link_name = "\u{1}_ZN2js10DumpScriptEP9JSContextP8JSScript"]
+            pub fn DumpScript1(
+                cx: *mut root::JSContext,
+                scriptArg: *mut root::JSScript,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN2js13DumpBacktraceEP9JSContextP8_IO_FILE"]
+            pub fn DumpBacktrace(cx: *mut root::JSContext, fp: *mut root::FILE);
+            #[link_name = "\u{1}_ZN2js13DumpBacktraceEP9JSContextRNS_14GenericPrinterE"]
+            pub fn DumpBacktrace1(
+                cx: *mut root::JSContext,
+                out: *mut root::js::GenericPrinter,
+            );
+            #[link_name = "\u{1}_ZN2js13DumpBacktraceEP9JSContext"]
+            pub fn DumpBacktrace2(cx: *mut root::JSContext);
+            /** Dump the complete object graph of heap-allocated things.
+ fp is the file for the dump output.*/
+            #[link_name = "\u{1}_ZN2js8DumpHeapEP9JSContextP8_IO_FILENS_24DumpHeapNurseryBehaviourEPFmPKvE"]
+            pub fn DumpHeap(
+                cx: *mut root::JSContext,
+                fp: *mut root::FILE,
+                nurseryBehaviour: root::js::DumpHeapNurseryBehaviour,
+                mallocSizeOf: root::mozilla::MallocSizeOf,
+            );
+            #[link_name = "\u{1}_ZN2js7DumpFmtEP8_IO_FILEPKcz"]
+            pub fn DumpFmt(fp: *mut root::FILE, fmt: *const ::std::os::raw::c_char, ...);
+            #[link_name = "\u{1}_ZN2js7DumpFmtEPKcz"]
+            pub fn DumpFmt1(fmt: *const ::std::os::raw::c_char, ...);
             /** A JSErrorCallback suitable for passing to |JS_ReportErrorNumberASCII| and
  similar functions in concert with one of the |JSErrNum| error numbers.
 
@@ -7435,10 +6167,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn UninlinedIsCrossCompartmentWrapper(
                 obj: *const root::JSObject,
             ) -> bool;
-            #[link_name = "\u{1}_ZN2jsL20GetNonCCWObjectRealmEP8JSObject"]
-            pub fn GetNonCCWObjectRealm(
-                obj: *mut root::JSObject,
-            ) -> *mut root::JS::Realm;
             #[link_name = "\u{1}_ZN2js21AssertSameCompartmentEP9JSContextP8JSObject"]
             pub fn AssertSameCompartment(
                 cx: *mut root::JSContext,
@@ -7623,8 +6351,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             ) -> bool;
             #[link_name = "\u{1}_ZN2js11GetSCOffsetEP23JSStructuredCloneWriter"]
             pub fn GetSCOffset(writer: *mut root::JSStructuredCloneWriter) -> u64;
-            #[link_name = "\u{1}_ZN2jsL9IdToValueEN2JS11PropertyKeyE"]
-            pub fn IdToValue(id: root::jsid) -> root::JS::Value;
             #[link_name = "\u{1}_ZN2js33PrepareScriptEnvironmentAndInvokeEP9JSContextN2JS6HandleIP8JSObjectEERNS_25ScriptEnvironmentPreparer7ClosureE"]
             pub fn PrepareScriptEnvironmentAndInvoke(
                 cx: *mut root::JSContext,
@@ -7678,15 +6404,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 cx: *mut root::JSContext,
                 v: root::JS::HandleValue,
             ) -> bool;
-            #[link_name = "\u{1}_ZN2js21AutoAssertNoContentJSC1EP9JSContext"]
-            pub fn AutoAssertNoContentJS_AutoAssertNoContentJS(
-                this: *mut root::js::AutoAssertNoContentJS,
-                cx: *mut root::JSContext,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2js21AutoAssertNoContentJSD1Ev"]
-            pub fn AutoAssertNoContentJS_AutoAssertNoContentJS_destructor(
-                this: *mut root::js::AutoAssertNoContentJS,
-            );
             /** This function reports memory used by a zone in bytes, this includes:
   * The size of this JS GC zone.
   * Malloc memory referred to from this zone.
@@ -8231,21 +6948,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct AutoEnterCycleCollection {
             pub runtime_: *mut root::JSRuntime,
         }
-        impl AutoEnterCycleCollection {
-            #[inline]
-            pub unsafe fn new(rt: *mut root::JSRuntime) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                AutoEnterCycleCollection_AutoEnterCycleCollection(
-                    __bindgen_tmp.as_mut_ptr(),
-                    rt,
-                );
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                AutoEnterCycleCollection_AutoEnterCycleCollection_destructor(self)
-            }
-        }
         pub mod shadow {
             #[allow(unused_imports)]
             use self::super::super::super::root;
@@ -8404,14 +7106,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct GCCellPtr {
             pub ptr: usize,
         }
-        impl GCCellPtr {
-            #[inline]
-            pub unsafe fn new(v: *const root::JS::Value) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                GCCellPtr_GCCellPtr(__bindgen_tmp.as_mut_ptr(), v);
-                __bindgen_tmp.assume_init()
-            }
-        }
         #[repr(i32)]
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub enum TracerKind {
@@ -8470,38 +7164,10 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub vtable_: *const TracingContext_Functor__bindgen_vtable,
         }
         pub const TracingContext_InvalidIndex: usize = 4294967295;
-        impl TracingContext {
-            #[inline]
-            pub unsafe fn getEdgeName(
-                &mut self,
-                name: *const ::std::os::raw::c_char,
-                buffer: *mut ::std::os::raw::c_char,
-                bufferSize: usize,
-            ) {
-                TracingContext_getEdgeName(self, name, buffer, bufferSize)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct CallbackTracer {
             pub _base: root::js::GenericTracerImpl,
-        }
-        impl CallbackTracer {
-            #[inline]
-            pub unsafe fn new(
-                cx: *mut root::JSContext,
-                kind: root::JS::TracerKind,
-                options: root::JS::TraceOptions,
-            ) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                CallbackTracer_CallbackTracer(
-                    __bindgen_tmp.as_mut_ptr(),
-                    cx,
-                    kind,
-                    options,
-                );
-                __bindgen_tmp.assume_init()
-            }
         }
         #[repr(C)]
         #[derive(Debug, PartialEq)]
@@ -8847,37 +7513,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub wasiRecursionDepth: u32,
         }
         pub const RootingContext_wasiRecursionDepthLimit: u32 = 350;
-        impl RootingContext {
-            #[inline]
-            pub unsafe fn traceStackRoots(&mut self, trc: *mut root::JSTracer) {
-                RootingContext_traceStackRoots(self, trc)
-            }
-            #[inline]
-            pub unsafe fn traceAllGCRooters(&mut self, trc: *mut root::JSTracer) {
-                RootingContext_traceAllGCRooters(self, trc)
-            }
-            #[inline]
-            pub unsafe fn traceWrapperGCRooters(&mut self, trc: *mut root::JSTracer) {
-                RootingContext_traceWrapperGCRooters(self, trc)
-            }
-            #[inline]
-            pub unsafe fn traceGCRooterList(
-                trc: *mut root::JSTracer,
-                head: *mut root::JS::AutoGCRooter,
-            ) {
-                RootingContext_traceGCRooterList(trc, head)
-            }
-            #[inline]
-            pub unsafe fn checkNoGCRooters(&mut self) {
-                RootingContext_checkNoGCRooters(self)
-            }
-            #[inline]
-            pub unsafe fn new(nursery: *mut root::js::Nursery) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                RootingContext_RootingContext(__bindgen_tmp.as_mut_ptr(), nursery);
-                __bindgen_tmp.assume_init()
-            }
-        }
         #[repr(C)]
         #[derive(Debug, PartialEq)]
         pub struct AutoGCRooter {
@@ -8886,12 +7521,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub kind_: root::JS::AutoGCRooter_Kind,
         }
         pub use self::super::super::root::JS::AutoGCRooterKind as AutoGCRooter_Kind;
-        impl AutoGCRooter {
-            #[inline]
-            pub unsafe fn trace(&mut self, trc: *mut root::JSTracer) {
-                AutoGCRooter_trace(self, trc)
-            }
-        }
         #[repr(C)]
         pub struct CustomAutoRooter__bindgen_vtable(::std::os::raw::c_void);
         /** Custom rooting behavior for internal and external clients.
@@ -9290,15 +7919,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub introductionOffset: u32,
             pub hasIntroductionInfo: bool,
         }
-        impl TransitiveCompileOptions {
-            #[inline]
-            pub unsafe fn copyPODTransitiveOptions(
-                &mut self,
-                rhs: *const root::JS::TransitiveCompileOptions,
-            ) {
-                TransitiveCompileOptions_copyPODTransitiveOptions(self, rhs)
-            }
-        }
         /** The class representing a full set of compile options.
 
  Use this in code that only needs to access compilation options created
@@ -9314,15 +7934,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub scriptSourceOffset: ::std::os::raw::c_uint,
             pub isRunOnce: bool,
             pub noScriptRval: bool,
-        }
-        impl ReadOnlyCompileOptions {
-            #[inline]
-            pub unsafe fn copyPODNonTransitiveOptions(
-                &mut self,
-                rhs: *const root::JS::ReadOnlyCompileOptions,
-            ) {
-                ReadOnlyCompileOptions_copyPODNonTransitiveOptions(self, rhs)
-            }
         }
         /** Compilation options, with dynamic lifetime. An instance of this type
  makes a copy of / holds / roots all dynamically allocated resources
@@ -9345,52 +7956,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct OwningCompileOptions_ForFrontendContext {
             pub _address: u8,
         }
-        impl OwningCompileOptions {
-            #[inline]
-            pub unsafe fn copy(
-                &mut self,
-                cx: *mut root::JSContext,
-                rhs: *const root::JS::ReadOnlyCompileOptions,
-            ) -> bool {
-                OwningCompileOptions_copy(self, cx, rhs)
-            }
-            #[inline]
-            pub unsafe fn copy1(
-                &mut self,
-                fc: *mut root::JS::FrontendContext,
-                rhs: *const root::JS::ReadOnlyCompileOptions,
-            ) -> bool {
-                OwningCompileOptions_copy1(self, fc, rhs)
-            }
-            #[inline]
-            pub unsafe fn steal(&mut self, rhs: *mut root::JS::OwningCompileOptions) {
-                OwningCompileOptions_steal(self, rhs)
-            }
-            #[inline]
-            pub unsafe fn steal1(&mut self, rhs: *mut root::JS::OwningDecodeOptions) {
-                OwningCompileOptions_steal1(self, rhs)
-            }
-            #[inline]
-            pub unsafe fn sizeOfExcludingThis(
-                &self,
-                mallocSizeOf: root::mozilla::MallocSizeOf,
-            ) -> usize {
-                OwningCompileOptions_sizeOfExcludingThis(self, mallocSizeOf)
-            }
-            #[inline]
-            pub unsafe fn new(cx: *mut root::JSContext) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                OwningCompileOptions_OwningCompileOptions(
-                    __bindgen_tmp.as_mut_ptr(),
-                    cx,
-                );
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                OwningCompileOptions_OwningCompileOptions_destructor(self)
-            }
-        }
         /** Compilation options stored on the stack. An instance of this type
  simply holds references to dynamically allocated resources (element;
  filename; source map URL) that are owned by something else. If you
@@ -9401,32 +7966,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct CompileOptions {
             pub _base: root::JS::ReadOnlyCompileOptions,
         }
-        impl CompileOptions {
-            #[inline]
-            pub unsafe fn setIntroductionInfoToCaller(
-                &mut self,
-                cx: *mut root::JSContext,
-                introductionType: *const ::std::os::raw::c_char,
-                introductionScript: root::JS::MutableHandle<*mut root::JSScript>,
-            ) -> *mut root::JS::CompileOptions {
-                CompileOptions_setIntroductionInfoToCaller(
-                    self,
-                    cx,
-                    introductionType,
-                    introductionScript,
-                )
-            }
-            #[inline]
-            pub unsafe fn warnAboutConflictingDelazification(&self) {
-                CompileOptions_warnAboutConflictingDelazification(self)
-            }
-            #[inline]
-            pub unsafe fn new(cx: *mut root::JSContext) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                CompileOptions_CompileOptions(__bindgen_tmp.as_mut_ptr(), cx);
-                __bindgen_tmp.assume_init()
-            }
-        }
         /// Subset of CompileOptions fields used while instantiating Stencils.
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -9435,14 +7974,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub hideScriptFromDebugger: bool,
             pub deferDebugMetadata: bool,
             pub eagerDelazificationStrategy_: root::JS::DelazificationOption,
-        }
-        impl InstantiateOptions {
-            #[inline]
-            pub unsafe fn new() -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                InstantiateOptions_InstantiateOptions(__bindgen_tmp.as_mut_ptr());
-                __bindgen_tmp.assume_init()
-            }
         }
         /// Subset of CompileOptions fields used while decoding Stencils.
         #[repr(C)]
@@ -9464,34 +7995,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         #[derive(Debug, PartialEq)]
         pub struct OwningDecodeOptions {
             pub _base: root::JS::ReadOnlyDecodeOptions,
-        }
-        impl OwningDecodeOptions {
-            #[inline]
-            pub unsafe fn copy(
-                &mut self,
-                maybeFc: *mut root::JS::FrontendContext,
-                rhs: *const root::JS::ReadOnlyDecodeOptions,
-            ) -> bool {
-                OwningDecodeOptions_copy(self, maybeFc, rhs)
-            }
-            #[inline]
-            pub unsafe fn infallibleCopy(
-                &mut self,
-                rhs: *const root::JS::ReadOnlyDecodeOptions,
-            ) {
-                OwningDecodeOptions_infallibleCopy(self, rhs)
-            }
-            #[inline]
-            pub unsafe fn sizeOfExcludingThis(
-                &self,
-                mallocSizeOf: root::mozilla::MallocSizeOf,
-            ) -> usize {
-                OwningDecodeOptions_sizeOfExcludingThis(self, mallocSizeOf)
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                OwningDecodeOptions_OwningDecodeOptions_destructor(self)
-            }
         }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -10132,13 +8635,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                     );
                 __bindgen_bitfield_unit
             }
-            #[inline]
-            pub unsafe fn setFuzzing(
-                &mut self,
-                flag: bool,
-            ) -> *mut root::JS::ContextOptions {
-                ContextOptions_setFuzzing(self, flag)
-            }
         }
         #[repr(u8)]
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -10205,28 +8701,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub asBits_: u64,
         }
         pub type Value_PayloadType = u32;
-        impl Value {
-            #[inline]
-            pub unsafe fn dump(&self) {
-                Value_dump(self)
-            }
-            #[inline]
-            pub unsafe fn dump1(&self, out: *mut root::js::GenericPrinter) {
-                Value_dump1(self, out)
-            }
-            #[inline]
-            pub unsafe fn dump2(&self, json: *mut root::js::JSONPrinter) {
-                Value_dump2(self, json)
-            }
-            #[inline]
-            pub unsafe fn dumpFields(&self, json: *mut root::js::JSONPrinter) {
-                Value_dumpFields(self, json)
-            }
-            #[inline]
-            pub unsafe fn dumpStringContent(&self, out: *mut root::js::GenericPrinter) {
-                Value_dumpStringContent(self, out)
-            }
-        }
         /** An amount of space large enough to store the null-terminated result of
  |ToString| on any Number.
 
@@ -10253,46 +8727,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub const PropertyKey_TypeMask: usize = 7;
         pub const PropertyKey_IntMin: u32 = 0;
         pub const PropertyKey_IntMax: u32 = 2147483647;
-        impl PropertyKey {
-            #[inline]
-            pub unsafe fn isPrivateName(&self) -> bool {
-                PropertyKey_isPrivateName(self)
-            }
-            #[inline]
-            pub unsafe fn isWellKnownSymbol(&self, code: root::JS::SymbolCode) -> bool {
-                PropertyKey_isWellKnownSymbol(self, code)
-            }
-            #[inline]
-            pub unsafe fn fromPinnedString(
-                str_: *mut root::JSString,
-            ) -> root::JS::PropertyKey {
-                PropertyKey_fromPinnedString(str_)
-            }
-            #[inline]
-            pub unsafe fn dump(&self) {
-                PropertyKey_dump(self)
-            }
-            #[inline]
-            pub unsafe fn dump1(&self, out: *mut root::js::GenericPrinter) {
-                PropertyKey_dump1(self, out)
-            }
-            #[inline]
-            pub unsafe fn dump2(&self, json: *mut root::js::JSONPrinter) {
-                PropertyKey_dump2(self, json)
-            }
-            #[inline]
-            pub unsafe fn dumpFields(&self, json: *mut root::js::JSONPrinter) {
-                PropertyKey_dumpFields(self, json)
-            }
-            #[inline]
-            pub unsafe fn dumpPropertyName(&self, out: *mut root::js::GenericPrinter) {
-                PropertyKey_dumpPropertyName(self, out)
-            }
-            #[inline]
-            pub unsafe fn dumpStringContent(&self, out: *mut root::js::GenericPrinter) {
-                PropertyKey_dumpStringContent(self, out)
-            }
-        }
         /** Per ES6, the [[DefineOwnProperty]] internal method has three different
  possible outcomes:
 
@@ -10344,97 +8778,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             OkCode = 0,
             Uninitialized = 4294967295,
         }
-        impl ObjectOpResult {
-            #[inline]
-            pub unsafe fn failCantRedefineProp(&mut self) -> bool {
-                ObjectOpResult_failCantRedefineProp(self)
-            }
-            #[inline]
-            pub unsafe fn failReadOnly(&mut self) -> bool {
-                ObjectOpResult_failReadOnly(self)
-            }
-            #[inline]
-            pub unsafe fn failGetterOnly(&mut self) -> bool {
-                ObjectOpResult_failGetterOnly(self)
-            }
-            #[inline]
-            pub unsafe fn failCantDelete(&mut self) -> bool {
-                ObjectOpResult_failCantDelete(self)
-            }
-            #[inline]
-            pub unsafe fn failCantSetInterposed(&mut self) -> bool {
-                ObjectOpResult_failCantSetInterposed(self)
-            }
-            #[inline]
-            pub unsafe fn failCantDefineWindowElement(&mut self) -> bool {
-                ObjectOpResult_failCantDefineWindowElement(self)
-            }
-            #[inline]
-            pub unsafe fn failCantDeleteWindowElement(&mut self) -> bool {
-                ObjectOpResult_failCantDeleteWindowElement(self)
-            }
-            #[inline]
-            pub unsafe fn failCantDefineWindowNamedProperty(&mut self) -> bool {
-                ObjectOpResult_failCantDefineWindowNamedProperty(self)
-            }
-            #[inline]
-            pub unsafe fn failCantDeleteWindowNamedProperty(&mut self) -> bool {
-                ObjectOpResult_failCantDeleteWindowNamedProperty(self)
-            }
-            #[inline]
-            pub unsafe fn failCantPreventExtensions(&mut self) -> bool {
-                ObjectOpResult_failCantPreventExtensions(self)
-            }
-            #[inline]
-            pub unsafe fn failCantSetProto(&mut self) -> bool {
-                ObjectOpResult_failCantSetProto(self)
-            }
-            #[inline]
-            pub unsafe fn failNoNamedSetter(&mut self) -> bool {
-                ObjectOpResult_failNoNamedSetter(self)
-            }
-            #[inline]
-            pub unsafe fn failNoIndexedSetter(&mut self) -> bool {
-                ObjectOpResult_failNoIndexedSetter(self)
-            }
-            #[inline]
-            pub unsafe fn failNotDataDescriptor(&mut self) -> bool {
-                ObjectOpResult_failNotDataDescriptor(self)
-            }
-            #[inline]
-            pub unsafe fn failInvalidDescriptor(&mut self) -> bool {
-                ObjectOpResult_failInvalidDescriptor(self)
-            }
-            #[inline]
-            pub unsafe fn failCantDefineWindowNonConfigurable(&mut self) -> bool {
-                ObjectOpResult_failCantDefineWindowNonConfigurable(self)
-            }
-            #[inline]
-            pub unsafe fn failBadArrayLength(&mut self) -> bool {
-                ObjectOpResult_failBadArrayLength(self)
-            }
-            #[inline]
-            pub unsafe fn failBadIndex(&mut self) -> bool {
-                ObjectOpResult_failBadIndex(self)
-            }
-            #[inline]
-            pub unsafe fn reportError(
-                &mut self,
-                cx: *mut root::JSContext,
-                obj: root::JS::HandleObject,
-                id: root::JS::HandleId,
-            ) -> bool {
-                ObjectOpResult_reportError(self, cx, obj, id)
-            }
-            #[inline]
-            pub unsafe fn reportError1(
-                &mut self,
-                cx: *mut root::JSContext,
-                obj: root::JS::HandleObject,
-            ) -> bool {
-                ObjectOpResult_reportError1(self, cx, obj)
-            }
-        }
         #[repr(i32)]
         /// Specification for which compartment/zone a newly created realm should use.
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -10480,70 +8823,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub union RealmCreationOptions__bindgen_ty_1 {
             pub comp_: *mut root::JS::Compartment,
             pub zone_: *mut root::JS::Zone,
-        }
-        impl RealmCreationOptions {
-            #[inline]
-            pub unsafe fn setNewCompartmentInSystemZone(
-                &mut self,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setNewCompartmentInSystemZone(self)
-            }
-            #[inline]
-            pub unsafe fn setNewCompartmentInExistingZone(
-                &mut self,
-                obj: *mut root::JSObject,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setNewCompartmentInExistingZone(self, obj)
-            }
-            #[inline]
-            pub unsafe fn setNewCompartmentAndZone(
-                &mut self,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setNewCompartmentAndZone(self)
-            }
-            #[inline]
-            pub unsafe fn setExistingCompartment(
-                &mut self,
-                obj: *mut root::JSObject,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setExistingCompartment(self, obj)
-            }
-            #[inline]
-            pub unsafe fn setExistingCompartment1(
-                &mut self,
-                compartment: *mut root::JS::Compartment,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setExistingCompartment1(self, compartment)
-            }
-            #[inline]
-            pub unsafe fn getSharedMemoryAndAtomicsEnabled(&self) -> bool {
-                RealmCreationOptions_getSharedMemoryAndAtomicsEnabled(self)
-            }
-            #[inline]
-            pub unsafe fn setSharedMemoryAndAtomicsEnabled(
-                &mut self,
-                flag: bool,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setSharedMemoryAndAtomicsEnabled(self, flag)
-            }
-            #[inline]
-            pub unsafe fn getCoopAndCoepEnabled(&self) -> bool {
-                RealmCreationOptions_getCoopAndCoepEnabled(self)
-            }
-            #[inline]
-            pub unsafe fn setCoopAndCoepEnabled(
-                &mut self,
-                flag: bool,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setCoopAndCoepEnabled(self, flag)
-            }
-            #[inline]
-            pub unsafe fn setLocaleCopyZ(
-                &mut self,
-                locale: *const ::std::os::raw::c_char,
-            ) -> *mut root::JS::RealmCreationOptions {
-                RealmCreationOptions_setLocaleCopyZ(self, locale)
-            }
         }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -10613,30 +8892,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             AllowNonIterable = 1,
         }
         pub const ForOfIterator_NOT_ARRAY: u32 = 4294967295;
-        impl ForOfIterator {
-            #[inline]
-            #[must_use]
-            pub unsafe fn init(
-                &mut self,
-                iterable: root::JS::Handle<root::JS::Value>,
-                nonIterableBehavior: root::JS::ForOfIterator_NonIterableBehavior,
-            ) -> bool {
-                ForOfIterator_init(self, iterable, nonIterableBehavior)
-            }
-            #[inline]
-            #[must_use]
-            pub unsafe fn next(
-                &mut self,
-                val: root::JS::MutableHandle<root::JS::Value>,
-                done: *mut bool,
-            ) -> bool {
-                ForOfIterator_next(self, val, done)
-            }
-            #[inline]
-            pub unsafe fn closeThrow(&mut self) {
-                ForOfIterator_closeThrow(self)
-            }
-        }
         /** Span - slices for C++
 
  Span implements Rust's slice concept for C++. It's called "Span" instead of
@@ -10798,21 +9053,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub _base: root::JS::ClassInfo,
             pub className_: root::JS::UniqueChars,
         }
-        impl NotableClassInfo {
-            #[inline]
-            pub unsafe fn new(
-                className: *const ::std::os::raw::c_char,
-                info: *const root::JS::ClassInfo,
-            ) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                NotableClassInfo_NotableClassInfo(
-                    __bindgen_tmp.as_mut_ptr(),
-                    className,
-                    info,
-                );
-                __bindgen_tmp.assume_init()
-            }
-        }
         /// Data for tracking JIT-code memory usage.
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -10866,21 +9106,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub length: usize,
         }
         pub const NotableStringInfo_MAX_SAVED_CHARS: usize = 1024;
-        impl NotableStringInfo {
-            #[inline]
-            pub unsafe fn new(
-                str_: *mut root::JSString,
-                info: *const root::JS::StringInfo,
-            ) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                NotableStringInfo_NotableStringInfo(
-                    __bindgen_tmp.as_mut_ptr(),
-                    str_,
-                    info,
-                );
-                __bindgen_tmp.assume_init()
-            }
-        }
         /** This class holds information about the memory taken up by script sources
  from a particular file.*/
         #[repr(C)]
@@ -10900,21 +9125,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct NotableScriptSourceInfo {
             pub _base: root::JS::ScriptSourceInfo,
             pub filename_: root::JS::UniqueChars,
-        }
-        impl NotableScriptSourceInfo {
-            #[inline]
-            pub unsafe fn new(
-                filename: *const ::std::os::raw::c_char,
-                info: *const root::JS::ScriptSourceInfo,
-            ) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                NotableScriptSourceInfo_NotableScriptSourceInfo(
-                    __bindgen_tmp.as_mut_ptr(),
-                    filename,
-                    info,
-                );
-                __bindgen_tmp.assume_init()
-            }
         }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -11026,12 +9236,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub isTotals: bool,
         }
         pub type ZoneStats_StringsHashMap = root::__BindgenOpaqueArray<u64, 5usize>;
-        impl ZoneStats {
-            #[inline]
-            pub unsafe fn initStrings(&mut self) {
-                ZoneStats_initStrings(self)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, PartialEq)]
         pub struct RealmStats {
@@ -11055,12 +9259,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub isTotals: bool,
         }
         pub type RealmStats_ClassesHashMap = root::__BindgenOpaqueArray<u64, 5usize>;
-        impl RealmStats {
-            #[inline]
-            pub unsafe fn initClasses(&mut self) {
-                RealmStats_initClasses(self)
-            }
-        }
         pub type RealmStatsVector = root::__BindgenOpaqueArray<u32, 5usize>;
         pub type ZoneStatsVector = root::__BindgenOpaqueArray<u32, 5usize>;
         #[repr(C)]
@@ -11326,30 +9524,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub cx: *mut root::JSContext,
             pub saved: u32,
         }
-        impl AutoDebuggerJobQueueInterruption {
-            #[inline]
-            pub unsafe fn init(&mut self, cx: *mut root::JSContext) -> bool {
-                AutoDebuggerJobQueueInterruption_init(self, cx)
-            }
-            #[inline]
-            pub unsafe fn runJobs(&mut self) {
-                AutoDebuggerJobQueueInterruption_runJobs(self)
-            }
-            #[inline]
-            pub unsafe fn new() -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                AutoDebuggerJobQueueInterruption_AutoDebuggerJobQueueInterruption(
-                    __bindgen_tmp.as_mut_ptr(),
-                );
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                AutoDebuggerJobQueueInterruption_AutoDebuggerJobQueueInterruption_destructor(
-                    self,
-                )
-            }
-        }
         #[repr(i32)]
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub enum PromiseRejectionHandlingState {
@@ -11393,20 +9567,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub enum Dispatchable_MaybeShuttingDown {
             NotShuttingDown = 0,
             ShuttingDown = 1,
-        }
-        impl Dispatchable {
-            #[inline]
-            pub unsafe fn Run(
-                cx: *mut root::JSContext,
-                task: *mut u32,
-                maybeShuttingDown: root::JS::Dispatchable_MaybeShuttingDown,
-            ) {
-                Dispatchable_Run(cx, task, maybeShuttingDown)
-            }
-            #[inline]
-            pub unsafe fn ReleaseFailedTask(task: *mut u32) {
-                Dispatchable_ReleaseFailedTask(task)
-            }
         }
         /** Callbacks to dispatch a JS::Dispatchable to a JSContext's thread's event
  loop.
@@ -11994,10 +10154,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                     );
                 __bindgen_bitfield_unit
             }
-            #[inline]
-            pub unsafe fn trace(&mut self, trc: *mut root::JSTracer) {
-                PropertyDescriptor_trace(self, trc)
-            }
         }
         #[repr(u32)]
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -12124,24 +10280,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 /** Types that don't have their own TypedArray equivalent, for now.
  E.g. DataView*/
                 Simd128 = 14,
-            }
-            unsafe extern "C" {
-                #[link_name = "\u{1}_ZN2JS6ScalarL8byteSizeENS0_4TypeE"]
-                pub fn byteSize(atype: root::JS::Scalar::Type) -> usize;
-                #[link_name = "\u{1}_ZN2JS6ScalarL15isSignedIntTypeENS0_4TypeE"]
-                pub fn isSignedIntType(atype: root::JS::Scalar::Type) -> bool;
-                #[link_name = "\u{1}_ZN2JS6ScalarL12isBigIntTypeENS0_4TypeE"]
-                pub fn isBigIntType(atype: root::JS::Scalar::Type) -> bool;
-                #[link_name = "\u{1}_ZN2JS6ScalarL14isFloatingTypeENS0_4TypeE"]
-                pub fn isFloatingType(atype: root::JS::Scalar::Type) -> bool;
-                #[link_name = "\u{1}_ZN2JS6ScalarL4nameENS0_4TypeE"]
-                pub fn name(
-                    atype: root::JS::Scalar::Type,
-                ) -> *const ::std::os::raw::c_char;
-                #[link_name = "\u{1}_ZN2JS6ScalarL14byteSizeStringENS0_4TypeE"]
-                pub fn byteSizeString(
-                    atype: root::JS::Scalar::Type,
-                ) -> *const ::std::os::raw::c_char;
             }
         }
         #[repr(C)]
@@ -12443,75 +10581,21 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct InstantiationStorage {
             pub gcOutput_: *mut root::js::frontend::PreallocatedCompilationGCOutput,
         }
-        impl InstantiationStorage {
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                InstantiationStorage_InstantiationStorage_destructor(self)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct ArrayBufferOrView {
             pub obj: *mut root::JSObject,
         }
         pub type ArrayBufferOrView_DataType = u8;
-        impl ArrayBufferOrView {
-            #[inline]
-            pub unsafe fn unwrap(
-                maybeWrapped: *mut root::JSObject,
-            ) -> root::JS::ArrayBufferOrView {
-                ArrayBufferOrView_unwrap(maybeWrapped)
-            }
-            #[inline]
-            pub unsafe fn isDetached(&self) -> bool {
-                ArrayBufferOrView_isDetached(self)
-            }
-            #[inline]
-            pub unsafe fn isResizable(&self) -> bool {
-                ArrayBufferOrView_isResizable(self)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct ArrayBuffer {
             pub _base: root::JS::ArrayBufferOrView,
         }
-        impl ArrayBuffer {
-            #[inline]
-            pub unsafe fn unwrap(
-                maybeWrapped: *mut root::JSObject,
-            ) -> root::JS::ArrayBuffer {
-                ArrayBuffer_unwrap(maybeWrapped)
-            }
-            #[inline]
-            pub unsafe fn create(
-                cx: *mut root::JSContext,
-                nbytes: usize,
-            ) -> root::JS::ArrayBuffer {
-                ArrayBuffer_create(cx, nbytes)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct ArrayBufferView {
             pub _base: root::JS::ArrayBufferOrView,
-        }
-        impl ArrayBufferView {
-            #[inline]
-            pub unsafe fn isDetached(&self) -> bool {
-                ArrayBufferView_isDetached(self)
-            }
-            #[inline]
-            pub unsafe fn isResizable(&self) -> bool {
-                ArrayBufferView_isResizable(self)
-            }
-            #[inline]
-            pub unsafe fn getByteLength(
-                &mut self,
-                arg1: *const root::JS::AutoRequireNoGC,
-            ) -> usize {
-                ArrayBufferView_getByteLength(self, arg1)
-            }
         }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -12522,14 +10606,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct TypedArray_base {
             pub _base: root::JS::ArrayBufferView,
-        }
-        impl TypedArray_base {
-            #[inline]
-            pub unsafe fn fromObject(
-                unwrapped: *mut root::JSObject,
-            ) -> root::JS::TypedArray_base {
-                TypedArray_base_fromObject(unwrapped)
-            }
         }
         pub type TypedArray_DataType = root::JS::detail::ExternalTypeOf_t;
         pub type Int8Array = u32;
@@ -12671,12 +10747,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub budget: root::mozilla::TimeDuration,
             pub deadline: root::mozilla::TimeStamp,
         }
-        impl TimeBudget {
-            #[inline]
-            pub unsafe fn setDeadlineFromNow(&mut self) {
-                TimeBudget_setDeadlineFromNow(self)
-            }
-        }
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct WorkBudget {
@@ -12700,31 +10770,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub type SliceBudget_InterruptRequestFlag = u8;
         pub const SliceBudget_UnlimitedCounter: i64 = 9223372036854775807;
         pub const SliceBudget_StepsPerExpensiveCheck: i64 = 1000;
-        impl SliceBudget {
-            #[inline]
-            pub unsafe fn describe(
-                &self,
-                buffer: *mut ::std::os::raw::c_char,
-                maxlen: usize,
-            ) -> ::std::os::raw::c_int {
-                SliceBudget_describe(self, buffer, maxlen)
-            }
-            #[inline]
-            pub unsafe fn new(
-                time: root::JS::TimeBudget,
-                interrupt: *mut root::JS::SliceBudget_InterruptRequestFlag,
-            ) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                SliceBudget_SliceBudget(__bindgen_tmp.as_mut_ptr(), time, interrupt);
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn new1(work: root::JS::WorkBudget) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                SliceBudget_SliceBudget1(__bindgen_tmp.as_mut_ptr(), work);
-                __bindgen_tmp.assume_init()
-            }
-        }
         #[repr(u32)]
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub enum GCOptions {
@@ -12834,23 +10879,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 pub endTimestamp: root::mozilla::TimeStamp,
             }
             pub type GarbageCollectionEvent_Ptr = u8;
-            impl GarbageCollectionEvent {
-                #[inline]
-                pub unsafe fn Create(
-                    rt: *mut root::JSRuntime,
-                    stats: *mut root::js::gcstats::Statistics,
-                    majorGCNumber: u64,
-                ) -> root::JS::dbg::GarbageCollectionEvent_Ptr {
-                    GarbageCollectionEvent_Create(rt, stats, majorGCNumber)
-                }
-                #[inline]
-                pub unsafe fn toJSObject(
-                    &self,
-                    cx: *mut root::JSContext,
-                ) -> *mut root::JSObject {
-                    GarbageCollectionEvent_toJSObject(self, cx)
-                }
-            }
             #[repr(C)]
             #[derive(Debug, Copy, Clone, PartialEq)]
             pub struct Builder {
@@ -12869,102 +10897,12 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 pub _base: root::JS::dbg::Builder_BuiltThing,
             }
             pub type Builder_Object_Base = root::JS::dbg::Builder_BuiltThing;
-            impl Builder_Object {
-                #[inline]
-                pub unsafe fn defineProperty(
-                    &mut self,
-                    cx: *mut root::JSContext,
-                    name: *const ::std::os::raw::c_char,
-                    value: root::JS::HandleValue,
-                ) -> bool {
-                    Builder_Object_defineProperty(self, cx, name, value)
-                }
-                #[inline]
-                pub unsafe fn defineProperty1(
-                    &mut self,
-                    cx: *mut root::JSContext,
-                    name: *const ::std::os::raw::c_char,
-                    value: root::JS::HandleObject,
-                ) -> bool {
-                    Builder_Object_defineProperty1(self, cx, name, value)
-                }
-                #[inline]
-                pub unsafe fn defineProperty2(
-                    &mut self,
-                    cx: *mut root::JSContext,
-                    name: *const ::std::os::raw::c_char,
-                    value: *mut root::JS::dbg::Builder_Object,
-                ) -> bool {
-                    Builder_Object_defineProperty2(self, cx, name, value)
-                }
-            }
-            impl Builder {
-                #[inline]
-                pub unsafe fn newObject(
-                    &mut self,
-                    cx: *mut root::JSContext,
-                ) -> root::JS::dbg::Builder_Object {
-                    Builder_newObject(self, cx)
-                }
-                #[inline]
-                pub unsafe fn new(
-                    cx: *mut root::JSContext,
-                    debugger: *mut root::js::Debugger,
-                ) -> Self {
-                    let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                    Builder_Builder(__bindgen_tmp.as_mut_ptr(), cx, debugger);
-                    __bindgen_tmp.assume_init()
-                }
-            }
             #[repr(C)]
             #[derive(Debug, Copy, Clone, PartialEq)]
             pub struct BuilderOrigin {
                 pub _base: root::JS::dbg::Builder,
             }
             unsafe extern "C" {
-                #[link_name = "\u{1}_ZN2JS3dbg22GarbageCollectionEvent6CreateEP9JSRuntimeRN2js7gcstats10StatisticsEy"]
-                pub fn GarbageCollectionEvent_Create(
-                    rt: *mut root::JSRuntime,
-                    stats: *mut root::js::gcstats::Statistics,
-                    majorGCNumber: u64,
-                ) -> root::JS::dbg::GarbageCollectionEvent_Ptr;
-                #[link_name = "\u{1}_ZNK2JS3dbg22GarbageCollectionEvent10toJSObjectEP9JSContext"]
-                pub fn GarbageCollectionEvent_toJSObject(
-                    this: *const root::JS::dbg::GarbageCollectionEvent,
-                    cx: *mut root::JSContext,
-                ) -> *mut root::JSObject;
-                #[link_name = "\u{1}_ZN2JS3dbg7Builder6Object14definePropertyEP9JSContextPKcNS_6HandleINS_5ValueEEE"]
-                pub fn Builder_Object_defineProperty(
-                    this: *mut root::JS::dbg::Builder_Object,
-                    cx: *mut root::JSContext,
-                    name: *const ::std::os::raw::c_char,
-                    value: root::JS::HandleValue,
-                ) -> bool;
-                #[link_name = "\u{1}_ZN2JS3dbg7Builder6Object14definePropertyEP9JSContextPKcNS_6HandleIP8JSObjectEE"]
-                pub fn Builder_Object_defineProperty1(
-                    this: *mut root::JS::dbg::Builder_Object,
-                    cx: *mut root::JSContext,
-                    name: *const ::std::os::raw::c_char,
-                    value: root::JS::HandleObject,
-                ) -> bool;
-                #[link_name = "\u{1}_ZN2JS3dbg7Builder6Object14definePropertyEP9JSContextPKcRS2_"]
-                pub fn Builder_Object_defineProperty2(
-                    this: *mut root::JS::dbg::Builder_Object,
-                    cx: *mut root::JSContext,
-                    name: *const ::std::os::raw::c_char,
-                    value: *mut root::JS::dbg::Builder_Object,
-                ) -> bool;
-                #[link_name = "\u{1}_ZN2JS3dbg7Builder9newObjectEP9JSContext"]
-                pub fn Builder_newObject(
-                    this: *mut root::JS::dbg::Builder,
-                    cx: *mut root::JSContext,
-                ) -> root::JS::dbg::Builder_Object;
-                #[link_name = "\u{1}_ZN2JS3dbg7BuilderC1EP9JSContextPN2js8DebuggerE"]
-                pub fn Builder_Builder(
-                    this: *mut root::JS::dbg::Builder,
-                    cx: *mut root::JSContext,
-                    debugger: *mut root::js::Debugger,
-                ) -> *mut ::std::os::raw::c_void;
                 #[link_name = "\u{1}_ZN2JS3dbg23SetDebuggerMallocSizeOfEP9JSContextPFmPKvE"]
                 pub fn SetDebuggerMallocSizeOf(
                     cx: *mut root::JSContext,
@@ -13005,71 +10943,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub isComplete_: bool,
             pub options_: root::JS::GCOptions,
             pub reason_: root::JS::GCReason,
-        }
-        impl GCDescription {
-            #[inline]
-            pub unsafe fn formatSliceMessage(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> *mut u16 {
-                GCDescription_formatSliceMessage(self, cx)
-            }
-            #[inline]
-            pub unsafe fn formatSummaryMessage(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> *mut u16 {
-                GCDescription_formatSummaryMessage(self, cx)
-            }
-            #[inline]
-            pub unsafe fn startTime(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp {
-                GCDescription_startTime(self, cx)
-            }
-            #[inline]
-            pub unsafe fn endTime(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp {
-                GCDescription_endTime(self, cx)
-            }
-            #[inline]
-            pub unsafe fn lastSliceStart(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp {
-                GCDescription_lastSliceStart(self, cx)
-            }
-            #[inline]
-            pub unsafe fn lastSliceEnd(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp {
-                GCDescription_lastSliceEnd(self, cx)
-            }
-            #[inline]
-            pub unsafe fn sliceToJSONProfiler(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> root::JS::UniqueChars {
-                GCDescription_sliceToJSONProfiler(self, cx)
-            }
-            #[inline]
-            pub unsafe fn formatJSONProfiler(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> root::JS::UniqueChars {
-                GCDescription_formatJSONProfiler(self, cx)
-            }
-            #[inline]
-            pub unsafe fn toGCEvent(
-                &self,
-                cx: *mut root::JSContext,
-            ) -> root::JS::dbg::GarbageCollectionEvent_Ptr {
-                GCDescription_toGCEvent(self, cx)
-            }
         }
         pub type GCSliceCallback = ::std::option::Option<
             unsafe extern "C" fn(
@@ -13115,21 +10988,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct AutoDisableGenerationalGC {
             pub cx: *mut root::JSContext,
         }
-        impl AutoDisableGenerationalGC {
-            #[inline]
-            pub unsafe fn new(cx: *mut root::JSContext) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                AutoDisableGenerationalGC_AutoDisableGenerationalGC(
-                    __bindgen_tmp.as_mut_ptr(),
-                    cx,
-                );
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                AutoDisableGenerationalGC_AutoDisableGenerationalGC_destructor(self)
-            }
-        }
         /** Pass a subclass of this "abstract" class to callees to require that they
  never GC. Subclasses can use assertions or the hazard analysis to ensure no
  GC happens.*/
@@ -13165,14 +11023,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub struct AutoAssertGCCallback {
             pub _address: u8,
         }
-        impl AutoAssertGCCallback {
-            #[inline]
-            pub unsafe fn new() -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                AutoAssertGCCallback_AutoAssertGCCallback(__bindgen_tmp.as_mut_ptr());
-                __bindgen_tmp.assume_init()
-            }
-        }
         #[repr(C)]
         #[derive(Debug, PartialEq)]
         pub struct AutoCheckCannotGC {
@@ -13194,27 +11044,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub enum ErrorReportBuilder_SniffingBehavior {
             WithSideEffects = 0,
             NoSideEffects = 1,
-        }
-        impl ErrorReportBuilder {
-            #[inline]
-            pub unsafe fn init(
-                &mut self,
-                cx: *mut root::JSContext,
-                exnStack: *const root::JS::ExceptionStack,
-                sniffingBehavior: root::JS::ErrorReportBuilder_SniffingBehavior,
-            ) -> bool {
-                ErrorReportBuilder_init(self, cx, exnStack, sniffingBehavior)
-            }
-            #[inline]
-            pub unsafe fn new(cx: *mut root::JSContext) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                ErrorReportBuilder_ErrorReportBuilder(__bindgen_tmp.as_mut_ptr(), cx);
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                ErrorReportBuilder_ErrorReportBuilder_destructor(self)
-            }
         }
         pub const MaxNumErrorArguments: u16 = 10;
         #[repr(u8)]
@@ -13253,29 +11082,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub status: root::JS::ExceptionStatus,
             pub exceptionValue: root::JS::RootedValue,
             pub exceptionStack: root::JS::RootedObject,
-        }
-        impl AutoSaveExceptionState {
-            #[inline]
-            pub unsafe fn drop(&mut self) {
-                AutoSaveExceptionState_drop(self)
-            }
-            #[inline]
-            pub unsafe fn restore(&mut self) {
-                AutoSaveExceptionState_restore(self)
-            }
-            #[inline]
-            pub unsafe fn new(cx: *mut root::JSContext) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                AutoSaveExceptionState_AutoSaveExceptionState(
-                    __bindgen_tmp.as_mut_ptr(),
-                    cx,
-                );
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                AutoSaveExceptionState_AutoSaveExceptionState_destructor(self)
-            }
         }
         #[repr(u32)]
         /** During global creation, we fire notifications to callbacks registered
@@ -13408,21 +11214,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub cx: *mut root::JSContext,
             pub principals: *mut root::JSPrincipals,
             pub ignoreSelfHosted: bool,
-        }
-        impl FirstSubsumedFrame {
-            #[inline]
-            pub unsafe fn new(
-                cx: *mut root::JSContext,
-                ignoreSelfHostedFrames: bool,
-            ) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                FirstSubsumedFrame_FirstSubsumedFrame(
-                    __bindgen_tmp.as_mut_ptr(),
-                    cx,
-                    ignoreSelfHostedFrames,
-                );
-                __bindgen_tmp.assume_init()
-            }
         }
         /** # mozilla::Variant
 
@@ -13801,61 +11592,11 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             IMPLICIT = 0,
             EXPLICIT = 1,
         }
-        impl AutoSetAsyncStackForNewCalls {
-            #[inline]
-            pub unsafe fn new(
-                cx: *mut root::JSContext,
-                stack: root::JS::HandleObject,
-                asyncCause: *const ::std::os::raw::c_char,
-                kind: root::JS::AutoSetAsyncStackForNewCalls_AsyncCallKind,
-            ) -> Self {
-                let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-                AutoSetAsyncStackForNewCalls_AutoSetAsyncStackForNewCalls(
-                    __bindgen_tmp.as_mut_ptr(),
-                    cx,
-                    stack,
-                    asyncCause,
-                    kind,
-                );
-                __bindgen_tmp.assume_init()
-            }
-            #[inline]
-            pub unsafe fn destruct(&mut self) {
-                AutoSetAsyncStackForNewCalls_AutoSetAsyncStackForNewCalls_destructor(
-                    self,
-                )
-            }
-        }
         #[repr(C)]
         #[derive(Debug, PartialEq)]
         pub struct AutoFilename {
             pub ss_: *mut root::js::ScriptSource,
             pub filename_: root::__BindgenOpaqueArray<u32, 2usize>,
-        }
-        impl AutoFilename {
-            #[inline]
-            pub unsafe fn reset(&mut self) {
-                AutoFilename_reset(self)
-            }
-            #[inline]
-            pub unsafe fn setOwned(&mut self, filename: *mut root::JS::UniqueChars) {
-                AutoFilename_setOwned(self, filename)
-            }
-            #[inline]
-            pub unsafe fn setUnowned(
-                &mut self,
-                filename: *const ::std::os::raw::c_char,
-            ) {
-                AutoFilename_setUnowned(self, filename)
-            }
-            #[inline]
-            pub unsafe fn setScriptSource(&mut self, ss: *mut root::js::ScriptSource) {
-                AutoFilename_setScriptSource(self, ss)
-            }
-            #[inline]
-            pub unsafe fn get(&self) -> *const ::std::os::raw::c_char {
-                AutoFilename_get(self)
-            }
         }
         #[repr(C)]
         #[derive(Debug, PartialEq)]
@@ -14355,36 +12096,8 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             /// Embedder hook to set the buildId-generating function.
             #[link_name = "\u{1}_ZN2JS19SetProcessBuildIdOpEPFbPN7mozilla6VectorIcLm0EN2js17SystemAllocPolicyEEEE"]
             pub fn SetProcessBuildIdOp(buildIdOp: root::JS::BuildIdOp);
-            #[link_name = "\u{1}_ZN2JS24AutoEnterCycleCollectionC1EP9JSRuntime"]
-            pub fn AutoEnterCycleCollection_AutoEnterCycleCollection(
-                this: *mut root::JS::AutoEnterCycleCollection,
-                rt: *mut root::JSRuntime,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS24AutoEnterCycleCollectionD1Ev"]
-            pub fn AutoEnterCycleCollection_AutoEnterCycleCollection_destructor(
-                this: *mut root::JS::AutoEnterCycleCollection,
-            );
             #[link_name = "\u{1}_ZN2JS16RuntimeHeapStateEv"]
             pub fn RuntimeHeapState() -> root::JS::HeapState;
-            #[link_name = "\u{1}_ZN2JSL17RuntimeHeapIsBusyEv"]
-            pub fn RuntimeHeapIsBusy() -> bool;
-            #[link_name = "\u{1}_ZN2JSL20RuntimeHeapIsTracingEv"]
-            pub fn RuntimeHeapIsTracing() -> bool;
-            #[link_name = "\u{1}_ZN2JSL28RuntimeHeapIsMajorCollectingEv"]
-            pub fn RuntimeHeapIsMajorCollecting() -> bool;
-            #[link_name = "\u{1}_ZN2JSL28RuntimeHeapIsMinorCollectingEv"]
-            pub fn RuntimeHeapIsMinorCollecting() -> bool;
-            #[link_name = "\u{1}_ZN2JSL23RuntimeHeapIsCollectingENS_9HeapStateE"]
-            pub fn RuntimeHeapIsCollecting(state: root::JS::HeapState) -> bool;
-            #[link_name = "\u{1}_ZN2JSL23RuntimeHeapIsCollectingEv"]
-            pub fn RuntimeHeapIsCollecting1() -> bool;
-            #[link_name = "\u{1}_ZN2JSL28RuntimeHeapIsCycleCollectingEv"]
-            pub fn RuntimeHeapIsCycleCollecting() -> bool;
-            #[link_name = "\u{1}_ZN2JS9GCCellPtrC1ERKNS_5ValueE"]
-            pub fn GCCellPtr_GCCellPtr(
-                this: *mut root::JS::GCCellPtr,
-                v: *const root::JS::Value,
-            ) -> *mut ::std::os::raw::c_void;
             #[link_name = "\u{1}_ZN2JS21GetTenuredGCThingZoneENS_9GCCellPtrE"]
             pub fn GetTenuredGCThingZone(
                 thing: root::JS::GCCellPtr,
@@ -14393,16 +12106,8 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn GetNurseryCellZone(
                 cell: *mut root::js::gc::Cell,
             ) -> *mut root::JS::Zone;
-            #[link_name = "\u{1}_ZN2JSL14GetGCThingZoneENS_9GCCellPtrE"]
-            pub fn GetGCThingZone(thing: root::JS::GCCellPtr) -> *mut root::JS::Zone;
-            #[link_name = "\u{1}_ZN2JSL13GetStringZoneEP8JSString"]
-            pub fn GetStringZone(str_: *mut root::JSString) -> *mut root::JS::Zone;
             #[link_name = "\u{1}_ZN2JS13GetObjectZoneEP8JSObject"]
             pub fn GetObjectZone(obj: *mut root::JSObject) -> *mut root::JS::Zone;
-            #[link_name = "\u{1}_ZN2JSL19GCThingIsMarkedGrayENS_9GCCellPtrE"]
-            pub fn GCThingIsMarkedGray(thing: root::JS::GCCellPtr) -> bool;
-            #[link_name = "\u{1}_ZN2JSL23GCThingIsMarkedGrayInCCENS_9GCCellPtrE"]
-            pub fn GCThingIsMarkedGrayInCC(thing: root::JS::GCCellPtr) -> bool;
             #[link_name = "\u{1}_ZN2JS16GCThingTraceKindEPv"]
             pub fn GCThingTraceKind(
                 thing: *mut ::std::os::raw::c_void,
@@ -14418,8 +12123,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  if anything was unmarked.*/
             #[link_name = "\u{1}_ZN2JS28UnmarkGrayGCThingRecursivelyENS_9GCCellPtrE"]
             pub fn UnmarkGrayGCThingRecursively(thing: root::JS::GCCellPtr) -> bool;
-            #[link_name = "\u{1}_ZN2JSL22ExposeObjectToActiveJSEP8JSObject"]
-            pub fn ExposeObjectToActiveJS(obj: *mut root::JSObject);
             /// Returns a static string equivalent of |kind|.
             #[link_name = "\u{1}_ZN2JS18GCTraceKindToAsciiENS_9TraceKindE"]
             pub fn GCTraceKindToAscii(
@@ -14428,20 +12131,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             /// Returns the base size in bytes of the GC thing of kind |kind|.
             #[link_name = "\u{1}_ZN2JS15GCTraceKindSizeENS_9TraceKindE"]
             pub fn GCTraceKindSize(kind: root::JS::TraceKind) -> usize;
-            #[link_name = "\u{1}_ZN2JS14TracingContext11getEdgeNameEPKcPcm"]
-            pub fn TracingContext_getEdgeName(
-                this: *mut root::JS::TracingContext,
-                name: *const ::std::os::raw::c_char,
-                buffer: *mut ::std::os::raw::c_char,
-                bufferSize: usize,
-            );
-            #[link_name = "\u{1}_ZN2JS14CallbackTracerC2EP9JSContextNS_10TracerKindENS_12TraceOptionsE"]
-            pub fn CallbackTracer_CallbackTracer(
-                this: *mut root::JS::CallbackTracer,
-                cx: *mut root::JSContext,
-                kind: root::JS::TracerKind,
-                options: root::JS::TraceOptions,
-            ) -> *mut ::std::os::raw::c_void;
             #[link_name = "\u{1}_ZN2JS9TraceRootEP8JSTracerPPNS_6BigIntEPKc"]
             pub fn TraceRoot(
                 trc: *mut root::JSTracer,
@@ -14665,52 +12354,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn AssertGCThingMustBeTenured(obj: *mut root::JSObject);
             #[link_name = "\u{1}_ZN2JS34AssertGCThingIsNotNurseryAllocableEPN2js2gc4CellE"]
             pub fn AssertGCThingIsNotNurseryAllocable(cell: *mut root::js::gc::Cell);
-            #[link_name = "\u{1}_ZN2JSL15ObjectIsTenuredEP8JSObject"]
-            pub fn ObjectIsTenured(obj: *mut root::JSObject) -> bool;
-            #[link_name = "\u{1}_ZN2JSL15ObjectIsTenuredERKNS_4HeapIP8JSObjectEE"]
-            pub fn ObjectIsTenured1(
-                obj: *const root::JS::Heap<*mut root::JSObject>,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JSL18ObjectIsMarkedGrayEP8JSObject"]
-            pub fn ObjectIsMarkedGray(obj: *mut root::JSObject) -> bool;
-            #[link_name = "\u{1}_ZN2JSL18ObjectIsMarkedGrayERKNS_4HeapIP8JSObjectEE"]
-            pub fn ObjectIsMarkedGray1(
-                obj: *const root::JS::Heap<*mut root::JSObject>,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JSL18ObjectIsMarkedGrayERKNS_11TenuredHeapIP8JSObjectEE"]
-            pub fn ObjectIsMarkedGray2(obj: *const root::JS::TenuredHeap) -> bool;
-            #[link_name = "\u{1}_ZN2JS14RootingContext15traceStackRootsEP8JSTracer"]
-            pub fn RootingContext_traceStackRoots(
-                this: *mut root::JS::RootingContext,
-                trc: *mut root::JSTracer,
-            );
-            #[link_name = "\u{1}_ZN2JS14RootingContext17traceAllGCRootersEP8JSTracer"]
-            pub fn RootingContext_traceAllGCRooters(
-                this: *mut root::JS::RootingContext,
-                trc: *mut root::JSTracer,
-            );
-            #[link_name = "\u{1}_ZN2JS14RootingContext21traceWrapperGCRootersEP8JSTracer"]
-            pub fn RootingContext_traceWrapperGCRooters(
-                this: *mut root::JS::RootingContext,
-                trc: *mut root::JSTracer,
-            );
-            #[link_name = "\u{1}_ZN2JS14RootingContext17traceGCRooterListEP8JSTracerPNS_12AutoGCRooterE"]
-            pub fn RootingContext_traceGCRooterList(
-                trc: *mut root::JSTracer,
-                head: *mut root::JS::AutoGCRooter,
-            );
-            #[link_name = "\u{1}_ZN2JS14RootingContext16checkNoGCRootersEv"]
-            pub fn RootingContext_checkNoGCRooters(this: *mut root::JS::RootingContext);
-            #[link_name = "\u{1}_ZN2JS14RootingContextC1EPN2js7NurseryE"]
-            pub fn RootingContext_RootingContext(
-                this: *mut root::JS::RootingContext,
-                nursery: *mut root::js::Nursery,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS12AutoGCRooter5traceEP8JSTracer"]
-            pub fn AutoGCRooter_trace(
-                this: *mut root::JS::AutoGCRooter,
-                trc: *mut root::JSTracer,
-            );
             #[link_name = "\u{1}_ZN2JS17AddPersistentRootEPNS_14RootingContextENS_8RootKindEPN2js20PersistentRootedBaseE"]
             pub fn AddPersistentRoot(
                 cx: *mut root::JS::RootingContext,
@@ -14927,178 +12570,10 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 cx: *mut root::JSContext,
                 chars: *const ::std::os::raw::c_char,
             ) -> root::JS::UniqueWideChars;
-            #[link_name = "\u{1}_ZN2JS24TransitiveCompileOptions24copyPODTransitiveOptionsERKS0_"]
-            pub fn TransitiveCompileOptions_copyPODTransitiveOptions(
-                this: *mut root::JS::TransitiveCompileOptions,
-                rhs: *const root::JS::TransitiveCompileOptions,
-            );
-            #[link_name = "\u{1}_ZN2JS22ReadOnlyCompileOptions27copyPODNonTransitiveOptionsERKS0_"]
-            pub fn ReadOnlyCompileOptions_copyPODNonTransitiveOptions(
-                this: *mut root::JS::ReadOnlyCompileOptions,
-                rhs: *const root::JS::ReadOnlyCompileOptions,
-            );
-            /// Set this to a copy of |rhs|.  Return false on OOM.
-            #[link_name = "\u{1}_ZN2JS20OwningCompileOptions4copyEP9JSContextRKNS_22ReadOnlyCompileOptionsE"]
-            pub fn OwningCompileOptions_copy(
-                this: *mut root::JS::OwningCompileOptions,
-                cx: *mut root::JSContext,
-                rhs: *const root::JS::ReadOnlyCompileOptions,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS20OwningCompileOptions4copyEPN2js15FrontendContextERKNS_22ReadOnlyCompileOptionsE"]
-            pub fn OwningCompileOptions_copy1(
-                this: *mut root::JS::OwningCompileOptions,
-                fc: *mut root::JS::FrontendContext,
-                rhs: *const root::JS::ReadOnlyCompileOptions,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS20OwningCompileOptions5stealEOS0_"]
-            pub fn OwningCompileOptions_steal(
-                this: *mut root::JS::OwningCompileOptions,
-                rhs: *mut root::JS::OwningCompileOptions,
-            );
-            #[link_name = "\u{1}_ZN2JS20OwningCompileOptions5stealEONS_19OwningDecodeOptionsE"]
-            pub fn OwningCompileOptions_steal1(
-                this: *mut root::JS::OwningCompileOptions,
-                rhs: *mut root::JS::OwningDecodeOptions,
-            );
-            #[link_name = "\u{1}_ZNK2JS20OwningCompileOptions19sizeOfExcludingThisEPFmPKvE"]
-            pub fn OwningCompileOptions_sizeOfExcludingThis(
-                this: *const root::JS::OwningCompileOptions,
-                mallocSizeOf: root::mozilla::MallocSizeOf,
-            ) -> usize;
-            #[link_name = "\u{1}_ZN2JS20OwningCompileOptionsC1EP9JSContext"]
-            pub fn OwningCompileOptions_OwningCompileOptions(
-                this: *mut root::JS::OwningCompileOptions,
-                cx: *mut root::JSContext,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS20OwningCompileOptionsD1Ev"]
-            pub fn OwningCompileOptions_OwningCompileOptions_destructor(
-                this: *mut root::JS::OwningCompileOptions,
-            );
-            #[link_name = "\u{1}_ZN2JS14CompileOptions27setIntroductionInfoToCallerEP9JSContextPKcNS_13MutableHandleIP8JSScriptEE"]
-            pub fn CompileOptions_setIntroductionInfoToCaller(
-                this: *mut root::JS::CompileOptions,
-                cx: *mut root::JSContext,
-                introductionType: *const ::std::os::raw::c_char,
-                introductionScript: root::JS::MutableHandle<*mut root::JSScript>,
-            ) -> *mut root::JS::CompileOptions;
-            #[link_name = "\u{1}_ZNK2JS14CompileOptions34warnAboutConflictingDelazificationEv"]
-            pub fn CompileOptions_warnAboutConflictingDelazification(
-                this: *const root::JS::CompileOptions,
-            );
-            #[link_name = "\u{1}_ZN2JS14CompileOptionsC1EP9JSContext"]
-            pub fn CompileOptions_CompileOptions(
-                this: *mut root::JS::CompileOptions,
-                cx: *mut root::JSContext,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS18InstantiateOptionsC1Ev"]
-            pub fn InstantiateOptions_InstantiateOptions(
-                this: *mut root::JS::InstantiateOptions,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS19OwningDecodeOptions4copyEPN2js15FrontendContextERKNS_21ReadOnlyDecodeOptionsE"]
-            pub fn OwningDecodeOptions_copy(
-                this: *mut root::JS::OwningDecodeOptions,
-                maybeFc: *mut root::JS::FrontendContext,
-                rhs: *const root::JS::ReadOnlyDecodeOptions,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS19OwningDecodeOptions14infallibleCopyERKNS_21ReadOnlyDecodeOptionsE"]
-            pub fn OwningDecodeOptions_infallibleCopy(
-                this: *mut root::JS::OwningDecodeOptions,
-                rhs: *const root::JS::ReadOnlyDecodeOptions,
-            );
-            #[link_name = "\u{1}_ZNK2JS19OwningDecodeOptions19sizeOfExcludingThisEPFmPKvE"]
-            pub fn OwningDecodeOptions_sizeOfExcludingThis(
-                this: *const root::JS::OwningDecodeOptions,
-                mallocSizeOf: root::mozilla::MallocSizeOf,
-            ) -> usize;
-            #[link_name = "\u{1}_ZN2JS19OwningDecodeOptionsD1Ev"]
-            pub fn OwningDecodeOptions_OwningDecodeOptions_destructor(
-                this: *mut root::JS::OwningDecodeOptions,
-            );
-            #[link_name = "\u{1}_ZN2JS14ContextOptions10setFuzzingEb"]
-            pub fn ContextOptions_setFuzzing(
-                this: *mut root::JS::ContextOptions,
-                flag: bool,
-            ) -> *mut root::JS::ContextOptions;
             #[link_name = "\u{1}_ZN2JS17ContextOptionsRefEP9JSContext"]
             pub fn ContextOptionsRef(
                 cx: *mut root::JSContext,
             ) -> *mut root::JS::ContextOptions;
-            #[link_name = "\u{1}_ZN2JSL10GenericNaNEv"]
-            pub fn GenericNaN() -> f64;
-            #[link_name = "\u{1}_ZN2JSL8InfinityEv"]
-            pub fn Infinity() -> f64;
-            #[link_name = "\u{1}_ZN2JSL15CanonicalizeNaNEd"]
-            pub fn CanonicalizeNaN(d: f64) -> f64;
-            #[link_name = "\u{1}_ZNK2JS5Value4dumpEv"]
-            pub fn Value_dump(this: *const root::JS::Value);
-            #[link_name = "\u{1}_ZNK2JS5Value4dumpERN2js14GenericPrinterE"]
-            pub fn Value_dump1(
-                this: *const root::JS::Value,
-                out: *mut root::js::GenericPrinter,
-            );
-            #[link_name = "\u{1}_ZNK2JS5Value4dumpERN2js11JSONPrinterE"]
-            pub fn Value_dump2(
-                this: *const root::JS::Value,
-                json: *mut root::js::JSONPrinter,
-            );
-            #[link_name = "\u{1}_ZNK2JS5Value10dumpFieldsERN2js11JSONPrinterE"]
-            pub fn Value_dumpFields(
-                this: *const root::JS::Value,
-                json: *mut root::js::JSONPrinter,
-            );
-            #[link_name = "\u{1}_ZNK2JS5Value17dumpStringContentERN2js14GenericPrinterE"]
-            pub fn Value_dumpStringContent(
-                this: *const root::JS::Value,
-                out: *mut root::js::GenericPrinter,
-            );
-            #[link_name = "\u{1}_ZN2JSL21ExposeValueToActiveJSERKNS_5ValueE"]
-            pub fn ExposeValueToActiveJS(v: *const root::JS::Value);
-            #[link_name = "\u{1}_ZN2JSL9NullValueEv"]
-            pub fn NullValue() -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL14UndefinedValueEv"]
-            pub fn UndefinedValue() -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL10Int32ValueEi"]
-            pub fn Int32Value(i32_: i32) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL11DoubleValueEd"]
-            pub fn DoubleValue(dbl: f64) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL24CanonicalizedDoubleValueEd"]
-            pub fn CanonicalizedDoubleValue(d: f64) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL8NaNValueEv"]
-            pub fn NaNValue() -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL13InfinityValueEv"]
-            pub fn InfinityValue() -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL12Float32ValueEf"]
-            pub fn Float32Value(f: f32) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL11StringValueEP8JSString"]
-            pub fn StringValue(str_: *mut root::JSString) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL11SymbolValueEPNS_6SymbolE"]
-            pub fn SymbolValue(sym: *mut root::JS::Symbol) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL11BigIntValueEPNS_6BigIntE"]
-            pub fn BigIntValue(bi: *mut root::JS::BigInt) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL12BooleanValueEb"]
-            pub fn BooleanValue(boo: bool) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL9TrueValueEv"]
-            pub fn TrueValue() -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL10FalseValueEv"]
-            pub fn FalseValue() -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL11ObjectValueER8JSObject"]
-            pub fn ObjectValue(obj: *mut root::JSObject) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL10MagicValueE10JSWhyMagic"]
-            pub fn MagicValue(why: root::JSWhyMagic) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL16MagicValueUint32Ej"]
-            pub fn MagicValueUint32(payload: u32) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL11NumberValueEj"]
-            pub fn NumberValue(i: u32) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL17ObjectOrNullValueEP8JSObject"]
-            pub fn ObjectOrNullValue(obj: *mut root::JSObject) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL12PrivateValueEPv"]
-            pub fn PrivateValue(ptr: *mut ::std::os::raw::c_void) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL12PrivateValueEm"]
-            pub fn PrivateValue1(ptr: usize) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL18PrivateUint32ValueEj"]
-            pub fn PrivateUint32Value(ui: u32) -> root::JS::Value;
-            #[link_name = "\u{1}_ZN2JSL19PrivateGCThingValueEPN2js2gc4CellE"]
-            pub fn PrivateGCThingValue(cell: *mut root::js::gc::Cell) -> root::JS::Value;
             #[link_name = "\u{1}_ZN2JS25HeapValuePostWriteBarrierEPNS_5ValueERKS0_S3_"]
             pub fn HeapValuePostWriteBarrier(
                 valuep: *mut root::JS::Value,
@@ -15120,7 +12595,7 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             #[link_name = "\u{1}_ZN2JS16FalseHandleValueE"]
             pub static FalseHandleValue: root::JS::HandleValue;
             #[link_name = "\u{1}_ZN2JS18NothingHandleValueE"]
-            pub static NothingHandleValue: u8;
+            pub static NothingHandleValue: u32;
             /** ES6 draft 20141224, 7.1.1, second algorithm.
 
  Most users shouldn't call this -- use JS::ToBoolean, ToNumber, or ToString
@@ -15139,51 +12614,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  (This will produce "NaN", "-Infinity", or "Infinity" for non-finite |d|.)*/
             #[link_name = "\u{1}_ZN2JS14NumberToStringEdRA32_c"]
             pub fn NumberToString(d: f64, out: *mut [::std::os::raw::c_char; 32usize]);
-            #[link_name = "\u{1}_ZN2JS8CallArgs20reportMoreArgsNeededEP9JSContextPKcjj"]
-            pub fn CallArgs_reportMoreArgsNeeded(
-                cx: *mut root::JSContext,
-                fnname: *const ::std::os::raw::c_char,
-                required: ::std::os::raw::c_uint,
-                actual: ::std::os::raw::c_uint,
-            );
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey13isPrivateNameEv"]
-            pub fn PropertyKey_isPrivateName(this: *const root::JS::PropertyKey) -> bool;
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey17isWellKnownSymbolENS_10SymbolCodeE"]
-            pub fn PropertyKey_isWellKnownSymbol(
-                this: *const root::JS::PropertyKey,
-                code: root::JS::SymbolCode,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS11PropertyKey16fromPinnedStringEP8JSString"]
-            pub fn PropertyKey_fromPinnedString(
-                str_: *mut root::JSString,
-            ) -> root::JS::PropertyKey;
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey4dumpEv"]
-            pub fn PropertyKey_dump(this: *const root::JS::PropertyKey);
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey4dumpERN2js14GenericPrinterE"]
-            pub fn PropertyKey_dump1(
-                this: *const root::JS::PropertyKey,
-                out: *mut root::js::GenericPrinter,
-            );
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey4dumpERN2js11JSONPrinterE"]
-            pub fn PropertyKey_dump2(
-                this: *const root::JS::PropertyKey,
-                json: *mut root::js::JSONPrinter,
-            );
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey10dumpFieldsERN2js11JSONPrinterE"]
-            pub fn PropertyKey_dumpFields(
-                this: *const root::JS::PropertyKey,
-                json: *mut root::js::JSONPrinter,
-            );
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey16dumpPropertyNameERN2js14GenericPrinterE"]
-            pub fn PropertyKey_dumpPropertyName(
-                this: *const root::JS::PropertyKey,
-                out: *mut root::js::GenericPrinter,
-            );
-            #[link_name = "\u{1}_ZNK2JS11PropertyKey17dumpStringContentERN2js14GenericPrinterE"]
-            pub fn PropertyKey_dumpStringContent(
-                this: *const root::JS::PropertyKey,
-                out: *mut root::js::GenericPrinter,
-            );
             #[link_name = "\u{1}_ZN2JS21VoidHandlePropertyKeyE"]
             pub static VoidHandlePropertyKey: root::JS::HandleId;
             /** Get one of the well-known symbols defined by ES6 as PropertyKey. This is
@@ -15208,137 +12638,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 id: root::JS::Handle<root::JS::PropertyKey>,
                 setterId: root::JS::MutableHandle<root::JS::PropertyKey>,
             ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult20failCantRedefinePropEv"]
-            pub fn ObjectOpResult_failCantRedefineProp(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult12failReadOnlyEv"]
-            pub fn ObjectOpResult_failReadOnly(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult14failGetterOnlyEv"]
-            pub fn ObjectOpResult_failGetterOnly(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult14failCantDeleteEv"]
-            pub fn ObjectOpResult_failCantDelete(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult21failCantSetInterposedEv"]
-            pub fn ObjectOpResult_failCantSetInterposed(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult27failCantDefineWindowElementEv"]
-            pub fn ObjectOpResult_failCantDefineWindowElement(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult27failCantDeleteWindowElementEv"]
-            pub fn ObjectOpResult_failCantDeleteWindowElement(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult33failCantDefineWindowNamedPropertyEv"]
-            pub fn ObjectOpResult_failCantDefineWindowNamedProperty(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult33failCantDeleteWindowNamedPropertyEv"]
-            pub fn ObjectOpResult_failCantDeleteWindowNamedProperty(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult25failCantPreventExtensionsEv"]
-            pub fn ObjectOpResult_failCantPreventExtensions(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult16failCantSetProtoEv"]
-            pub fn ObjectOpResult_failCantSetProto(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult17failNoNamedSetterEv"]
-            pub fn ObjectOpResult_failNoNamedSetter(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult19failNoIndexedSetterEv"]
-            pub fn ObjectOpResult_failNoIndexedSetter(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult21failNotDataDescriptorEv"]
-            pub fn ObjectOpResult_failNotDataDescriptor(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult21failInvalidDescriptorEv"]
-            pub fn ObjectOpResult_failInvalidDescriptor(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult35failCantDefineWindowNonConfigurableEv"]
-            pub fn ObjectOpResult_failCantDefineWindowNonConfigurable(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult18failBadArrayLengthEv"]
-            pub fn ObjectOpResult_failBadArrayLength(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult12failBadIndexEv"]
-            pub fn ObjectOpResult_failBadIndex(
-                this: *mut root::JS::ObjectOpResult,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult11reportErrorEP9JSContextNS_6HandleIP8JSObjectEENS3_INS_11PropertyKeyEEE"]
-            pub fn ObjectOpResult_reportError(
-                this: *mut root::JS::ObjectOpResult,
-                cx: *mut root::JSContext,
-                obj: root::JS::HandleObject,
-                id: root::JS::HandleId,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS14ObjectOpResult11reportErrorEP9JSContextNS_6HandleIP8JSObjectEE"]
-            pub fn ObjectOpResult_reportError1(
-                this: *mut root::JS::ObjectOpResult,
-                cx: *mut root::JSContext,
-                obj: root::JS::HandleObject,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions29setNewCompartmentInSystemZoneEv"]
-            pub fn RealmCreationOptions_setNewCompartmentInSystemZone(
-                this: *mut root::JS::RealmCreationOptions,
-            ) -> *mut root::JS::RealmCreationOptions;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions31setNewCompartmentInExistingZoneEP8JSObject"]
-            pub fn RealmCreationOptions_setNewCompartmentInExistingZone(
-                this: *mut root::JS::RealmCreationOptions,
-                obj: *mut root::JSObject,
-            ) -> *mut root::JS::RealmCreationOptions;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions24setNewCompartmentAndZoneEv"]
-            pub fn RealmCreationOptions_setNewCompartmentAndZone(
-                this: *mut root::JS::RealmCreationOptions,
-            ) -> *mut root::JS::RealmCreationOptions;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions22setExistingCompartmentEP8JSObject"]
-            pub fn RealmCreationOptions_setExistingCompartment(
-                this: *mut root::JS::RealmCreationOptions,
-                obj: *mut root::JSObject,
-            ) -> *mut root::JS::RealmCreationOptions;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions22setExistingCompartmentEPNS_11CompartmentE"]
-            pub fn RealmCreationOptions_setExistingCompartment1(
-                this: *mut root::JS::RealmCreationOptions,
-                compartment: *mut root::JS::Compartment,
-            ) -> *mut root::JS::RealmCreationOptions;
-            #[link_name = "\u{1}_ZNK2JS20RealmCreationOptions32getSharedMemoryAndAtomicsEnabledEv"]
-            pub fn RealmCreationOptions_getSharedMemoryAndAtomicsEnabled(
-                this: *const root::JS::RealmCreationOptions,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions32setSharedMemoryAndAtomicsEnabledEb"]
-            pub fn RealmCreationOptions_setSharedMemoryAndAtomicsEnabled(
-                this: *mut root::JS::RealmCreationOptions,
-                flag: bool,
-            ) -> *mut root::JS::RealmCreationOptions;
-            #[link_name = "\u{1}_ZNK2JS20RealmCreationOptions21getCoopAndCoepEnabledEv"]
-            pub fn RealmCreationOptions_getCoopAndCoepEnabled(
-                this: *const root::JS::RealmCreationOptions,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions21setCoopAndCoepEnabledEb"]
-            pub fn RealmCreationOptions_setCoopAndCoepEnabled(
-                this: *mut root::JS::RealmCreationOptions,
-                flag: bool,
-            ) -> *mut root::JS::RealmCreationOptions;
-            #[link_name = "\u{1}_ZN2JS20RealmCreationOptions14setLocaleCopyZEPKc"]
-            pub fn RealmCreationOptions_setLocaleCopyZ(
-                this: *mut root::JS::RealmCreationOptions,
-                locale: *const ::std::os::raw::c_char,
-            ) -> *mut root::JS::RealmCreationOptions;
             #[link_name = "\u{1}_ZN2JS23RealmCreationOptionsRefEPNS_5RealmE"]
             pub fn RealmCreationOptionsRef(
                 realm: *mut root::JS::Realm,
@@ -15485,35 +12784,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 v2: root::JS::Handle<root::JS::Value>,
                 same: *mut bool,
             ) -> bool;
-            /** Implements |SameValueZero(v1, v2)| for Number values |v1| and |v2|.
- SameValueZero equates NaNs, equal nonzero values, and zeroes without respect
- to their signs.*/
-            #[link_name = "\u{1}_ZN2JSL13SameValueZeroEdd"]
-            pub fn SameValueZero(v1: f64, v2: f64) -> bool;
-            #[must_use]
-            /** Initialize the iterator.  If AllowNonIterable is passed then if getting
- the @@iterator property from iterable returns undefined init() will just
- return true instead of throwing.  Callers must then check
- valueIsIterable() before continuing with the iteration.*/
-            #[link_name = "\u{1}_ZN2JS13ForOfIterator4initENS_6HandleINS_5ValueEEENS0_19NonIterableBehaviorE"]
-            pub fn ForOfIterator_init(
-                this: *mut root::JS::ForOfIterator,
-                iterable: root::JS::Handle<root::JS::Value>,
-                nonIterableBehavior: root::JS::ForOfIterator_NonIterableBehavior,
-            ) -> bool;
-            #[must_use]
-            /** Get the next value from the iterator.  If false *done is true
- after this call, do not examine val.*/
-            #[link_name = "\u{1}_ZN2JS13ForOfIterator4nextENS_13MutableHandleINS_5ValueEEEPb"]
-            pub fn ForOfIterator_next(
-                this: *mut root::JS::ForOfIterator,
-                val: root::JS::MutableHandle<root::JS::Value>,
-                done: *mut bool,
-            ) -> bool;
-            /** Close the iterator.
- For the case that completion type is throw.*/
-            #[link_name = "\u{1}_ZN2JS13ForOfIterator10closeThrowEv"]
-            pub fn ForOfIterator_closeThrow(this: *mut root::JS::ForOfIterator);
             #[link_name = "\u{1}_ZN2JS17DisableJitBackendEv"]
             pub fn DisableJitBackend();
             /** An API akin to JS_Stringify but with the goal of not having observable
@@ -15572,28 +12842,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 len: u32,
                 handler: *mut root::JS::JSONParseHandler,
             ) -> bool;
-            #[link_name = "\u{1}_ZN2JS16NotableClassInfoC1EPKcRKNS_9ClassInfoE"]
-            pub fn NotableClassInfo_NotableClassInfo(
-                this: *mut root::JS::NotableClassInfo,
-                className: *const ::std::os::raw::c_char,
-                info: *const root::JS::ClassInfo,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS17NotableStringInfoC1EP8JSStringRKNS_10StringInfoE"]
-            pub fn NotableStringInfo_NotableStringInfo(
-                this: *mut root::JS::NotableStringInfo,
-                str_: *mut root::JSString,
-                info: *const root::JS::StringInfo,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS23NotableScriptSourceInfoC1EPKcRKNS_16ScriptSourceInfoE"]
-            pub fn NotableScriptSourceInfo_NotableScriptSourceInfo(
-                this: *mut root::JS::NotableScriptSourceInfo,
-                filename: *const ::std::os::raw::c_char,
-                info: *const root::JS::ScriptSourceInfo,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS9ZoneStats11initStringsEv"]
-            pub fn ZoneStats_initStrings(this: *mut root::JS::ZoneStats);
-            #[link_name = "\u{1}_ZN2JS10RealmStats11initClassesEv"]
-            pub fn RealmStats_initClasses(this: *mut root::JS::RealmStats);
             #[link_name = "\u{1}_ZN2JS18CollectGlobalStatsEPNS_11GlobalStatsE"]
             pub fn CollectGlobalStats(gStats: *mut root::JS::GlobalStats) -> bool;
             #[link_name = "\u{1}_ZN2JS19CollectRuntimeStatsEP9JSContextPNS_12RuntimeStatsEPNS_20ObjectPrivateVisitorEb"]
@@ -15827,55 +13075,12 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 obj: root::JS::Handle<*mut root::JSObject>,
                 cls: *mut root::js::ESClass,
             ) -> bool;
-            /** Get the |JS::Compartment*| of an object.
-
- Note that the compartment of an object in this realm, that is a
- cross-compartment wrapper around an object from another realm, is the
- compartment of this realm.*/
-            #[link_name = "\u{1}_ZN2JSL14GetCompartmentEP8JSObject"]
-            pub fn GetCompartment(
-                obj: *mut root::JSObject,
-            ) -> *mut root::JS::Compartment;
             /** Tell SpiderMonkey to use `queue` to schedule promise reactions.
 
  SpiderMonkey does not take ownership of the queue; it is the embedding's
  responsibility to clean it up after the runtime is destroyed.*/
             #[link_name = "\u{1}_ZN2JS11SetJobQueueEP9JSContextPNS_8JobQueueE"]
             pub fn SetJobQueue(cx: *mut root::JSContext, queue: *mut root::JS::JobQueue);
-            #[link_name = "\u{1}_ZN2JS32AutoDebuggerJobQueueInterruption4initEP9JSContext"]
-            pub fn AutoDebuggerJobQueueInterruption_init(
-                this: *mut root::JS::AutoDebuggerJobQueueInterruption,
-                cx: *mut root::JSContext,
-            ) -> bool;
-            /** Drain the job queue. (In HTML terminology, perform a microtask checkpoint.)
-
- To make Debugger hook calls more like HTML tasks or ECMAScript jobs,
- Debugger promises that each hook begins execution with a clean microtask
- queue, and that a microtask checkpoint (queue drain) takes place after each
- hook returns, successfully or otherwise.
-
- To ensure these debugger-introduced microtask checkpoints serve only the
- hook's microtasks, and never affect the debuggee's, the Debugger API
- implementation uses only this method to perform the checkpoints, thereby
- statically ensuring that an AutoDebuggerJobQueueInterruption is in scope to
- protect the debuggee.
-
- SavedJobQueue implementations are required to assert that the queue is
- empty before restoring the debuggee's queue. If the Debugger API ever fails
- to perform a microtask checkpoint after calling a hook, that assertion will
- fail, catching the mistake.*/
-            #[link_name = "\u{1}_ZN2JS32AutoDebuggerJobQueueInterruption7runJobsEv"]
-            pub fn AutoDebuggerJobQueueInterruption_runJobs(
-                this: *mut root::JS::AutoDebuggerJobQueueInterruption,
-            );
-            #[link_name = "\u{1}_ZN2JS32AutoDebuggerJobQueueInterruptionC1Ev"]
-            pub fn AutoDebuggerJobQueueInterruption_AutoDebuggerJobQueueInterruption(
-                this: *mut root::JS::AutoDebuggerJobQueueInterruption,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS32AutoDebuggerJobQueueInterruptionD1Ev"]
-            pub fn AutoDebuggerJobQueueInterruption_AutoDebuggerJobQueueInterruption_destructor(
-                this: *mut root::JS::AutoDebuggerJobQueueInterruption,
-            );
             /** Sets the callback that's invoked whenever a Promise is rejected without
  a rejection handler, and when a Promise that was previously rejected
  without a handler gets a handler attached.*/
@@ -16100,14 +13305,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 cx: *mut root::JSContext,
                 promises: root::JS::HandleObjectVector,
             ) -> *mut root::JSObject;
-            #[link_name = "\u{1}_ZN2JS12Dispatchable3RunEP9JSContextON7mozilla9UniquePtrIS0_NS_12DeletePolicyIS0_EEEENS0_17MaybeShuttingDownE"]
-            pub fn Dispatchable_Run(
-                cx: *mut root::JSContext,
-                task: *mut u32,
-                maybeShuttingDown: root::JS::Dispatchable_MaybeShuttingDown,
-            );
-            #[link_name = "\u{1}_ZN2JS12Dispatchable17ReleaseFailedTaskEON7mozilla9UniquePtrIS0_NS_12DeletePolicyIS0_EEEE"]
-            pub fn Dispatchable_ReleaseFailedTask(task: *mut u32);
             #[link_name = "\u{1}_ZN2JS24InitDispatchsToEventLoopEP9JSContextPFbPvON7mozilla9UniquePtrINS_12DispatchableENS_12DeletePolicyIS5_EEEEEPFbS2_S9_jES2_"]
             pub fn InitDispatchsToEventLoop(
                 cx: *mut root::JSContext,
@@ -16123,11 +13320,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  with this call earlier than JSRuntime destruction.*/
             #[link_name = "\u{1}_ZN2JS18ShutdownAsyncTasksEP9JSContext"]
             pub fn ShutdownAsyncTasks(cx: *mut root::JSContext);
-            #[link_name = "\u{1}_ZN2JS18PropertyDescriptor5traceEP8JSTracer"]
-            pub fn PropertyDescriptor_trace(
-                this: *mut root::JS::PropertyDescriptor,
-                trc: *mut root::JSTracer,
-            );
             #[link_name = "\u{1}_ZN2JS28ToCompletePropertyDescriptorEP9JSContextNS_6HandleINS_5ValueEEENS_13MutableHandleINS_18PropertyDescriptorEEE"]
             pub fn ToCompletePropertyDescriptor(
                 cx: *mut root::JSContext,
@@ -17151,10 +14343,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 options: *const root::JS::ReadOnlyCompileOptions,
                 script: *mut root::JSScript,
             ) -> bool;
-            #[link_name = "\u{1}_ZN2JS20InstantiationStorageD1Ev"]
-            pub fn InstantiationStorage_InstantiationStorage_destructor(
-                this: *mut root::JS::InstantiationStorage,
-            );
             #[link_name = "\u{1}_ZN2JS22IsLargeArrayBufferViewEP8JSObject"]
             pub fn IsLargeArrayBufferView(obj: *mut root::JSObject) -> bool;
             #[link_name = "\u{1}_ZN2JS26IsResizableArrayBufferViewEP8JSObject"]
@@ -17169,18 +14357,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 cx: *mut root::JSContext,
                 obj: *mut root::JSObject,
             ) -> bool;
-            #[link_name = "\u{1}_ZN2JS17ArrayBufferOrView6unwrapEP8JSObject"]
-            pub fn ArrayBufferOrView_unwrap(
-                maybeWrapped: *mut root::JSObject,
-            ) -> root::JS::ArrayBufferOrView;
-            #[link_name = "\u{1}_ZNK2JS17ArrayBufferOrView10isDetachedEv"]
-            pub fn ArrayBufferOrView_isDetached(
-                this: *const root::JS::ArrayBufferOrView,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2JS17ArrayBufferOrView11isResizableEv"]
-            pub fn ArrayBufferOrView_isResizable(
-                this: *const root::JS::ArrayBufferOrView,
-            ) -> bool;
             #[link_name = "\u{1}_ZN2JS11ArrayBuffer24FixedLengthUnsharedClassE"]
             pub static ArrayBuffer_FixedLengthUnsharedClass: *const root::JSClass;
             #[link_name = "\u{1}_ZN2JS11ArrayBuffer22ResizableUnsharedClassE"]
@@ -17189,28 +14365,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub static ArrayBuffer_FixedLengthSharedClass: *const root::JSClass;
             #[link_name = "\u{1}_ZN2JS11ArrayBuffer19GrowableSharedClassE"]
             pub static ArrayBuffer_GrowableSharedClass: *const root::JSClass;
-            #[link_name = "\u{1}_ZN2JS11ArrayBuffer6unwrapEP8JSObject"]
-            pub fn ArrayBuffer_unwrap(
-                maybeWrapped: *mut root::JSObject,
-            ) -> root::JS::ArrayBuffer;
-            #[link_name = "\u{1}_ZN2JS11ArrayBuffer6createEP9JSContextm"]
-            pub fn ArrayBuffer_create(
-                cx: *mut root::JSContext,
-                nbytes: usize,
-            ) -> root::JS::ArrayBuffer;
-            #[link_name = "\u{1}_ZNK2JS15ArrayBufferView10isDetachedEv"]
-            pub fn ArrayBufferView_isDetached(
-                this: *const root::JS::ArrayBufferView,
-            ) -> bool;
-            #[link_name = "\u{1}_ZNK2JS15ArrayBufferView11isResizableEv"]
-            pub fn ArrayBufferView_isResizable(
-                this: *const root::JS::ArrayBufferView,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS15ArrayBufferView13getByteLengthERKNS_15AutoRequireNoGCE"]
-            pub fn ArrayBufferView_getByteLength(
-                this: *mut root::JS::ArrayBufferView,
-                arg1: *const root::JS::AutoRequireNoGC,
-            ) -> usize;
             #[link_name = "\u{1}_ZN2JS8DataView19FixedLengthClassPtrE"]
             pub static DataView_FixedLengthClassPtr: *const root::JSClass;
             #[link_name = "\u{1}_ZN2JS8DataView17ResizableClassPtrE"]
@@ -17219,38 +14373,22 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub static TypedArray_base_fixedLengthClasses: *const root::JSClass;
             #[link_name = "\u{1}_ZN2JS15TypedArray_base16resizableClassesE"]
             pub static TypedArray_base_resizableClasses: *const root::JSClass;
-            #[link_name = "\u{1}_ZN2JS15TypedArray_base10fromObjectEP8JSObject"]
-            pub fn TypedArray_base_fromObject(
-                unwrapped: *mut root::JSObject,
-            ) -> root::JS::TypedArray_base;
             #[link_name = "\u{1}Scalar"]
             pub static TypedArray_Scalar: root::JS::Scalar::Type;
-            #[link_name = "\u{1}create"]
-            pub fn TypedArray_create(cx: *mut root::JSContext, nelements: usize) -> u8;
-            #[link_name = "\u{1}fromArray"]
-            pub fn TypedArray_fromArray(
-                cx: *mut root::JSContext,
-                other: root::JS::HandleObject,
-            ) -> u8;
-            #[link_name = "\u{1}fromBuffer"]
-            pub fn TypedArray_fromBuffer(
-                cx: *mut root::JSContext,
-                arrayBuffer: root::JS::HandleObject,
-                byteOffset: usize,
-                length: i64,
-            ) -> u8;
-            #[link_name = "\u{1}getData"]
-            pub fn TypedArray_getData(
-                this: *mut u8,
-                isSharedMemory: *mut bool,
-                nogc: *const root::JS::AutoRequireNoGC,
-            ) -> u8;
             #[link_name = "\u{1}_ZN2JS22SetDOMProxyInformationEPKvPFNS_21DOMProxyShadowsResultEP9JSContextNS_6HandleIP8JSObjectEENS5_INS_11PropertyKeyEEEES1_"]
             pub fn SetDOMProxyInformation(
                 domProxyHandlerFamily: *const ::std::os::raw::c_void,
                 domProxyShadowsCheck: root::JS::DOMProxyShadowsCheck,
                 domRemoteProxyHandlerFamily: *const ::std::os::raw::c_void,
             );
+            /// Exposed for DumpJSStack
+            #[link_name = "\u{1}_ZN2JS15FormatStackDumpEP9JSContextbbb"]
+            pub fn FormatStackDump(
+                cx: *mut root::JSContext,
+                showArgs: bool,
+                showLocals: bool,
+                showThisProps: bool,
+            ) -> root::JS::UniqueChars;
             /** Return true if the given object is callable. In ES6 terms, an object is
  callable if it has a [[Call]] internal method.
 
@@ -17271,43 +14409,11 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  target is a constructor.*/
             #[link_name = "\u{1}_ZN2JS13IsConstructorEP8JSObject"]
             pub fn IsConstructor(obj: *mut root::JSObject) -> bool;
-            #[link_name = "\u{1}_ZN2JSL4CallEP9JSContextNS_6HandleIP8JSObjectEENS2_IP10JSFunctionEERKNS_16HandleValueArrayENS_13MutableHandleINS_5ValueEEE"]
+            #[link_name = "\u{1}_ZN2JS4CallEP9JSContextNS_6HandleINS_5ValueEEES4_RKNS_16HandleValueArrayENS_13MutableHandleIS3_EE"]
             pub fn Call(
                 cx: *mut root::JSContext,
-                thisObj: root::JS::Handle<*mut root::JSObject>,
-                fun: root::JS::Handle<*mut root::JSFunction>,
-                args: *const root::JS::HandleValueArray,
-                rval: root::JS::MutableHandle<root::JS::Value>,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JSL4CallEP9JSContextNS_6HandleIP8JSObjectEENS2_INS_5ValueEEERKNS_16HandleValueArrayENS_13MutableHandleIS6_EE"]
-            pub fn Call1(
-                cx: *mut root::JSContext,
-                thisObj: root::JS::Handle<*mut root::JSObject>,
-                fun: root::JS::Handle<root::JS::Value>,
-                args: *const root::JS::HandleValueArray,
-                rval: root::JS::MutableHandle<root::JS::Value>,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JSL4CallEP9JSContextNS_6HandleIP8JSObjectEEPKcRKNS_16HandleValueArrayENS_13MutableHandleINS_5ValueEEE"]
-            pub fn Call2(
-                cx: *mut root::JSContext,
-                thisObj: root::JS::Handle<*mut root::JSObject>,
-                name: *const ::std::os::raw::c_char,
-                args: *const root::JS::HandleValueArray,
-                rval: root::JS::MutableHandle<root::JS::Value>,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS4CallEP9JSContextNS_6HandleINS_5ValueEEES4_RKNS_16HandleValueArrayENS_13MutableHandleIS3_EE"]
-            pub fn Call3(
-                cx: *mut root::JSContext,
                 thisv: root::JS::Handle<root::JS::Value>,
                 fun: root::JS::Handle<root::JS::Value>,
-                args: *const root::JS::HandleValueArray,
-                rval: root::JS::MutableHandle<root::JS::Value>,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JSL4CallEP9JSContextNS_6HandleINS_5ValueEEENS2_IP8JSObjectEERKNS_16HandleValueArrayENS_13MutableHandleIS3_EE"]
-            pub fn Call4(
-                cx: *mut root::JSContext,
-                thisv: root::JS::Handle<root::JS::Value>,
-                funObj: root::JS::Handle<*mut root::JSObject>,
                 args: *const root::JS::HandleValueArray,
                 rval: root::JS::MutableHandle<root::JS::Value>,
             ) -> bool;
@@ -17360,25 +14466,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  Return value: the former brittle mode setting.*/
             #[link_name = "\u{1}_ZN2JS14SetBrittleModeEP9JSContextb"]
             pub fn SetBrittleMode(cx: *mut root::JSContext, setting: bool) -> bool;
-            #[link_name = "\u{1}_ZN2JS10TimeBudget18setDeadlineFromNowEv"]
-            pub fn TimeBudget_setDeadlineFromNow(this: *mut root::JS::TimeBudget);
-            #[link_name = "\u{1}_ZNK2JS11SliceBudget8describeEPcm"]
-            pub fn SliceBudget_describe(
-                this: *const root::JS::SliceBudget,
-                buffer: *mut ::std::os::raw::c_char,
-                maxlen: usize,
-            ) -> ::std::os::raw::c_int;
-            #[link_name = "\u{1}_ZN2JS11SliceBudgetC1ENS_10TimeBudgetEPN7mozilla6AtomicIbLNS2_14MemoryOrderingE0EvEE"]
-            pub fn SliceBudget_SliceBudget(
-                this: *mut root::JS::SliceBudget,
-                time: root::JS::TimeBudget,
-                interrupt: *mut root::JS::SliceBudget_InterruptRequestFlag,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS11SliceBudgetC1ENS_10WorkBudgetE"]
-            pub fn SliceBudget_SliceBudget1(
-                this: *mut root::JS::SliceBudget,
-                work: root::JS::WorkBudget,
-            ) -> *mut ::std::os::raw::c_void;
             /// Get a statically allocated C string explaining the given GC reason.
             #[link_name = "\u{1}_ZN2JS15ExplainGCReasonENS_8GCReasonE"]
             pub fn ExplainGCReason(
@@ -17468,51 +14555,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  IsIncrementalGCInProgress(cx) will always be false.*/
             #[link_name = "\u{1}_ZN2JS18AbortIncrementalGCEP9JSContext"]
             pub fn AbortIncrementalGC(cx: *mut root::JSContext);
-            #[link_name = "\u{1}_ZNK2JS13GCDescription18formatSliceMessageEP9JSContext"]
-            pub fn GCDescription_formatSliceMessage(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> *mut u16;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription20formatSummaryMessageEP9JSContext"]
-            pub fn GCDescription_formatSummaryMessage(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> *mut u16;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription9startTimeEP9JSContext"]
-            pub fn GCDescription_startTime(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription7endTimeEP9JSContext"]
-            pub fn GCDescription_endTime(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription14lastSliceStartEP9JSContext"]
-            pub fn GCDescription_lastSliceStart(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription12lastSliceEndEP9JSContext"]
-            pub fn GCDescription_lastSliceEnd(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> root::mozilla::TimeStamp;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription19sliceToJSONProfilerEP9JSContext"]
-            pub fn GCDescription_sliceToJSONProfiler(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> root::JS::UniqueChars;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription18formatJSONProfilerEP9JSContext"]
-            pub fn GCDescription_formatJSONProfiler(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> root::JS::UniqueChars;
-            #[link_name = "\u{1}_ZNK2JS13GCDescription9toGCEventEP9JSContext"]
-            pub fn GCDescription_toGCEvent(
-                this: *const root::JS::GCDescription,
-                cx: *mut root::JSContext,
-            ) -> root::JS::dbg::GarbageCollectionEvent_Ptr;
             #[link_name = "\u{1}_ZN2JS13MinorGcToJSONEP9JSContext"]
             pub fn MinorGcToJSON(cx: *mut root::JSContext) -> root::JS::UniqueChars;
             /** The GC slice callback is called at the beginning and end of each slice. This
@@ -17574,23 +14616,10 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             /// Returns true if the most recent GC ran incrementally.
             #[link_name = "\u{1}_ZN2JS16WasIncrementalGCEP9JSRuntime"]
             pub fn WasIncrementalGC(rt: *mut root::JSRuntime) -> bool;
-            #[link_name = "\u{1}_ZN2JS25AutoDisableGenerationalGCC1EP9JSContext"]
-            pub fn AutoDisableGenerationalGC_AutoDisableGenerationalGC(
-                this: *mut root::JS::AutoDisableGenerationalGC,
-                cx: *mut root::JSContext,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS25AutoDisableGenerationalGCD1Ev"]
-            pub fn AutoDisableGenerationalGC_AutoDisableGenerationalGC_destructor(
-                this: *mut root::JS::AutoDisableGenerationalGC,
-            );
             /** Returns true if generational allocation and collection is currently enabled
  on the given runtime.*/
             #[link_name = "\u{1}_ZN2JS23IsGenerationalGCEnabledEP9JSRuntime"]
             pub fn IsGenerationalGCEnabled(rt: *mut root::JSRuntime) -> bool;
-            #[link_name = "\u{1}_ZN2JS20AutoAssertGCCallbackC1Ev"]
-            pub fn AutoAssertGCCallback_AutoAssertGCCallback(
-                this: *mut root::JS::AutoAssertGCCallback,
-            ) -> *mut ::std::os::raw::c_void;
             #[link_name = "\u{1}_ZN2JS17SetLowMemoryStateEP9JSContextb"]
             pub fn SetLowMemoryState(cx: *mut root::JSContext, newState: bool);
             #[link_name = "\u{1}_ZN2JS20NotifyGCRootsRemovedEP9JSContext"]
@@ -17649,48 +14678,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn UnsetGCZeal(cx: *mut root::JSContext, zeal: u8);
             #[link_name = "\u{1}_ZN2JS10ScheduleGCEP9JSContextj"]
             pub fn ScheduleGC(cx: *mut root::JSContext, count: u32);
-            /** Generate a JSErrorReport from the provided thrown value.
-
- If the value is a (possibly wrapped) Error object, the JSErrorReport will
- be exactly initialized from the Error object's information, without
- observable side effects. (The Error object's JSErrorReport is reused, if
- it has one.)
-
- Otherwise various attempts are made to derive JSErrorReport information
- from |exnStack| and from the current execution state.  This process is
- *definitely* inconsistent with any standard, and particulars of the
- behavior implemented here generally shouldn't be relied upon.
-
- If the value of |sniffingBehavior| is |WithSideEffects|, some of these
- attempts *may* invoke user-configurable behavior when the exception is an
- object: converting it to a string, detecting and getting its properties,
- accessing its prototype chain, and others are possible.  Users *must*
- tolerate |ErrorReportBuilder::init| potentially having arbitrary effects.
- Any exceptions thrown by these operations will be caught and silently
- ignored, and "default" values will be substituted into the JSErrorReport.
-
- But if the value of |sniffingBehavior| is |NoSideEffects|, these attempts
- *will not* invoke any observable side effects.  The JSErrorReport will
- simply contain fewer, less precise details.
-
- Unlike some functions involved in error handling, this function adheres
- to the usual JSAPI return value error behavior.*/
-            #[link_name = "\u{1}_ZN2JS18ErrorReportBuilder4initEP9JSContextRKNS_14ExceptionStackENS0_16SniffingBehaviorE"]
-            pub fn ErrorReportBuilder_init(
-                this: *mut root::JS::ErrorReportBuilder,
-                cx: *mut root::JSContext,
-                exnStack: *const root::JS::ExceptionStack,
-                sniffingBehavior: root::JS::ErrorReportBuilder_SniffingBehavior,
-            ) -> bool;
-            #[link_name = "\u{1}_ZN2JS18ErrorReportBuilderC1EP9JSContext"]
-            pub fn ErrorReportBuilder_ErrorReportBuilder(
-                this: *mut root::JS::ErrorReportBuilder,
-                cx: *mut root::JSContext,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS18ErrorReportBuilderD1Ev"]
-            pub fn ErrorReportBuilder_ErrorReportBuilder_destructor(
-                this: *mut root::JS::ErrorReportBuilder,
-            );
             #[link_name = "\u{1}_ZN2JS10PrintErrorEP8_IO_FILEP13JSErrorReportb"]
             pub fn PrintError(
                 file: *mut root::FILE,
@@ -17715,25 +14702,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
  assertions in the engine.*/
             #[link_name = "\u{1}_ZN2JS26ReportUncatchableExceptionEP9JSContext"]
             pub fn ReportUncatchableException(cx: *mut root::JSContext);
-            #[link_name = "\u{1}_ZN2JSL26IsCatchableExceptionStatusENS_15ExceptionStatusE"]
-            pub fn IsCatchableExceptionStatus(status: root::JS::ExceptionStatus) -> bool;
-            #[link_name = "\u{1}_ZN2JS22AutoSaveExceptionState4dropEv"]
-            pub fn AutoSaveExceptionState_drop(
-                this: *mut root::JS::AutoSaveExceptionState,
-            );
-            #[link_name = "\u{1}_ZN2JS22AutoSaveExceptionState7restoreEv"]
-            pub fn AutoSaveExceptionState_restore(
-                this: *mut root::JS::AutoSaveExceptionState,
-            );
-            #[link_name = "\u{1}_ZN2JS22AutoSaveExceptionStateC1EP9JSContext"]
-            pub fn AutoSaveExceptionState_AutoSaveExceptionState(
-                this: *mut root::JS::AutoSaveExceptionState,
-                cx: *mut root::JSContext,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS22AutoSaveExceptionStateD1Ev"]
-            pub fn AutoSaveExceptionState_AutoSaveExceptionState_destructor(
-                this: *mut root::JS::AutoSaveExceptionState,
-            );
             #[link_name = "\u{1}_ZN2JS24GetPendingExceptionStackEP9JSContextPNS_14ExceptionStackE"]
             pub fn GetPendingExceptionStack(
                 cx: *mut root::JSContext,
@@ -17962,13 +14930,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 addRefHook: root::JS::ScriptPrivateReferenceHook,
                 releaseHook: root::JS::ScriptPrivateReferenceHook,
             );
-            /// Use the cx's current compartment's principals.
-            #[link_name = "\u{1}_ZN2JS18FirstSubsumedFrameC1EP9JSContextb"]
-            pub fn FirstSubsumedFrame_FirstSubsumedFrame(
-                this: *mut root::JS::FirstSubsumedFrame,
-                cx: *mut root::JSContext,
-                ignoreSelfHostedFrames: bool,
-            ) -> *mut ::std::os::raw::c_void;
             /** Capture the current call stack as a chain of SavedFrame JSObjects, and set
  |stackp| to the SavedFrame for the youngest stack frame, or nullptr if there
  are no JS frames on the stack.
@@ -18168,18 +15129,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 cx: *mut root::JSContext,
                 fs: *const root::JSFunctionSpec,
             ) -> *mut root::JSFunction;
-            #[link_name = "\u{1}_ZN2JS28AutoSetAsyncStackForNewCallsC1EP9JSContextNS_6HandleIP8JSObjectEEPKcNS0_13AsyncCallKindE"]
-            pub fn AutoSetAsyncStackForNewCalls_AutoSetAsyncStackForNewCalls(
-                this: *mut root::JS::AutoSetAsyncStackForNewCalls,
-                cx: *mut root::JSContext,
-                stack: root::JS::HandleObject,
-                asyncCause: *const ::std::os::raw::c_char,
-                kind: root::JS::AutoSetAsyncStackForNewCalls_AsyncCallKind,
-            ) -> *mut ::std::os::raw::c_void;
-            #[link_name = "\u{1}_ZN2JS28AutoSetAsyncStackForNewCallsD1Ev"]
-            pub fn AutoSetAsyncStackForNewCalls_AutoSetAsyncStackForNewCalls_destructor(
-                this: *mut root::JS::AutoSetAsyncStackForNewCalls,
-            );
             #[link_name = "\u{1}_ZN2JS24PropertySpecNameEqualsIdEN14JSPropertySpec4NameENS_6HandleINS_11PropertyKeyEEE"]
             pub fn PropertySpecNameEqualsId(
                 name: root::JSPropertySpec_Name,
@@ -18199,27 +15148,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             ) -> bool;
             #[link_name = "\u{1}_ZN2JS34DisableSpectreMitigationsAfterInitEv"]
             pub fn DisableSpectreMitigationsAfterInit();
-            #[link_name = "\u{1}_ZN2JS12AutoFilename5resetEv"]
-            pub fn AutoFilename_reset(this: *mut root::JS::AutoFilename);
-            #[link_name = "\u{1}_ZN2JS12AutoFilename8setOwnedEON7mozilla9UniquePtrIA_cNS_10FreePolicyEEE"]
-            pub fn AutoFilename_setOwned(
-                this: *mut root::JS::AutoFilename,
-                filename: *mut root::JS::UniqueChars,
-            );
-            #[link_name = "\u{1}_ZN2JS12AutoFilename10setUnownedEPKc"]
-            pub fn AutoFilename_setUnowned(
-                this: *mut root::JS::AutoFilename,
-                filename: *const ::std::os::raw::c_char,
-            );
-            #[link_name = "\u{1}_ZN2JS12AutoFilename15setScriptSourceEPN2js12ScriptSourceE"]
-            pub fn AutoFilename_setScriptSource(
-                this: *mut root::JS::AutoFilename,
-                ss: *mut root::js::ScriptSource,
-            );
-            #[link_name = "\u{1}_ZNK2JS12AutoFilename3getEv"]
-            pub fn AutoFilename_get(
-                this: *const root::JS::AutoFilename,
-            ) -> *const ::std::os::raw::c_char;
             #[link_name = "\u{1}_ZN2JS23GetScriptedCallerGlobalEP9JSContext"]
             pub fn GetScriptedCallerGlobal(
                 cx: *mut root::JSContext,
@@ -18489,12 +15417,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
     pub struct Flow {
         pub mFlowId: u64,
     }
-    impl Flow {
-        #[inline]
-        pub unsafe fn Init() {
-            Flow_Init()
-        }
-    }
     #[repr(C)]
     #[derive(Copy, Clone)]
     pub struct pthread_rwlock_t {
@@ -18514,66 +15436,17 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub frames: u32,
         pub stackPointer: u32,
     }
-    impl ProfilingStack {
-        #[inline]
-        pub unsafe fn destruct(&mut self) {
-            ProfilingStack_ProfilingStack_destructor(self)
-        }
-    }
     #[repr(C)]
     #[derive(Debug, PartialEq)]
     pub struct JSAutoRealm {
         pub cx_: *mut root::JSContext,
         pub oldRealm_: *mut root::JS::Realm,
     }
-    impl JSAutoRealm {
-        #[inline]
-        pub unsafe fn new(
-            cx: *mut root::JSContext,
-            target: *mut root::JSObject,
-        ) -> Self {
-            let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-            JSAutoRealm_JSAutoRealm(__bindgen_tmp.as_mut_ptr(), cx, target);
-            __bindgen_tmp.assume_init()
-        }
-        #[inline]
-        pub unsafe fn new1(
-            cx: *mut root::JSContext,
-            target: *mut root::JSScript,
-        ) -> Self {
-            let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-            JSAutoRealm_JSAutoRealm1(__bindgen_tmp.as_mut_ptr(), cx, target);
-            __bindgen_tmp.assume_init()
-        }
-        #[inline]
-        pub unsafe fn destruct(&mut self) {
-            JSAutoRealm_JSAutoRealm_destructor(self)
-        }
-    }
     #[repr(C)]
     #[derive(Debug, PartialEq)]
     pub struct JSAutoNullableRealm {
         pub cx_: *mut root::JSContext,
         pub oldRealm_: *mut root::JS::Realm,
-    }
-    impl JSAutoNullableRealm {
-        #[inline]
-        pub unsafe fn new(
-            cx: *mut root::JSContext,
-            targetOrNull: *mut root::JSObject,
-        ) -> Self {
-            let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-            JSAutoNullableRealm_JSAutoNullableRealm(
-                __bindgen_tmp.as_mut_ptr(),
-                cx,
-                targetOrNull,
-            );
-            __bindgen_tmp.assume_init()
-        }
-        #[inline]
-        pub unsafe fn destruct(&mut self) {
-            JSAutoNullableRealm_JSAutoNullableRealm_destructor(self)
-        }
     }
     #[repr(u8)]
     #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -18966,16 +15839,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         SelfHostedAccessor = 1,
         NativeAccessor = 2,
     }
-    impl JSPropertySpec {
-        #[inline]
-        pub unsafe fn getValue(
-            &self,
-            cx: *mut root::JSContext,
-            value: root::JS::MutableHandle<root::JS::Value>,
-        ) -> bool {
-            JSPropertySpec_getValue(self, cx, value)
-        }
-    }
     #[repr(C)]
     #[derive(Copy, Clone)]
     pub struct JSFunctionSpec {
@@ -19201,16 +16064,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         9usize,
     >;
     pub const JSStructuredCloneData_kStandardCapacity: usize = 4096;
-    impl JSStructuredCloneData {
-        #[inline]
-        pub unsafe fn discardTransferables(&mut self) {
-            JSStructuredCloneData_discardTransferables(self)
-        }
-        #[inline]
-        pub unsafe fn destruct(&mut self) {
-            JSStructuredCloneData_JSStructuredCloneData_destructor(self)
-        }
-    }
     /** The C-style API calls to read and write structured clones are fragile --
  they rely on the caller to properly handle ownership of the clone data, and
  the handling of the input data as well as the interpretation of the contents
@@ -19226,83 +16079,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
     pub struct JSAutoStructuredCloneBuffer {
         pub data_: root::JSStructuredCloneData,
         pub version_: u32,
-    }
-    impl JSAutoStructuredCloneBuffer {
-        #[inline]
-        pub unsafe fn clear(&mut self) {
-            JSAutoStructuredCloneBuffer_clear(self)
-        }
-        #[inline]
-        pub unsafe fn adopt(
-            &mut self,
-            data: *mut root::JSStructuredCloneData,
-            version: u32,
-            callbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        ) {
-            JSAutoStructuredCloneBuffer_adopt(self, data, version, callbacks, closure)
-        }
-        #[inline]
-        pub unsafe fn giveTo(&mut self, data: *mut root::JSStructuredCloneData) {
-            JSAutoStructuredCloneBuffer_giveTo(self, data)
-        }
-        #[inline]
-        pub unsafe fn read(
-            &mut self,
-            cx: *mut root::JSContext,
-            vp: root::JS::MutableHandleValue,
-            cloneDataPolicy: *const root::JS::CloneDataPolicy,
-            optionalCallbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        ) -> bool {
-            JSAutoStructuredCloneBuffer_read(
-                self,
-                cx,
-                vp,
-                cloneDataPolicy,
-                optionalCallbacks,
-                closure,
-            )
-        }
-        #[inline]
-        pub unsafe fn write(
-            &mut self,
-            cx: *mut root::JSContext,
-            v: root::JS::HandleValue,
-            optionalCallbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        ) -> bool {
-            JSAutoStructuredCloneBuffer_write(self, cx, v, optionalCallbacks, closure)
-        }
-        #[inline]
-        pub unsafe fn write1(
-            &mut self,
-            cx: *mut root::JSContext,
-            v: root::JS::HandleValue,
-            transferable: root::JS::HandleValue,
-            cloneDataPolicy: *const root::JS::CloneDataPolicy,
-            optionalCallbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        ) -> bool {
-            JSAutoStructuredCloneBuffer_write1(
-                self,
-                cx,
-                v,
-                transferable,
-                cloneDataPolicy,
-                optionalCallbacks,
-                closure,
-            )
-        }
-        #[inline]
-        pub unsafe fn new(other: *mut root::JSAutoStructuredCloneBuffer) -> Self {
-            let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-            JSAutoStructuredCloneBuffer_JSAutoStructuredCloneBuffer(
-                __bindgen_tmp.as_mut_ptr(),
-                other,
-            );
-            __bindgen_tmp.assume_init()
-        }
     }
     /** A class, expected to be passed by value, which represents the CallArgs for a
  JSJitGetterOp.*/
@@ -21288,13 +18064,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 );
             __bindgen_bitfield_unit
         }
-        #[inline]
-        pub unsafe fn newMessageString(
-            &mut self,
-            cx: *mut root::JSContext,
-        ) -> *mut root::JSString {
-            JSErrorBase_newMessageString(self, cx)
-        }
     }
     /// Notes associated with JSErrorReport.
     #[repr(C)]
@@ -21441,34 +18210,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
     pub type JSErrorNotes_iterator_difference_type = isize;
     pub type JSErrorNotes_iterator_pointer = *mut root::JSErrorNotes_iterator_value_type;
     pub type JSErrorNotes_iterator_reference = *mut root::JSErrorNotes_iterator_value_type;
-    impl JSErrorNotes {
-        #[inline]
-        pub unsafe fn length(&mut self) -> usize {
-            JSErrorNotes_length(self)
-        }
-        #[inline]
-        pub unsafe fn copy(&mut self, cx: *mut root::JSContext) -> u32 {
-            JSErrorNotes_copy(self, cx)
-        }
-        #[inline]
-        pub unsafe fn begin(&mut self) -> root::JSErrorNotes_iterator {
-            JSErrorNotes_begin(self)
-        }
-        #[inline]
-        pub unsafe fn end(&mut self) -> root::JSErrorNotes_iterator {
-            JSErrorNotes_end(self)
-        }
-        #[inline]
-        pub unsafe fn new() -> Self {
-            let mut __bindgen_tmp = ::std::mem::MaybeUninit::uninit();
-            JSErrorNotes_JSErrorNotes(__bindgen_tmp.as_mut_ptr());
-            __bindgen_tmp.assume_init()
-        }
-        #[inline]
-        pub unsafe fn destruct(&mut self) {
-            JSErrorNotes_JSErrorNotes_destructor(self)
-        }
-    }
     /// Describes a single error or warning that occurs in the execution of script.
     #[repr(C)]
     #[derive(Debug, PartialEq)]
@@ -21632,20 +18373,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 );
             __bindgen_bitfield_unit
         }
-        #[inline]
-        pub unsafe fn initBorrowedLinebuf(
-            &mut self,
-            linebufArg: *const u16,
-            linebufLengthArg: usize,
-            tokenOffsetArg: usize,
-        ) {
-            JSErrorReport_initBorrowedLinebuf(
-                self,
-                linebufArg,
-                linebufLengthArg,
-                tokenOffsetArg,
-            )
-        }
     }
     pub type JSInterruptCallback = ::std::option::Option<
         unsafe extern "C" fn(arg1: *mut root::JSContext) -> bool,
@@ -21663,12 +18390,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
     #[derive(Debug, Copy, Clone, PartialEq)]
     pub struct JSPrincipals_RefCount {
         pub value: i32,
-    }
-    impl JSPrincipals {
-        #[inline]
-        pub unsafe fn dump(&mut self) {
-            JSPrincipals_dump(self)
-        }
     }
     pub type JSSubsumesOp = ::std::option::Option<
         unsafe extern "C" fn(
@@ -21822,123 +18543,22 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub usage: *const ::std::os::raw::c_char,
         pub help: *const ::std::os::raw::c_char,
     }
-    /// <div rustbindgen replaces="JSJitMethodCallArgs"></div>
-    #[repr(C)]
-    #[derive(Debug, Copy, Clone, PartialEq)]
-    pub struct JSJitMethodCallArgs {
-        pub argv_: *mut root::JS::Value,
-        pub argc_: ::std::os::raw::c_uint,
-        pub _bitfield_align_1: [u8; 0],
-        pub _bitfield_1: root::__BindgenBitfieldUnit<[u8; 1usize]>,
-        pub wantUsedRval_: root::JS::detail::NoUsedRval,
-    }
-    impl JSJitMethodCallArgs {
-        #[inline]
-        pub fn constructing_(&self) -> bool {
-            unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u8) }
-        }
-        #[inline]
-        pub fn set_constructing_(&mut self, val: bool) {
-            unsafe {
-                let val: u8 = ::std::mem::transmute(val);
-                self._bitfield_1.set(0usize, 1u8, val as u64)
-            }
-        }
-        #[inline]
-        pub unsafe fn constructing__raw(this: *const Self) -> bool {
-            unsafe {
-                ::std::mem::transmute(
-                    <root::__BindgenBitfieldUnit<
-                        [u8; 1usize],
-                    >>::raw_get(::std::ptr::addr_of!((*this)._bitfield_1), 0usize, 1u8)
-                        as u8,
-                )
-            }
-        }
-        #[inline]
-        pub unsafe fn set_constructing__raw(this: *mut Self, val: bool) {
-            unsafe {
-                let val: u8 = ::std::mem::transmute(val);
-                <root::__BindgenBitfieldUnit<
-                    [u8; 1usize],
-                >>::raw_set(
-                    ::std::ptr::addr_of_mut!((*this)._bitfield_1),
-                    0usize,
-                    1u8,
-                    val as u64,
-                )
-            }
-        }
-        #[inline]
-        pub fn ignoresReturnValue_(&self) -> bool {
-            unsafe { ::std::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u8) }
-        }
-        #[inline]
-        pub fn set_ignoresReturnValue_(&mut self, val: bool) {
-            unsafe {
-                let val: u8 = ::std::mem::transmute(val);
-                self._bitfield_1.set(1usize, 1u8, val as u64)
-            }
-        }
-        #[inline]
-        pub unsafe fn ignoresReturnValue__raw(this: *const Self) -> bool {
-            unsafe {
-                ::std::mem::transmute(
-                    <root::__BindgenBitfieldUnit<
-                        [u8; 1usize],
-                    >>::raw_get(::std::ptr::addr_of!((*this)._bitfield_1), 1usize, 1u8)
-                        as u8,
-                )
-            }
-        }
-        #[inline]
-        pub unsafe fn set_ignoresReturnValue__raw(this: *mut Self, val: bool) {
-            unsafe {
-                let val: u8 = ::std::mem::transmute(val);
-                <root::__BindgenBitfieldUnit<
-                    [u8; 1usize],
-                >>::raw_set(
-                    ::std::ptr::addr_of_mut!((*this)._bitfield_1),
-                    1usize,
-                    1u8,
-                    val as u64,
-                )
-            }
-        }
-        #[inline]
-        pub fn new_bitfield_1(
-            constructing_: bool,
-            ignoresReturnValue_: bool,
-        ) -> root::__BindgenBitfieldUnit<[u8; 1usize]> {
-            let mut __bindgen_bitfield_unit: root::__BindgenBitfieldUnit<[u8; 1usize]> = Default::default();
-            __bindgen_bitfield_unit
-                .set(
-                    0usize,
-                    1u8,
-                    {
-                        let constructing_: u8 = unsafe {
-                            ::std::mem::transmute(constructing_)
-                        };
-                        constructing_ as u64
-                    },
-                );
-            __bindgen_bitfield_unit
-                .set(
-                    1usize,
-                    1u8,
-                    {
-                        let ignoresReturnValue_: u8 = unsafe {
-                            ::std::mem::transmute(ignoresReturnValue_)
-                        };
-                        ignoresReturnValue_ as u64
-                    },
-                );
-            __bindgen_bitfield_unit
-        }
-    }
     pub mod jsglue {
         #[allow(unused_imports)]
         use self::super::super::root;
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct ConstantSpec {
+            pub name: *const ::std::os::raw::c_char,
+            pub value: root::JS::Value,
+        }
+        #[repr(C)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        pub struct NativeProperties {
+            pub methods: *const root::JSFunctionSpec,
+            pub properties: *const root::JSPropertySpec,
+            pub constants: *const root::jsglue::ConstantSpec,
+        }
         pub type WantToMeasure = ::std::option::Option<
             unsafe extern "C" fn(obj: *mut root::JSObject) -> bool,
         >;
@@ -21948,6 +18568,13 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct JobQueueTraps {
+            pub getHostDefinedData: ::std::option::Option<
+                unsafe extern "C" fn(
+                    queue: *const ::std::os::raw::c_void,
+                    cx: *mut root::JSContext,
+                    data: root::JS::MutableHandle<*mut root::JSObject>,
+                ) -> bool,
+            >,
             pub enqueuePromiseJob: ::std::option::Option<
                 unsafe extern "C" fn(
                     queue: *const ::std::os::raw::c_void,
@@ -21955,11 +18582,30 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                     promise: root::JS::HandleObject,
                     job: root::JS::HandleObject,
                     allocationSite: root::JS::HandleObject,
-                    incumbentGlobal: root::JS::HandleObject,
+                    hostDefinedData: root::JS::HandleObject,
                 ) -> bool,
+            >,
+            pub runJobs: ::std::option::Option<
+                unsafe extern "C" fn(
+                    queue: *const ::std::os::raw::c_void,
+                    cx: *mut root::JSContext,
+                ),
             >,
             pub empty: ::std::option::Option<
                 unsafe extern "C" fn(queue: *const ::std::os::raw::c_void) -> bool,
+            >,
+            pub pushNewInterruptQueue: ::std::option::Option<
+                unsafe extern "C" fn(
+                    aInterruptQueues: *mut ::std::os::raw::c_void,
+                ) -> *const ::std::os::raw::c_void,
+            >,
+            pub popInterruptQueue: ::std::option::Option<
+                unsafe extern "C" fn(
+                    aInterruptQueues: *mut ::std::os::raw::c_void,
+                ) -> *const ::std::os::raw::c_void,
+            >,
+            pub dropInterruptQueues: ::std::option::Option<
+                unsafe extern "C" fn(aInterruptQueues: *mut ::std::os::raw::c_void),
             >,
         }
         #[repr(C)]
@@ -22023,29 +18669,29 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         #[repr(C)]
         #[derive(Debug, Copy, Clone, PartialEq)]
         pub struct JSExternalStringCallbacksTraps {
-            pub finalize: ::std::option::Option<
-                unsafe extern "C" fn(
-                    privateData: *const ::std::os::raw::c_void,
-                    chars: *mut u16,
-                ),
-            >,
-            pub finalize_latin1: ::std::option::Option<
+            pub latin1Finalize: ::std::option::Option<
                 unsafe extern "C" fn(
                     privateData: *const ::std::os::raw::c_void,
                     chars: *mut root::JS::Latin1Char,
                 ),
             >,
-            pub sizeOfBuffer: ::std::option::Option<
+            pub utf16Finalize: ::std::option::Option<
                 unsafe extern "C" fn(
                     privateData: *const ::std::os::raw::c_void,
-                    chars: *const u16,
-                    mallocSizeOf: root::mozilla::MallocSizeOf,
-                ) -> usize,
+                    chars: *mut u16,
+                ),
             >,
-            pub sizeOfBuffer_latin1: ::std::option::Option<
+            pub latin1SizeOfBuffer: ::std::option::Option<
                 unsafe extern "C" fn(
                     privateData: *const ::std::os::raw::c_void,
                     chars: *const root::JS::Latin1Char,
+                    mallocSizeOf: root::mozilla::MallocSizeOf,
+                ) -> usize,
+            >,
+            pub utf16SizeOfBuffer: ::std::option::Option<
+                unsafe extern "C" fn(
+                    privateData: *const ::std::os::raw::c_void,
+                    chars: *const u16,
                     mallocSizeOf: root::mozilla::MallocSizeOf,
                 ) -> usize,
             >,
@@ -22320,20 +18966,35 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub type EncodedStringCallback = ::std::option::Option<
             unsafe extern "C" fn(arg1: *const ::std::os::raw::c_char),
         >;
-        #[repr(C)]
-        #[derive(Debug, Copy, Clone, PartialEq)]
-        pub struct ConstantSpec {
-            pub name: *const ::std::os::raw::c_char,
-            pub value: root::JS::Value,
-        }
-        #[repr(C)]
-        #[derive(Debug, Copy, Clone, PartialEq)]
-        pub struct NativeProperties {
-            pub methods: *const root::JSFunctionSpec,
-            pub properties: *const root::JSPropertySpec,
-            pub constants: *const root::jsglue::ConstantSpec,
-        }
         unsafe extern "C" {
+            pub fn GetClass(obj: *const root::JSObject) -> *const root::JSClass;
+            pub fn DefineConstants(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                cs: *const root::jsglue::ConstantSpec,
+            ) -> bool;
+            pub fn InitProperties(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                properties: *const root::jsglue::NativeProperties,
+            ) -> bool;
+            pub fn DefineToStringTag(
+                cx: *mut root::JSContext,
+                obj: root::JS::Handle<*mut root::JSObject>,
+                class_name: root::JS::Handle<*mut root::JSString>,
+            ) -> bool;
+            pub fn CreateBuiltinClass(
+                cx: *mut root::JSContext,
+                jsCtor: root::JSNative,
+                argc: ::std::os::raw::c_uint,
+                cls: *const root::JSClass,
+                properties: *const root::jsglue::NativeProperties,
+                ctorProperties: *const root::jsglue::NativeProperties,
+                protoClass: *const root::JSClass,
+                protoProto: root::JS::HandleObject,
+                global: root::JS::HandleObject,
+                defineOnGlobal: bool,
+            ) -> *mut root::JSObject;
             #[link_name = "\u{1}_ZN6jsglue7JS_InitEv"]
             pub fn JS_Init() -> bool;
             #[link_name = "\u{1}_ZN6jsglue18InitSelfHostedCodeEP9JSContext"]
@@ -22381,6 +19042,48 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn AtomToLinearString(
                 atom: *mut root::JSAtom,
             ) -> *mut root::JSLinearString;
+            /** Create a new ArrayBuffer with the given contents. The contents must not be
+ modified by any other code, internal or external.
+
+ !!! IMPORTANT !!!
+ If and only if an ArrayBuffer is successfully created and returned,
+ ownership of |contents| is transferred to the new ArrayBuffer.
+
+ When the ArrayBuffer is ready to be disposed of, `freeFunc(contents,
+ freeUserData)` will be called to release the ArrayBuffer's reference on the
+ contents.
+
+ `freeFunc()` must not call any JSAPI functions that could cause a garbage
+ collection.
+
+ The caller must keep the buffer alive until `freeFunc()` is called, or, if
+ `freeFunc` is null, until the JSRuntime is destroyed.
+
+ The caller must not access the buffer on other threads. The JS engine will
+ not allow the buffer to be transferred to other threads. If you try to
+ transfer an external ArrayBuffer to another thread, the data is copied to a
+ new malloc buffer. `freeFunc()` must be threadsafe, and may be called from
+ any thread.
+
+ This allows ArrayBuffers to be used with embedder objects that use reference
+ counting, for example. In that case the caller is responsible
+ for incrementing the reference count before passing the contents to this
+ function. This also allows using non-reference-counted contents that must be
+ freed with some function other than free().*/
+            #[link_name = "\u{1}_ZN6jsglue22NewExternalArrayBufferEP9JSContextmPvPFvS2_S2_ES2_"]
+            pub fn NewExternalArrayBuffer(
+                cx: *mut root::JSContext,
+                nbytes: usize,
+                contents: *mut ::std::os::raw::c_void,
+                freeFunc: root::JS::BufferContentsFreeFunc,
+                freeUserData: *mut ::std::os::raw::c_void,
+            ) -> *mut root::JSObject;
+            #[link_name = "\u{1}_ZN6jsglue26NewArrayBufferWithContentsEP9JSContextmPv"]
+            pub fn NewArrayBufferWithContents(
+                cx: *mut root::JSContext,
+                nbytes: usize,
+                contents: *mut ::std::os::raw::c_void,
+            ) -> *mut root::JSObject;
             #[link_name = "\u{1}_ZN6jsglue20JS_ForOfIteratorInitEPN2JS13ForOfIteratorENS0_6HandleINS0_5ValueEEENS1_19NonIterableBehaviorE"]
             pub fn JS_ForOfIteratorInit(
                 iterator: *mut root::JS::ForOfIterator,
@@ -22421,8 +19124,95 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn JS_ValueIsNull(value: *const root::JS::Value) -> bool;
             #[link_name = "\u{1}_ZN6jsglue19JS_ValueIsUndefinedEPKN2JS5ValueE"]
             pub fn JS_ValueIsUndefined(value: *const root::JS::Value) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue22FromPropertyDescriptorEP9JSContextN2JS6HandleINS2_18PropertyDescriptorEEENS2_13MutableHandleINS2_5ValueEEE"]
+            pub fn FromPropertyDescriptor(
+                cx: *mut root::JSContext,
+                desc_: root::JS::Handle<root::JS::PropertyDescriptor>,
+                vp: root::JS::MutableHandleValue,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue24JS_GetPropertyDescriptorEP9JSContextN2JS6HandleIP8JSObjectEEPKcNS2_13MutableHandleINS2_18PropertyDescriptorEEENS9_IS5_EEPb"]
+            pub fn JS_GetPropertyDescriptor(
+                cx: *mut root::JSContext,
+                obj: root::JS::Handle<*mut root::JSObject>,
+                name: *const ::std::os::raw::c_char,
+                desc: root::JS::MutableHandle<root::JS::PropertyDescriptor>,
+                holder: root::JS::MutableHandle<*mut root::JSObject>,
+                isNone: *mut bool,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue31JS_GetOwnPropertyDescriptorByIdEP9JSContextN2JS6HandleIP8JSObjectEENS3_INS2_11PropertyKeyEEENS2_13MutableHandleINS2_18PropertyDescriptorEEEPb"]
+            pub fn JS_GetOwnPropertyDescriptorById(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                id: root::JS::HandleId,
+                desc: root::JS::MutableHandle<root::JS::PropertyDescriptor>,
+                isNone: *mut bool,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue27JS_GetOwnPropertyDescriptorEP9JSContextN2JS6HandleIP8JSObjectEEPKcNS2_13MutableHandleINS2_18PropertyDescriptorEEEPb"]
+            pub fn JS_GetOwnPropertyDescriptor(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                name: *const ::std::os::raw::c_char,
+                desc: root::JS::MutableHandle<root::JS::PropertyDescriptor>,
+                isNone: *mut bool,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue29JS_GetOwnUCPropertyDescriptorEP9JSContextN2JS6HandleIP8JSObjectEEPKDsmNS2_13MutableHandleINS2_18PropertyDescriptorEEEPb"]
+            pub fn JS_GetOwnUCPropertyDescriptor(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                name: *const u16,
+                namelen: usize,
+                desc: root::JS::MutableHandle<root::JS::PropertyDescriptor>,
+                isNone: *mut bool,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue28JS_GetPropertyDescriptorByIdEP9JSContextN2JS6HandleIP8JSObjectEENS3_INS2_11PropertyKeyEEENS2_13MutableHandleINS2_18PropertyDescriptorEEENS9_IS5_EEPb"]
+            pub fn JS_GetPropertyDescriptorById(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                id: root::JS::HandleId,
+                desc: root::JS::MutableHandle<root::JS::PropertyDescriptor>,
+                holder: root::JS::MutableHandleObject,
+                isNone: *mut bool,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue26JS_GetUCPropertyDescriptorEP9JSContextN2JS6HandleIP8JSObjectEEPKDsmNS2_13MutableHandleINS2_18PropertyDescriptorEEENS9_IS5_EEPb"]
+            pub fn JS_GetUCPropertyDescriptor(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                name: *const u16,
+                namelen: usize,
+                desc: root::JS::MutableHandle<root::JS::PropertyDescriptor>,
+                holder: root::JS::MutableHandleObject,
+                isNone: *mut bool,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue30SetPropertyIgnoringNamedGetterEP9JSContextN2JS6HandleIP8JSObjectEENS3_INS2_11PropertyKeyEEENS3_INS2_5ValueEEESA_PKNS3_INS2_18PropertyDescriptorEEERNS2_14ObjectOpResultE"]
+            pub fn SetPropertyIgnoringNamedGetter(
+                cx: *mut root::JSContext,
+                obj: root::JS::HandleObject,
+                id: root::JS::HandleId,
+                v: root::JS::HandleValue,
+                receiver: root::JS::HandleValue,
+                ownDesc: *const root::JS::Handle<root::JS::PropertyDescriptor>,
+                result: *mut root::JS::ObjectOpResult,
+            ) -> bool;
+            #[link_name = "\u{1}_ZN6jsglue11CreateErrorEP9JSContext9JSExnTypeN2JS6HandleIP8JSObjectEENS4_IP8JSStringEEjjP13JSErrorReportSA_NS4_INS3_5ValueEEENS3_13MutableHandleISD_EE"]
+            pub fn CreateError(
+                cx: *mut root::JSContext,
+                type_: root::JSExnType,
+                stack: root::JS::HandleObject,
+                fileName: root::JS::HandleString,
+                lineNumber: u32,
+                columnNumber: u32,
+                report: *mut root::JSErrorReport,
+                message: root::JS::HandleString,
+                cause: root::JS::HandleValue,
+                rval: root::JS::MutableHandleValue,
+            ) -> bool;
             #[link_name = "\u{1}_ZN6jsglue12GetErrorTypeERKN2JS5ValueE"]
             pub fn GetErrorType(val: *const root::JS::Value) -> root::JSExnType;
+            #[link_name = "\u{1}_ZN6jsglue17GetExceptionCauseEP8JSObjectN2JS13MutableHandleINS2_5ValueEEE"]
+            pub fn GetExceptionCause(
+                exc: *mut root::JSObject,
+                dest: root::JS::MutableHandleValue,
+            );
             #[link_name = "\u{1}_ZN6jsglue14gWantToMeasureE"]
             pub static mut gWantToMeasure: root::jsglue::WantToMeasure;
             #[link_name = "\u{1}_ZN6jsglueL13HandlerFamilyE"]
@@ -22489,7 +19279,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             pub fn CreateWrapperProxyHandler(
                 aTraps: *const root::jsglue::ProxyTraps,
             ) -> *const ::std::os::raw::c_void;
-            pub fn GetClass(obj: *const root::JSObject) -> *const root::JSClass;
             pub fn GetCrossCompartmentWrapper() -> *const ::std::os::raw::c_void;
             pub fn GetSecurityWrapper() -> *const ::std::os::raw::c_void;
             pub fn DeleteCompileOptions(aOpts: *mut root::JS::ReadOnlyCompileOptions);
@@ -22498,6 +19287,14 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 aFile: *const ::std::os::raw::c_char,
                 aLine: ::std::os::raw::c_uint,
             ) -> *mut root::JS::ReadOnlyCompileOptions;
+            pub fn NewProxyObject(
+                aCx: *mut root::JSContext,
+                aHandler: *const ::std::os::raw::c_void,
+                aPriv: root::JS::HandleValue,
+                proto: *mut root::JSObject,
+                aClass: *const root::JSClass,
+                aLazyProto: bool,
+            ) -> *mut root::JSObject;
             pub fn WrapperNew(
                 aCx: *mut root::JSContext,
                 aObj: root::JS::HandleObject,
@@ -22611,8 +19408,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 v: *mut root::JS::PersistentRootedObjectVector,
             );
             pub fn malloc_usable_size(arg1: *mut ::std::os::raw::c_void) -> usize;
-            #[link_name = "\u{1}_ZN6jsglueL12MallocSizeOfEPKv"]
-            pub fn MallocSizeOf(aPtr: *const ::std::os::raw::c_void) -> usize;
             pub fn CollectServoSizes(
                 cx: *mut root::JSContext,
                 sizes: *mut root::JS::ServoSizes,
@@ -22673,6 +19468,10 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 trc: *mut root::JSTracer,
                 valp: *mut root::JS::Value,
                 name: *const ::std::os::raw::c_char,
+            );
+            pub fn CallPropertyDescriptorTracer(
+                trc: *mut root::JSTracer,
+                desc: *mut root::JS::PropertyDescriptor,
             );
             pub fn IsDebugBuild() -> bool;
             pub fn GetInt8ArrayLengthAndData(
@@ -22773,6 +19572,10 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 cx: *mut root::JSContext,
                 dest: *mut root::JS::Value,
             );
+            pub fn JS_GetEmptyStringValue(
+                cx: *mut root::JSContext,
+                dest: *mut root::JS::Value,
+            );
             pub fn JS_GetReservedSlot(
                 obj: *mut root::JSObject,
                 index: u32,
@@ -22844,49 +19647,126 @@ typedef CheckedInt<uint16_t> CheckedUint16;
                 setter: root::JS::HandleObject,
                 attrs: u32,
             );
-            #[link_name = "\u{1}_ZN6jsglueL35CreateBuiltinFunctionForConstructorEP9JSContextPFbS1_jPN2JS5ValueEEjPK7JSClassNS2_6HandleINS2_11PropertyKeyEEENSA_IP8JSObjectEE"]
-            pub fn CreateBuiltinFunctionForConstructor(
+            pub fn DumpJSStack(
                 cx: *mut root::JSContext,
-                jsCtor: root::JSNative,
-                argc: ::std::os::raw::c_uint,
-                cls: *const root::JSClass,
-                name: root::JS::HandleId,
-                proto: root::JS::HandleObject,
-            ) -> *mut root::JSObject;
-            #[link_name = "\u{1}_ZN6jsglueL17DefineConstructorEP9JSContextN2JS6HandleIP8JSObjectEENS3_INS2_11PropertyKeyEEES6_"]
-            pub fn DefineConstructor(
-                cx: *mut root::JSContext,
-                global: root::JS::HandleObject,
-                name: root::JS::HandleId,
-                constructor: root::JS::HandleObject,
-            ) -> bool;
-            pub fn DefineConstants(
-                cx: *mut root::JSContext,
-                obj: root::JS::HandleObject,
-                cs: *const root::jsglue::ConstantSpec,
-            ) -> bool;
-            pub fn InitProperties(
-                cx: *mut root::JSContext,
-                obj: root::JS::HandleObject,
-                properties: *const root::jsglue::NativeProperties,
-            ) -> bool;
-            pub fn DefineToStringTag(
-                cx: *mut root::JSContext,
-                obj: root::JS::Handle<*mut root::JSObject>,
-                class_name: root::JS::Handle<*mut root::JSString>,
-            ) -> bool;
-            pub fn CreateBuiltinClass(
-                cx: *mut root::JSContext,
-                jsCtor: root::JSNative,
-                argc: ::std::os::raw::c_uint,
-                cls: *const root::JSClass,
-                properties: *const root::jsglue::NativeProperties,
-                ctorProperties: *const root::jsglue::NativeProperties,
-                protoClass: *const root::JSClass,
-                protoProto: root::JS::HandleObject,
-                global: root::JS::HandleObject,
-                defineOnGlobal: bool,
-            ) -> *mut root::JSObject;
+                showArgs: bool,
+                showLocals: bool,
+                showThisProps: bool,
+            );
+        }
+    }
+    /// <div rustbindgen replaces="JSJitMethodCallArgs"></div>
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    pub struct JSJitMethodCallArgs {
+        pub argv_: *mut root::JS::Value,
+        pub argc_: ::std::os::raw::c_uint,
+        pub _bitfield_align_1: [u8; 0],
+        pub _bitfield_1: root::__BindgenBitfieldUnit<[u8; 1usize]>,
+        pub wantUsedRval_: root::JS::detail::NoUsedRval,
+    }
+    impl JSJitMethodCallArgs {
+        #[inline]
+        pub fn constructing_(&self) -> bool {
+            unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u8) }
+        }
+        #[inline]
+        pub fn set_constructing_(&mut self, val: bool) {
+            unsafe {
+                let val: u8 = ::std::mem::transmute(val);
+                self._bitfield_1.set(0usize, 1u8, val as u64)
+            }
+        }
+        #[inline]
+        pub unsafe fn constructing__raw(this: *const Self) -> bool {
+            unsafe {
+                ::std::mem::transmute(
+                    <root::__BindgenBitfieldUnit<
+                        [u8; 1usize],
+                    >>::raw_get(::std::ptr::addr_of!((*this)._bitfield_1), 0usize, 1u8)
+                        as u8,
+                )
+            }
+        }
+        #[inline]
+        pub unsafe fn set_constructing__raw(this: *mut Self, val: bool) {
+            unsafe {
+                let val: u8 = ::std::mem::transmute(val);
+                <root::__BindgenBitfieldUnit<
+                    [u8; 1usize],
+                >>::raw_set(
+                    ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                    0usize,
+                    1u8,
+                    val as u64,
+                )
+            }
+        }
+        #[inline]
+        pub fn ignoresReturnValue_(&self) -> bool {
+            unsafe { ::std::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u8) }
+        }
+        #[inline]
+        pub fn set_ignoresReturnValue_(&mut self, val: bool) {
+            unsafe {
+                let val: u8 = ::std::mem::transmute(val);
+                self._bitfield_1.set(1usize, 1u8, val as u64)
+            }
+        }
+        #[inline]
+        pub unsafe fn ignoresReturnValue__raw(this: *const Self) -> bool {
+            unsafe {
+                ::std::mem::transmute(
+                    <root::__BindgenBitfieldUnit<
+                        [u8; 1usize],
+                    >>::raw_get(::std::ptr::addr_of!((*this)._bitfield_1), 1usize, 1u8)
+                        as u8,
+                )
+            }
+        }
+        #[inline]
+        pub unsafe fn set_ignoresReturnValue__raw(this: *mut Self, val: bool) {
+            unsafe {
+                let val: u8 = ::std::mem::transmute(val);
+                <root::__BindgenBitfieldUnit<
+                    [u8; 1usize],
+                >>::raw_set(
+                    ::std::ptr::addr_of_mut!((*this)._bitfield_1),
+                    1usize,
+                    1u8,
+                    val as u64,
+                )
+            }
+        }
+        #[inline]
+        pub fn new_bitfield_1(
+            constructing_: bool,
+            ignoresReturnValue_: bool,
+        ) -> root::__BindgenBitfieldUnit<[u8; 1usize]> {
+            let mut __bindgen_bitfield_unit: root::__BindgenBitfieldUnit<[u8; 1usize]> = Default::default();
+            __bindgen_bitfield_unit
+                .set(
+                    0usize,
+                    1u8,
+                    {
+                        let constructing_: u8 = unsafe {
+                            ::std::mem::transmute(constructing_)
+                        };
+                        constructing_ as u64
+                    },
+                );
+            __bindgen_bitfield_unit
+                .set(
+                    1usize,
+                    1u8,
+                    {
+                        let ignoresReturnValue_: u8 = unsafe {
+                            ::std::mem::transmute(ignoresReturnValue_)
+                        };
+                        ignoresReturnValue_ as u64
+                    },
+                );
+            __bindgen_bitfield_unit
         }
     }
     pub type __builtin_va_list = *mut ::std::os::raw::c_void;
@@ -22913,34 +19793,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         /// Complain when out of memory.
         #[link_name = "\u{1}_Z20JS_ReportOutOfMemoryP9JSContext"]
         pub fn JS_ReportOutOfMemory(cx: *mut root::JSContext);
-        #[link_name = "\u{1}_ZN4Flow4InitEv"]
-        pub fn Flow_Init();
-        #[link_name = "\u{1}_ZN14ProfilingStackD1Ev"]
-        pub fn ProfilingStack_ProfilingStack_destructor(this: *mut root::ProfilingStack);
-        #[link_name = "\u{1}_ZN11JSAutoRealmC1EP9JSContextP8JSObject"]
-        pub fn JSAutoRealm_JSAutoRealm(
-            this: *mut root::JSAutoRealm,
-            cx: *mut root::JSContext,
-            target: *mut root::JSObject,
-        ) -> *mut ::std::os::raw::c_void;
-        #[link_name = "\u{1}_ZN11JSAutoRealmC1EP9JSContextP8JSScript"]
-        pub fn JSAutoRealm_JSAutoRealm1(
-            this: *mut root::JSAutoRealm,
-            cx: *mut root::JSContext,
-            target: *mut root::JSScript,
-        ) -> *mut ::std::os::raw::c_void;
-        #[link_name = "\u{1}_ZN11JSAutoRealmD1Ev"]
-        pub fn JSAutoRealm_JSAutoRealm_destructor(this: *mut root::JSAutoRealm);
-        #[link_name = "\u{1}_ZN19JSAutoNullableRealmC1EP9JSContextP8JSObject"]
-        pub fn JSAutoNullableRealm_JSAutoNullableRealm(
-            this: *mut root::JSAutoNullableRealm,
-            cx: *mut root::JSContext,
-            targetOrNull: *mut root::JSObject,
-        ) -> *mut ::std::os::raw::c_void;
-        #[link_name = "\u{1}_ZN19JSAutoNullableRealmD1Ev"]
-        pub fn JSAutoNullableRealm_JSAutoNullableRealm_destructor(
-            this: *mut root::JSAutoNullableRealm,
-        );
         /** Given a buffer, return false if the buffer might become a valid JavaScript
  script with the addition of more lines, or true if the validity of such a
  script is conclusively known (because it's the prefix of a valid script --
@@ -23049,20 +19901,8 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub static JS_NULL_CLASS_EXT: *const root::js::ClassExtension;
         #[link_name = "\u{1}_ZL18JS_NULL_OBJECT_OPS"]
         pub static JS_NULL_OBJECT_OPS: *const root::js::ObjectOps;
-        #[link_name = "\u{1}_ZL26JSCLASS_HAS_RESERVED_SLOTSj"]
-        pub fn JSCLASS_HAS_RESERVED_SLOTS(n: u32) -> u32;
-        #[link_name = "\u{1}_ZL31JSCLASS_GLOBAL_FLAGS_WITH_SLOTSj"]
-        pub fn JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(n: u32) -> u32;
-        #[link_name = "\u{1}_ZL24JSCLASS_HAS_CACHED_PROTO10JSProtoKey"]
-        pub fn JSCLASS_HAS_CACHED_PROTO(key: root::JSProtoKey) -> u32;
         #[link_name = "\u{1}_ZL17JS_NULL_CLASS_OPS"]
         pub static JS_NULL_CLASS_OPS: *const root::JSClassOps;
-        #[link_name = "\u{1}_ZL22JSCLASS_RESERVED_SLOTSPK7JSClass"]
-        pub fn JSCLASS_RESERVED_SLOTS(clasp: *const root::JSClass) -> u32;
-        #[link_name = "\u{1}_ZL33JSCLASS_HAS_GLOBAL_FLAG_AND_SLOTSPK7JSClass"]
-        pub fn JSCLASS_HAS_GLOBAL_FLAG_AND_SLOTS(clasp: *const root::JSClass) -> bool;
-        #[link_name = "\u{1}_ZL24JSCLASS_CACHED_PROTO_KEYPK7JSClass"]
-        pub fn JSCLASS_CACHED_PROTO_KEY(clasp: *const root::JSClass) -> root::JSProtoKey;
         /** This function can be used to track memory used by ICU.  If it is called, it
  *must* be called before JS_Init.  Don't use it unless you know what you're
  doing!*/
@@ -23164,12 +20004,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             str_: root::JS::Handle<*mut root::JSString>,
             reviver: root::JS::Handle<root::JS::Value>,
             vp: root::JS::MutableHandle<root::JS::Value>,
-        ) -> bool;
-        #[link_name = "\u{1}_ZNK14JSPropertySpec8getValueEP9JSContextN2JS13MutableHandleINS2_5ValueEEE"]
-        pub fn JSPropertySpec_getValue(
-            this: *const root::JSPropertySpec,
-            cx: *mut root::JSContext,
-            value: root::JS::MutableHandle<root::JS::Value>,
         ) -> bool;
         #[link_name = "\u{1}_Z17JS_GetEmptyStringP9JSContext"]
         pub fn JS_GetEmptyString(cx: *mut root::JSContext) -> *mut root::JSString;
@@ -23316,14 +20150,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             cx: *mut root::JSContext,
             str_: *mut root::JSString,
         ) -> *mut root::JSLinearString;
-        #[link_name = "\u{1}_ZL26JS_ASSERT_STRING_IS_LINEARP8JSString"]
-        pub fn JS_ASSERT_STRING_IS_LINEAR(
-            str_: *mut root::JSString,
-        ) -> *mut root::JSLinearString;
-        #[link_name = "\u{1}_ZL27JS_FORGET_STRING_LINEARNESSP14JSLinearString"]
-        pub fn JS_FORGET_STRING_LINEARNESS(
-            str_: *mut root::JSLinearString,
-        ) -> *mut root::JSString;
         #[link_name = "\u{1}_Z26JS_LinearStringEqualsAsciiP14JSLinearStringPKc"]
         pub fn JS_LinearStringEqualsAscii(
             str_: *mut root::JSLinearString,
@@ -23404,14 +20230,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         /// DO NOT USE, only present for Rust bindings as a temporary hack
         #[link_name = "\u{1}_Z33JS_DeprecatedStringHasLatin1CharsP8JSString"]
         pub fn JS_DeprecatedStringHasLatin1Chars(str_: *mut root::JSString) -> bool;
-        #[link_name = "\u{1}_ZN21JSStructuredCloneData20discardTransferablesEv"]
-        pub fn JSStructuredCloneData_discardTransferables(
-            this: *mut root::JSStructuredCloneData,
-        );
-        #[link_name = "\u{1}_ZN21JSStructuredCloneDataD1Ev"]
-        pub fn JSStructuredCloneData_JSStructuredCloneData_destructor(
-            this: *mut root::JSStructuredCloneData,
-        );
         /** Implements StructuredDeserialize and StructuredDeserializeWithTransfer.
 
  Note: If `data` contains transferable objects, it can be read only once.*/
@@ -23456,60 +20274,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             optionalCallbacks: *const root::JSStructuredCloneCallbacks,
             closure: *mut ::std::os::raw::c_void,
         ) -> bool;
-        #[link_name = "\u{1}_ZN27JSAutoStructuredCloneBuffer5clearEv"]
-        pub fn JSAutoStructuredCloneBuffer_clear(
-            this: *mut root::JSAutoStructuredCloneBuffer,
-        );
-        /** Adopt some memory. It will be automatically freed by the destructor.
- data must have been allocated by the JS engine (e.g., extracted via
- JSAutoStructuredCloneBuffer::steal).*/
-        #[link_name = "\u{1}_ZN27JSAutoStructuredCloneBuffer5adoptEO21JSStructuredCloneDatajPK26JSStructuredCloneCallbacksPv"]
-        pub fn JSAutoStructuredCloneBuffer_adopt(
-            this: *mut root::JSAutoStructuredCloneBuffer,
-            data: *mut root::JSStructuredCloneData,
-            version: u32,
-            callbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        );
-        /** Release ownership of the buffer and assign it and ownership of it to
- `data`.*/
-        #[link_name = "\u{1}_ZN27JSAutoStructuredCloneBuffer6giveToEP21JSStructuredCloneData"]
-        pub fn JSAutoStructuredCloneBuffer_giveTo(
-            this: *mut root::JSAutoStructuredCloneBuffer,
-            data: *mut root::JSStructuredCloneData,
-        );
-        #[link_name = "\u{1}_ZN27JSAutoStructuredCloneBuffer4readEP9JSContextN2JS13MutableHandleINS2_5ValueEEERKNS2_15CloneDataPolicyEPK26JSStructuredCloneCallbacksPv"]
-        pub fn JSAutoStructuredCloneBuffer_read(
-            this: *mut root::JSAutoStructuredCloneBuffer,
-            cx: *mut root::JSContext,
-            vp: root::JS::MutableHandleValue,
-            cloneDataPolicy: *const root::JS::CloneDataPolicy,
-            optionalCallbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        ) -> bool;
-        #[link_name = "\u{1}_ZN27JSAutoStructuredCloneBuffer5writeEP9JSContextN2JS6HandleINS2_5ValueEEEPK26JSStructuredCloneCallbacksPv"]
-        pub fn JSAutoStructuredCloneBuffer_write(
-            this: *mut root::JSAutoStructuredCloneBuffer,
-            cx: *mut root::JSContext,
-            v: root::JS::HandleValue,
-            optionalCallbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        ) -> bool;
-        #[link_name = "\u{1}_ZN27JSAutoStructuredCloneBuffer5writeEP9JSContextN2JS6HandleINS2_5ValueEEES5_RKNS2_15CloneDataPolicyEPK26JSStructuredCloneCallbacksPv"]
-        pub fn JSAutoStructuredCloneBuffer_write1(
-            this: *mut root::JSAutoStructuredCloneBuffer,
-            cx: *mut root::JSContext,
-            v: root::JS::HandleValue,
-            transferable: root::JS::HandleValue,
-            cloneDataPolicy: *const root::JS::CloneDataPolicy,
-            optionalCallbacks: *const root::JSStructuredCloneCallbacks,
-            closure: *mut ::std::os::raw::c_void,
-        ) -> bool;
-        #[link_name = "\u{1}_ZN27JSAutoStructuredCloneBufferC1EOS_"]
-        pub fn JSAutoStructuredCloneBuffer_JSAutoStructuredCloneBuffer(
-            this: *mut root::JSAutoStructuredCloneBuffer,
-            other: *mut root::JSAutoStructuredCloneBuffer,
-        ) -> *mut ::std::os::raw::c_void;
         #[link_name = "\u{1}_Z17JS_ReadUint32PairP23JSStructuredCloneReaderPjS1_"]
         pub fn JS_ReadUint32Pair(
             r: *mut root::JSStructuredCloneReader,
@@ -24268,117 +21032,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         pub fn JS_GetErrorInterceptorCallback(
             arg1: *mut root::JSRuntime,
         ) -> *mut root::JSErrorInterceptor;
-        #[link_name = "\u{1}_ZN11JSErrorBase16newMessageStringEP9JSContext"]
-        pub fn JSErrorBase_newMessageString(
-            this: *mut root::JSErrorBase,
-            cx: *mut root::JSContext,
-        ) -> *mut root::JSString;
-        #[link_name = "\u{1}_ZN12JSErrorNotes12addNoteASCIIEP9JSContextPKcjjN2JS21ColumnNumberOneOriginEPFPK19JSErrorFormatStringPvjES9_jz"]
-        pub fn JSErrorNotes_addNoteASCII(
-            this: *mut root::JSErrorNotes,
-            cx: *mut root::JSContext,
-            filename: *const ::std::os::raw::c_char,
-            sourceId: ::std::os::raw::c_uint,
-            lineno: u32,
-            column: root::JS::ColumnNumberOneOrigin,
-            errorCallback: root::JSErrorCallback,
-            userRef: *mut ::std::os::raw::c_void,
-            errorNumber: ::std::os::raw::c_uint,
-            ...
-        ) -> bool;
-        #[link_name = "\u{1}_ZN12JSErrorNotes12addNoteASCIIEPN2js15FrontendContextEPKcjjN2JS21ColumnNumberOneOriginEPFPK19JSErrorFormatStringPvjESA_jz"]
-        pub fn JSErrorNotes_addNoteASCII1(
-            this: *mut root::JSErrorNotes,
-            fc: *mut root::js::FrontendContext,
-            filename: *const ::std::os::raw::c_char,
-            sourceId: ::std::os::raw::c_uint,
-            lineno: u32,
-            column: root::JS::ColumnNumberOneOrigin,
-            errorCallback: root::JSErrorCallback,
-            userRef: *mut ::std::os::raw::c_void,
-            errorNumber: ::std::os::raw::c_uint,
-            ...
-        ) -> bool;
-        #[link_name = "\u{1}_ZN12JSErrorNotes13addNoteLatin1EP9JSContextPKcjjN2JS21ColumnNumberOneOriginEPFPK19JSErrorFormatStringPvjES9_jz"]
-        pub fn JSErrorNotes_addNoteLatin1(
-            this: *mut root::JSErrorNotes,
-            cx: *mut root::JSContext,
-            filename: *const ::std::os::raw::c_char,
-            sourceId: ::std::os::raw::c_uint,
-            lineno: u32,
-            column: root::JS::ColumnNumberOneOrigin,
-            errorCallback: root::JSErrorCallback,
-            userRef: *mut ::std::os::raw::c_void,
-            errorNumber: ::std::os::raw::c_uint,
-            ...
-        ) -> bool;
-        #[link_name = "\u{1}_ZN12JSErrorNotes13addNoteLatin1EPN2js15FrontendContextEPKcjjN2JS21ColumnNumberOneOriginEPFPK19JSErrorFormatStringPvjESA_jz"]
-        pub fn JSErrorNotes_addNoteLatin11(
-            this: *mut root::JSErrorNotes,
-            fc: *mut root::js::FrontendContext,
-            filename: *const ::std::os::raw::c_char,
-            sourceId: ::std::os::raw::c_uint,
-            lineno: u32,
-            column: root::JS::ColumnNumberOneOrigin,
-            errorCallback: root::JSErrorCallback,
-            userRef: *mut ::std::os::raw::c_void,
-            errorNumber: ::std::os::raw::c_uint,
-            ...
-        ) -> bool;
-        #[link_name = "\u{1}_ZN12JSErrorNotes11addNoteUTF8EP9JSContextPKcjjN2JS21ColumnNumberOneOriginEPFPK19JSErrorFormatStringPvjES9_jz"]
-        pub fn JSErrorNotes_addNoteUTF8(
-            this: *mut root::JSErrorNotes,
-            cx: *mut root::JSContext,
-            filename: *const ::std::os::raw::c_char,
-            sourceId: ::std::os::raw::c_uint,
-            lineno: u32,
-            column: root::JS::ColumnNumberOneOrigin,
-            errorCallback: root::JSErrorCallback,
-            userRef: *mut ::std::os::raw::c_void,
-            errorNumber: ::std::os::raw::c_uint,
-            ...
-        ) -> bool;
-        #[link_name = "\u{1}_ZN12JSErrorNotes11addNoteUTF8EPN2js15FrontendContextEPKcjjN2JS21ColumnNumberOneOriginEPFPK19JSErrorFormatStringPvjESA_jz"]
-        pub fn JSErrorNotes_addNoteUTF81(
-            this: *mut root::JSErrorNotes,
-            fc: *mut root::js::FrontendContext,
-            filename: *const ::std::os::raw::c_char,
-            sourceId: ::std::os::raw::c_uint,
-            lineno: u32,
-            column: root::JS::ColumnNumberOneOrigin,
-            errorCallback: root::JSErrorCallback,
-            userRef: *mut ::std::os::raw::c_void,
-            errorNumber: ::std::os::raw::c_uint,
-            ...
-        ) -> bool;
-        #[link_name = "\u{1}_ZN12JSErrorNotes6lengthEv"]
-        pub fn JSErrorNotes_length(this: *mut root::JSErrorNotes) -> usize;
-        #[link_name = "\u{1}_ZN12JSErrorNotes4copyEP9JSContext"]
-        pub fn JSErrorNotes_copy(
-            this: *mut root::JSErrorNotes,
-            cx: *mut root::JSContext,
-        ) -> u32;
-        #[link_name = "\u{1}_ZN12JSErrorNotes5beginEv"]
-        pub fn JSErrorNotes_begin(
-            this: *mut root::JSErrorNotes,
-        ) -> root::JSErrorNotes_iterator;
-        #[link_name = "\u{1}_ZN12JSErrorNotes3endEv"]
-        pub fn JSErrorNotes_end(
-            this: *mut root::JSErrorNotes,
-        ) -> root::JSErrorNotes_iterator;
-        #[link_name = "\u{1}_ZN12JSErrorNotesC1Ev"]
-        pub fn JSErrorNotes_JSErrorNotes(
-            this: *mut root::JSErrorNotes,
-        ) -> *mut ::std::os::raw::c_void;
-        #[link_name = "\u{1}_ZN12JSErrorNotesD1Ev"]
-        pub fn JSErrorNotes_JSErrorNotes_destructor(this: *mut root::JSErrorNotes);
-        #[link_name = "\u{1}_ZN13JSErrorReport19initBorrowedLinebufEPKDsmm"]
-        pub fn JSErrorReport_initBorrowedLinebuf(
-            this: *mut root::JSErrorReport,
-            linebufArg: *const u16,
-            linebufLengthArg: usize,
-            tokenOffsetArg: usize,
-        );
         /** Report an exception represented by the sprintf-like conversion of format
  and its arguments.*/
         #[link_name = "\u{1}_Z19JS_ReportErrorASCIIP9JSContextPKcz"]
@@ -24585,8 +21238,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
         ) -> *mut ::std::os::raw::c_void;
         #[link_name = "\u{1}_Z14JS_string_freeP9JSContextPv"]
         pub fn JS_string_free(cx: *mut root::JSContext, p: *mut ::std::os::raw::c_void);
-        #[link_name = "\u{1}_ZN12JSPrincipals4dumpEv"]
-        pub fn JSPrincipals_dump(this: *mut root::JSPrincipals);
         #[link_name = "\u{1}_Z17JS_HoldPrincipalsP12JSPrincipals"]
         pub fn JS_HoldPrincipals(principals: *mut root::JSPrincipals);
         #[link_name = "\u{1}_Z17JS_DropPrincipalsP9JSContextP12JSPrincipals"]
@@ -25360,8 +22011,6 @@ typedef CheckedInt<uint16_t> CheckedUint16;
             cx: *mut root::JSContext,
             value: *const root::JS::Value,
         );
-        #[link_name = "\u{1}_ZL14JS_NumberValued"]
-        pub fn JS_NumberValue(d: f64) -> root::JS::Value;
         #[link_name = "\u{1}_Z22JS_StringHasBeenPinnedP9JSContextP8JSString"]
         pub fn JS_StringHasBeenPinned(
             cx: *mut root::JSContext,

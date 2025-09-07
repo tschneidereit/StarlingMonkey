@@ -1,0 +1,23 @@
+[package]
+name = "script"
+version.workspace = true
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+js.workspace = true
+jstraceable_derive.workspace = true
+libc.workspace = true
+log.workspace = true
+num-traits.workspace = true
+script_bindings = { path = "../script_bindings" }
+
+[features]
+crown = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(crown)'] }

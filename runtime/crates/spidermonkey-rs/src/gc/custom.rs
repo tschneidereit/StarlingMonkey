@@ -1,13 +1,11 @@
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 
-use jsapi_rs::jsapi::JS::{AutoGCRooter, AutoGCRooterKind, Value};
-use jsapi_rs::jsgc::{CustomAutoRooterVFTable, RootKind};
-
-use crate::c_str;
-use crate::raw::{self, JSContext, JSObject, JSTracer};
-use crate::raw::jsglue::{CallObjectRootTracer, CallValueRootTracer};
+use crate::glue::{CallObjectRootTracer, CallValueRootTracer};
+use crate::jsapi;
+use crate::jsapi::{AutoGCRooter, AutoGCRooterKind, JSContext, JSObject, JSTracer, Value};
 use crate::rust::{Handle, MutableHandle};
+use jsapi_rs::jsgc::{CustomAutoRooterVFTable, RootKind};
 
 /// Similarly to `Traceable` trait, it's used to specify tracing of various types
 /// that are used in conjunction with `CustomAutoRooter`.
@@ -19,7 +17,7 @@ unsafe impl CustomTrace for *mut JSObject {
     fn trace(&self, trc: *mut JSTracer) {
         let this = self as *const *mut _ as *mut *mut _;
         unsafe {
-            CallObjectRootTracer(trc, this, c_str!("object"));
+            CallObjectRootTracer(trc, this, c"object".as_ptr());
         }
     }
 }
@@ -28,7 +26,7 @@ unsafe impl CustomTrace for Value {
     fn trace(&self, trc: *mut JSTracer) {
         let this = self as *const _ as *mut _;
         unsafe {
-            CallValueRootTracer(trc, this, c_str!("any"));
+            CallValueRootTracer(trc, this, c"any".as_ptr());
         }
     }
 }
@@ -52,8 +50,12 @@ unsafe impl<T: CustomTrace> CustomTrace for Vec<T> {
 // This structure reimplements a C++ class that uses virtual dispatch, so
 // use C layout to guarantee that vftable in CustomAutoRooter is in right place.
 #[repr(C)]
+#[cfg_attr(
+    feature = "crown",
+    crown::unrooted_must_root_lint::allow_unrooted_interior
+)]
 pub struct CustomAutoRooter<T> {
-    _base: raw::JS::CustomAutoRooter,
+    _base: jsapi::CustomAutoRooter,
     data: T,
 }
 
@@ -96,7 +98,7 @@ impl<T: CustomTrace> CustomAutoRooter<T> {
     pub fn new(data: T) -> Self {
         let vftable = &Self::vftable;
         CustomAutoRooter {
-            _base: raw::JS::CustomAutoRooter {
+            _base: jsapi::CustomAutoRooter {
                 vtable_: vftable as *const _ as *const _,
                 _base: AutoGCRooter::new_unrooted(AutoGCRooterKind::Custom),
             },
@@ -115,6 +117,10 @@ impl<T: CustomTrace> CustomAutoRooter<T> {
 /// DerefMut implementations.
 /// This structure is created by `root` method on `CustomAutoRooter` or
 /// by the `auto_root!` macro.
+#[cfg_attr(
+    feature = "crown",
+    crown::unrooted_must_root_lint::allow_unrooted_interior
+)]
 pub struct CustomAutoRooterGuard<'a, T: 'a + CustomTrace> {
     rooter: &'a mut CustomAutoRooter<T>,
 }

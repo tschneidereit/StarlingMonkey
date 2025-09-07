@@ -249,12 +249,28 @@ bool fix_math_random(JSContext *cx, HandleObject global) {
   return JS_DefineFunctions(cx, math, funs);
 }
 
+std::vector<Heap<JSObject *>>& builtin_protos(JSObject *global) {
+  auto *realm = JS::GetObjectRealmOrNull(global);
+  MOZ_ASSERT(realm);
+  return *static_cast<std::vector<Heap<JSObject *>> *>(GetRealmPrivate(realm));
+}
+
+void trace_global(JSTracer * trc, JSObject * global) {
+  MOZ_ASSERT(JS_IsGlobalObject(global));
+  auto& protos = builtin_protos(global);
+  for (auto& obj : protos) {
+    JS::TraceEdge(trc, &obj, "builtin proto");
+  }
+}
+
 static Engine *ENGINE;
 JS::PersistentRootedValue SCRIPT_VALUE;
 
 bool create_content_global(JSContext * cx) {
   JS::RealmOptions options;
-  options.creationOptions().setStreamsEnabled(true);
+  options.creationOptions()
+    .setTrace(trace_global)
+    .setStreamsEnabled(true);
 
   // TODO: restore
   // JS::DisableIncrementalGC(cx);
@@ -270,6 +286,11 @@ bool create_content_global(JSContext * cx) {
   if (!JS::InitRealmStandardClasses(cx) || !fix_math_random(cx, global)) {
     return false;
   }
+
+  auto builtin_protos = new std::vector<Heap<JSObject*>>{};
+  auto *realm = JS::GetObjectRealmOrNull(global);
+  MOZ_ASSERT(realm);
+  SetRealmPrivate(realm, builtin_protos);
 
   GLOBAL.init(cx, global);
   return true;
@@ -539,6 +560,28 @@ void Engine::abort(const char *reason) {
 bool Engine::define_builtin_module(const char* id, HandleValue builtin) {
   TRACE("Defining builtin module '" << id << "'");
   return scriptLoader->define_builtin_module(id, builtin);
+}
+
+static size_t next_proto_id_;
+size_t Engine::reserve_builtin_proto_id() {
+  return next_proto_id_++;
+}
+
+void Engine::register_builtin_proto(JSObject *global, JSObject *proto, size_t id) {
+  MOZ_ASSERT(proto);
+  MOZ_ASSERT(id != SIZE_MAX, "A globally unique proto ID needs to be acquired using "
+                             "Engine::reserve_builtin_proto_id before registering a "
+                             "builtin proto for a global");
+  auto& protos = builtin_protos(global);
+  MOZ_ASSERT(protos.size() <= id || protos[id] == nullptr);
+  protos.resize(id + 1);
+  protos[id] = Heap(proto);
+}
+
+JS::HandleObject Engine::get_builtin_proto(JSObject *global, size_t id) {
+  auto& protos = builtin_protos(global);
+  MOZ_ASSERT(id < protos.size() && protos[id]);
+  return JS::HandleObject::fromMarkedLocation(&protos[id].get());
 }
 
 static bool define_builtin_module(JSContext *cx, unsigned argc, Value *vp) {

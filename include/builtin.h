@@ -230,6 +230,7 @@ public:
   };
 
   static JS::PersistentRootedObject proto_obj;
+  static size_t proto_id;
 
   static JS::Result<std::tuple<CallArgs, RootedObject *>>
   MethodHeaderWithName(const int required_argc, JSContext *cx, const unsigned argc, Value *vp,
@@ -244,6 +245,13 @@ public:
     }
 
     return {std::make_tuple(args, &self)};
+  }
+
+  static HandleObject proto(JSContext *cx) {
+    auto proto = api::Engine::get_builtin_proto(JS::CurrentGlobalOrNull(cx), proto_id);
+    MOZ_ASSERT(proto);
+    MOZ_ASSERT(proto == proto_obj, "While we have proto_obj, it should match the registered proto");
+    return proto;
   }
 
   static void register_subclass(const JSClass *cls) {
@@ -270,7 +278,12 @@ public:
     return true;
   }
 
-static bool init_class_impl(JSContext *cx, const HandleObject global,
+  static void set_proto_id(size_t id) {
+    MOZ_ASSERT(proto_id == SIZE_MAX, "proto_id should only be set once");
+    proto_id = id;
+  }
+
+  static bool init_class_impl(JSContext *cx, const HandleObject global,
                            std::optional<const HandleObject> maybe_parent_proto = std::nullopt) {
   MOZ_RELEASE_ASSERT(!maybe_parent_proto || maybe_parent_proto.value() != nullptr,
     "Trying to register a subclass before the parent class is initialized. "
@@ -280,13 +293,19 @@ static bool init_class_impl(JSContext *cx, const HandleObject global,
   proto_obj.init(cx, JS_InitClass(cx, global, &class_, parent_proto, Impl::class_name,
                                   Impl::constructor, Impl::ctor_length, Impl::properties,
                                   Impl::methods, Impl::static_properties, Impl::static_methods));
-
+    if (!proto_obj) {
+      return false;
+    }
+    Impl::proto_id = api::Engine::reserve_builtin_proto_id();
+    api::Engine::register_builtin_proto(global, proto_obj, Impl::proto_id);
     return proto_obj != nullptr;
   }
 };
 
 template <typename Impl, typename ClassPolicy>
 PersistentRooted<JSObject *> BuiltinImpl<Impl, ClassPolicy>::proto_obj{};
+template <typename Impl, typename ClassPolicy>
+size_t BuiltinImpl<Impl, ClassPolicy>::proto_id = SIZE_MAX;
 
 template <typename Impl> class BuiltinNoConstructor : public BuiltinImpl<Impl> {
 public:

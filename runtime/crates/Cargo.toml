@@ -4,6 +4,8 @@ repository = "https://github.com/bytecodealliance/starlingmonkey"
 license = "MPL-2.0"
 authors = ["The StarlingMonkey project contributors", "The Servo Project Developers"]
 edition = "2021"
+rust-version = "1.88.0"
+publish = false
 
 [workspace]
 members = [
@@ -12,13 +14,28 @@ members = [
     "starlingmonkey-rs",
     "generate-bindings",
     "spidermonkey-macros",
-]
+    "js",
+    "test-builtin"
+, "script", "script_bindings"]
 resolver = "2"
 
 [workspace.dependencies]
+deny_public_fields = { path = "deny_public_fields" }
+dom_struct = { path = "dom_struct" }
+domobject_derive = { path = "domobject_derive" }
+num-traits = "0.2.19"
 jsapi-rs = { path = "jsapi-rs" }
+js = { path = "js" }
+jstraceable_derive = { path = "jstraceable_derive" }
 starlingmonkey-rs = { path = "starlingmonkey-rs" }
 spidermonkey-rs = { path = "spidermonkey-rs" }
+script_bindings = { path = "script_bindings" }
+quote = "1.0.40"
+proc-macro2 = "1.0.101"
+serde = "1.0.219"
+serde_json = "1.0"
+syn = "2.0.106"
+synstructure = "0.13.2"
 
 bindgen = { version = "0.72", default-features = false, features = [
     "runtime",
@@ -26,6 +43,7 @@ bindgen = { version = "0.72", default-features = false, features = [
     "experimental",
 ] }
 libc = "1.0.0-alpha.1"
+log = "0.4"
 
 [profile.release]
 lto = true

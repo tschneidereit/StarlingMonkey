@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "jsapi.hpp"
 #include "assert.h"
+#include "more-glue.cpp"
 
 // There's a couple of classes from pre-57 releases of SM that bindgen can't
 // deal with. https://github.com/rust-lang-nursery/rust-bindgen/issues/851
@@ -44,6 +44,9 @@ class JSJitMethodCallArgsReplacement {
 struct MutableHandleIdVector_Simple {
   void* ptr;
 };
+static_assert(sizeof(JS::MutableHandleIdVector) ==
+                  sizeof(MutableHandleIdVector_Simple),
+              "wrong handle size");
 
 /// <div rustbindgen replaces="JS::HandleObjectVector"></div>
 struct HandleObjectVector_Simple {
@@ -64,14 +67,14 @@ bool JS_Init() { return ::JS_Init(); }
 bool InitSelfHostedCode(JSContext* cx) { return JS::InitSelfHostedCode(cx); }
 
 JS::RealmOptions* JS_NewRealmOptions() {
-  auto* result = new JS::RealmOptions;
+  JS::RealmOptions* result = new JS::RealmOptions;
   return result;
 }
 
 void DeleteRealmOptions(JS::RealmOptions* options) { delete options; }
 
 JS::OwningCompileOptions* JS_NewOwningCompileOptions(JSContext* cx) {
-  auto* result = new JS::OwningCompileOptions(cx);
+  JS::OwningCompileOptions* result = new JS::OwningCompileOptions(cx);
   return result;
 }
 
@@ -87,21 +90,25 @@ JS::CallArgs JS_CallArgsFromVp(unsigned argc, JS::Value* vp) {
 }
 
 void JS_StackCapture_AllFrames(JS::StackCapture* capture) {
+  JS::StackCapture all = JS::StackCapture(JS::AllFrames());
   // Since Rust can't provide a meaningful initial value for the
   // pointer, it is uninitialized memory. This means we must
   // overwrite its value, rather than perform an assignment
   // which could invoke a destructor on uninitialized memory.
-  *capture = JS::StackCapture(JS::AllFrames());
+  memcpy(capture, &all, sizeof(JS::StackCapture));
 }
 
 void JS_StackCapture_MaxFrames(uint32_t max, JS::StackCapture* capture) {
-  *capture = JS::StackCapture(JS::MaxFrames(max));
+  JS::StackCapture maxFrames = JS::StackCapture(JS::MaxFrames(max));
+  memcpy(capture, &maxFrames, sizeof(JS::StackCapture));
 }
 
 void JS_StackCapture_FirstSubsumedFrame(JSContext* cx,
                                         bool ignoreSelfHostedFrames,
                                         JS::StackCapture* capture) {
-  *capture = JS::StackCapture(JS::FirstSubsumedFrame(cx, ignoreSelfHostedFrames));
+  JS::StackCapture subsumed =
+      JS::StackCapture(JS::FirstSubsumedFrame(cx, ignoreSelfHostedFrames));
+  memcpy(capture, &subsumed, sizeof(JS::StackCapture));
 }
 
 size_t GetLinearStringLength(JSLinearString* s) {
@@ -114,6 +121,52 @@ uint16_t GetLinearStringCharAt(JSLinearString* s, size_t idx) {
 
 JSLinearString* AtomToLinearString(JSAtom* atom) {
   return JS::AtomToLinearString(atom);
+}
+
+// Wrappers around UniquePtr functions
+
+/**
+ * Create a new ArrayBuffer with the given contents. The contents must not be
+ * modified by any other code, internal or external.
+ *
+ * !!! IMPORTANT !!!
+ * If and only if an ArrayBuffer is successfully created and returned,
+ * ownership of |contents| is transferred to the new ArrayBuffer.
+ *
+ * When the ArrayBuffer is ready to be disposed of, `freeFunc(contents,
+ * freeUserData)` will be called to release the ArrayBuffer's reference on the
+ * contents.
+ *
+ * `freeFunc()` must not call any JSAPI functions that could cause a garbage
+ * collection.
+ *
+ * The caller must keep the buffer alive until `freeFunc()` is called, or, if
+ * `freeFunc` is null, until the JSRuntime is destroyed.
+ *
+ * The caller must not access the buffer on other threads. The JS engine will
+ * not allow the buffer to be transferred to other threads. If you try to
+ * transfer an external ArrayBuffer to another thread, the data is copied to a
+ * new malloc buffer. `freeFunc()` must be threadsafe, and may be called from
+ * any thread.
+ *
+ * This allows ArrayBuffers to be used with embedder objects that use reference
+ * counting, for example. In that case the caller is responsible
+ * for incrementing the reference count before passing the contents to this
+ * function. This also allows using non-reference-counted contents that must be
+ * freed with some function other than free().
+ */
+JSObject* NewExternalArrayBuffer(JSContext* cx, size_t nbytes, void* contents,
+                                 JS::BufferContentsFreeFunc freeFunc,
+                                 void* freeUserData) {
+  js::UniquePtr<void, JS::BufferContentsDeleter> dataPtr{
+      contents, {freeFunc, freeUserData}};
+  return NewExternalArrayBuffer(cx, nbytes, std::move(dataPtr));
+}
+
+JSObject* NewArrayBufferWithContents(JSContext* cx, size_t nbytes,
+                                     void* contents) {
+  js::UniquePtr<void, JS::FreePolicy> dataPtr{contents};
+  return JS::NewArrayBufferWithContents(cx, nbytes, std::move(dataPtr));
 }
 
 // Reexport some methods
@@ -165,117 +218,116 @@ bool JS_ValueIsUndefined(const JS::Value* value) {
 
 // These types are using maybe so we manually unwrap them in these wrappers
 
-//bool FromPropertyDescriptor(JSContext* cx,
-//                            JS::Handle<JS::PropertyDescriptor> desc_,
-//                            JS::MutableHandleValue vp) {
-//  return JS::FromPropertyDescriptor(
-//      cx,
-//      JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>>(
-//          cx, mozilla::ToMaybe(&desc_)),
-//      vp);
-//}
+bool FromPropertyDescriptor(JSContext* cx,
+                            JS::Handle<JS::PropertyDescriptor> desc_,
+                            JS::MutableHandleValue vp) {
+  return JS::FromPropertyDescriptor(
+      cx,
+      JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>>(
+          cx, mozilla::ToMaybe(&desc_)),
+      vp);
+}
 
-//bool JS_GetPropertyDescriptor(JSContext* cx, JS::Handle<JSObject*> obj,
-//                              const char* name,
-//                              JS::MutableHandle<JS::PropertyDescriptor> desc,
-//                              JS::MutableHandle<JSObject*> holder,
-//                              bool* isNone) {
-//  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
-//  bool result = JS_GetPropertyDescriptor(cx, obj, name, &mpd, holder);
-//  *isNone = mpd.isNothing();
-//  if (!*isNone) {
-//    desc.set(*mpd);
-//  }
-//  return result;
-//}
+bool JS_GetPropertyDescriptor(JSContext* cx, JS::Handle<JSObject*> obj,
+                              const char* name,
+                              JS::MutableHandle<JS::PropertyDescriptor> desc,
+                              JS::MutableHandle<JSObject*> holder,
+                              bool* isNone) {
+  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
+  bool result = JS_GetPropertyDescriptor(cx, obj, name, &mpd, holder);
+  *isNone = mpd.isNothing();
+  if (!*isNone) {
+    desc.set(*mpd);
+  }
+  return result;
+}
 
-//bool JS_GetOwnPropertyDescriptorById(
-//    JSContext* cx, JS::HandleObject obj, JS::HandleId id,
-//    JS::MutableHandle<JS::PropertyDescriptor> desc, bool* isNone) {
-//  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
-//  bool result = JS_GetOwnPropertyDescriptorById(cx, obj, id, &mpd);
-//  *isNone = mpd.isNothing();
-//  if (!*isNone) {
-//    desc.set(*mpd);
-//  }
-//  return result;
-//}
+bool JS_GetOwnPropertyDescriptorById(
+    JSContext* cx, JS::HandleObject obj, JS::HandleId id,
+    JS::MutableHandle<JS::PropertyDescriptor> desc, bool* isNone) {
+  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
+  bool result = JS_GetOwnPropertyDescriptorById(cx, obj, id, &mpd);
+  *isNone = mpd.isNothing();
+  if (!*isNone) {
+    desc.set(*mpd);
+  }
+  return result;
+}
 
-//bool JS_GetOwnPropertyDescriptor(JSContext* cx, JS::HandleObject obj,
-//                                 const char* name,
-//                                 JS::MutableHandle<JS::PropertyDescriptor> desc,
-//                                 bool* isNone) {
-//  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
-//  bool result = JS_GetOwnPropertyDescriptor(cx, obj, name, &mpd);
-//  *isNone = mpd.isNothing();
-//  if (!*isNone) {
-//    desc.set(*mpd);
-//  }
-//  return result;
-//}
+bool JS_GetOwnPropertyDescriptor(JSContext* cx, JS::HandleObject obj,
+                                 const char* name,
+                                 JS::MutableHandle<JS::PropertyDescriptor> desc,
+                                 bool* isNone) {
+  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
+  bool result = JS_GetOwnPropertyDescriptor(cx, obj, name, &mpd);
+  *isNone = mpd.isNothing();
+  if (!*isNone) {
+    desc.set(*mpd);
+  }
+  return result;
+}
 
-//bool JS_GetOwnUCPropertyDescriptor(
-//    JSContext* cx, JS::HandleObject obj, const char16_t* name, size_t namelen,
-//    JS::MutableHandle<JS::PropertyDescriptor> desc, bool* isNone) {
-//  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
-//  bool result = JS_GetOwnUCPropertyDescriptor(cx, obj, name, namelen, &mpd);
-//  *isNone = mpd.isNothing();
-//  if (!*isNone) {
-//    desc.set(*mpd);
-//  }
-//  return result;
-//}
+bool JS_GetOwnUCPropertyDescriptor(
+    JSContext* cx, JS::HandleObject obj, const char16_t* name, size_t namelen,
+    JS::MutableHandle<JS::PropertyDescriptor> desc, bool* isNone) {
+  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
+  bool result = JS_GetOwnUCPropertyDescriptor(cx, obj, name, namelen, &mpd);
+  *isNone = mpd.isNothing();
+  if (!*isNone) {
+    desc.set(*mpd);
+  }
+  return result;
+}
 
-//bool JS_GetPropertyDescriptorById(
-//    JSContext* cx, JS::HandleObject obj, JS::HandleId id,
-//    JS::MutableHandle<JS::PropertyDescriptor> desc,
-//    JS::MutableHandleObject holder, bool* isNone) {
-//  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
-//  bool result = JS_GetPropertyDescriptorById(cx, obj, id, &mpd, holder);
-//  *isNone = mpd.isNothing();
-//  if (!*isNone) {
-//    desc.set(*mpd);
-//  }
-//  return result;
-//}
+bool JS_GetPropertyDescriptorById(
+    JSContext* cx, JS::HandleObject obj, JS::HandleId id,
+    JS::MutableHandle<JS::PropertyDescriptor> desc,
+    JS::MutableHandleObject holder, bool* isNone) {
+  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
+  bool result = JS_GetPropertyDescriptorById(cx, obj, id, &mpd, holder);
+  *isNone = mpd.isNothing();
+  if (!*isNone) {
+    desc.set(*mpd);
+  }
+  return result;
+}
 
-//bool JS_GetUCPropertyDescriptor(JSContext* cx, JS::HandleObject obj,
-//                                const char16_t* name, size_t namelen,
-//                                JS::MutableHandle<JS::PropertyDescriptor> desc,
-//                                JS::MutableHandleObject holder, bool* isNone) {
-//  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
-//  bool result =
-//      JS_GetUCPropertyDescriptor(cx, obj, name, namelen, &mpd, holder);
-//  *isNone = mpd.isNothing();
-//  if (!*isNone) {
-//    desc.set(*mpd);
-//  }
-//  return result;
-//}
+bool JS_GetUCPropertyDescriptor(JSContext* cx, JS::HandleObject obj,
+                                const char16_t* name, size_t namelen,
+                                JS::MutableHandle<JS::PropertyDescriptor> desc,
+                                JS::MutableHandleObject holder, bool* isNone) {
+  JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
+  bool result =
+      JS_GetUCPropertyDescriptor(cx, obj, name, namelen, &mpd, holder);
+  *isNone = mpd.isNothing();
+  if (!*isNone) {
+    desc.set(*mpd);
+  }
+  return result;
+}
 
-//bool SetPropertyIgnoringNamedGetter(JSContext* cx, JS::HandleObject obj,
-//                                    JS::HandleId id, JS::HandleValue v,
-//                                    JS::HandleValue receiver,
-//                                    JS::Handle<JS::PropertyDescriptor> ownDesc,
-//                                    JS::ObjectOpResult& result) {
-//  return js::SetPropertyIgnoringNamedGetter(
-//      cx, obj, id, v, receiver,
-//      JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>>(
-//          cx, mozilla::ToMaybe(&ownDesc)),
-//      result);
-//}
+bool SetPropertyIgnoringNamedGetter(
+    JSContext* cx, JS::HandleObject obj, JS::HandleId id, JS::HandleValue v,
+    JS::HandleValue receiver, const JS::Handle<JS::PropertyDescriptor>* ownDesc,
+    JS::ObjectOpResult& result) {
+  return js::SetPropertyIgnoringNamedGetter(
+      cx, obj, id, v, receiver,
+      JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>>(
+          cx, mozilla::ToMaybe(ownDesc)),
+      result);
+}
 
-//bool CreateError(JSContext* cx, JSExnType type, JS::HandleObject stack,
-//                 JS::HandleString fileName, uint32_t lineNumber,
-//                 uint32_t columnNumber, JSErrorReport* report,
-//                 JS::HandleString message, JS::HandleValue cause,
-//                 JS::MutableHandleValue rval) {
-//  auto column = JS::ColumnNumberOneOrigin::fromZeroOrigin(columnNumber);
-//  return JS::CreateError(
-//      cx, type, stack, fileName, lineNumber, column, report, message,
-//      JS::Rooted<mozilla::Maybe<JS::Value>>(cx, mozilla::ToMaybe(&cause)),
-//      rval);
-//}
+bool CreateError(JSContext* cx, JSExnType type, JS::HandleObject stack,
+                 JS::HandleString fileName, uint32_t lineNumber,
+                 uint32_t columnNumber, JSErrorReport* report,
+                 JS::HandleString message, JS::HandleValue cause,
+                 JS::MutableHandleValue rval) {
+  return JS::CreateError(
+      cx, type, stack, fileName, lineNumber,
+      JS::ColumnNumberOneOrigin(columnNumber), report, message,
+      JS::Rooted<mozilla::Maybe<JS::Value>>(cx, mozilla::ToMaybe(&cause)),
+      rval);
+}
 
 JSExnType GetErrorType(const JS::Value& val) {
   auto type = JS_GetErrorType(val);
@@ -285,14 +337,25 @@ JSExnType GetErrorType(const JS::Value& val) {
   return *type;
 }
 
-//void GetExceptionCause(JSObject* exc, JS::MutableHandleValue dest) {
-//  auto cause = JS::GetExceptionCause(exc);
-//  if (cause.isNothing()) {
-//    dest.setNull();
-//  } else {
-//    dest.set(*cause);
-//  }
-//}
+void GetExceptionCause(JSObject* exc, JS::MutableHandleValue dest) {
+  auto cause = JS::GetExceptionCause(exc);
+  if (cause.isNothing()) {
+    dest.setNull();
+  } else {
+    dest.set(*cause);
+  }
+}
+
+// JS::EnvironmentChain* NewEnvironmentChain(
+//     JSContext* cx, JS::SupportUnscopables supportUnscopables) {
+//   return new JS::EnvironmentChain(cx, supportUnscopables);
+// }
+//
+// void DeleteEnvironmentChain(JS::EnvironmentChain* chain) { delete chain; }
+//
+// bool AppendToEnvironmentChain(JS::EnvironmentChain* chain, JSObject* obj) {
+//   return chain->append(obj);
+// }
 
 typedef bool (*WantToMeasure)(JSObject* obj);
 typedef size_t (*GetSize)(JSObject* obj);
@@ -300,48 +363,135 @@ typedef size_t (*GetSize)(JSObject* obj);
 WantToMeasure gWantToMeasure = nullptr;
 
 struct JobQueueTraps {
+  bool (*getHostDefinedData)(const void* queue, JSContext* cx,
+                             JS::MutableHandle<JSObject*> data);
   bool (*enqueuePromiseJob)(const void* queue, JSContext* cx,
                             JS::HandleObject promise, JS::HandleObject job,
                             JS::HandleObject allocationSite,
-                            JS::HandleObject incumbentGlobal) = nullptr;
+                            JS::HandleObject hostDefinedData) = 0;
+  void (*runJobs)(const void* queue, JSContext* cx);
   bool (*empty)(const void* queue);
+
+  // Create a new queue, push it onto an embedder-side stack, and return the new
+  // queue.
+  const void* (*pushNewInterruptQueue)(void* aInterruptQueues);
+  // Destroy the queue most recently created by pushNewInterruptQueue(),
+  // returning its address so we can check if we are restoring the saved queue
+  // over the correct queue.
+  const void* (*popInterruptQueue)(void* aInterruptQueues);
+  // Destroy the embedder-side stack of interrupt queues.
+  void (*dropInterruptQueues)(void* aInterruptQueues);
 };
 
-// TODO: restore
-//
 // class RustJobQueue : public JS::JobQueue {
 //   JobQueueTraps mTraps;
 //   const void* mQueue;
+//   void* mInterruptQueues;
 //
 //  public:
-//   RustJobQueue(const JobQueueTraps& aTraps, const void* aQueue)
-//       : mTraps(aTraps), mQueue(aQueue) {}
+//   RustJobQueue(const JobQueueTraps& aTraps, const void* aQueue,
+//                void* aInterruptQueues)
+//       : mTraps(aTraps), mQueue(aQueue), mInterruptQueues(aInterruptQueues) {}
 //
-//    bool enqueuePromiseJob(JSContext *cx, JS::HandleObject promise, JS::HandleObject job,
-//                           JS::HandleObject allocationSite,
-//                           JS::HandleObject incumbentGlobal) override {
+//   ~RustJobQueue() { mTraps.dropInterruptQueues(mInterruptQueues); }
+//
+//   virtual bool getHostDefinedData(
+//       JSContext* cx, JS::MutableHandle<JSObject*> data) const override {
+//     return mTraps.getHostDefinedData(mQueue, cx, data);
+//   }
+//   virtual bool enqueuePromiseJob(JSContext* cx, JS::HandleObject promise,
+//                                  JS::HandleObject job,
+//                                  JS::HandleObject allocationSite,
+//                                  JS::HandleObject hostDefinedData) override {
 //     return mTraps.enqueuePromiseJob(mQueue, cx, promise, job, allocationSite,
-//                                     incumbentGlobal);
+//                                     hostDefinedData);
 //   }
-//   // virtual bool getHostDefinedData(JSContext* cx,
-//   //                                 JS::MutableHandle<JSObject*> data) override {
-//   //   MOZ_ASSERT_UNREACHABLE("Not implemented");
-//   // }
 //
-//   bool empty() const override { return mTraps.empty(mQueue); }
+//   virtual bool empty() const override { return mTraps.empty(mQueue); }
 //
-//   void runJobs(JSContext *cx) override {
-//     MOZ_ASSERT(false, "runJobs should not be invoked");
-//   }
+//   virtual void runJobs(JSContext* cx) override { mTraps.runJobs(mQueue, cx); }
+//
+//   bool isDrainingStopped() const override { return false; }
 //
 //  private:
-//   js::UniquePtr<SavedJobQueue> saveJobQueue(JSContext *cx) override {
-//      MOZ_ASSERT(false, "saveJobQueue should not be invoked");
-//      return nullptr;
-//    }
+//   class SavedQueue : public JS::JobQueue::SavedJobQueue {
+//    public:
+//     SavedQueue(const JobQueueTraps& aTraps, void* aInterruptQueues,
+//                const void** aCurrentQueue, const void* aNewQueue)
+//         : mTraps(aTraps),
+//           mInterruptQueues(aInterruptQueues),
+//           mCurrentQueue(aCurrentQueue),
+//           mNewQueue(aNewQueue),
+//           mSavedQueue(*aCurrentQueue) {
+//       // TODO: assert that the context’s jobQueue hasn’t been cleared with
+//       // SetJobQueue(nullptr) or DestroyContext(). Don’t know how to do this
+//       // with only an opaque JSContext decl. Are we allowed to #include
+//       // "vm/JSContext.h"?
+//       //
+//       // MOZ_ASSERT(cx->jobQueue.ref());
 //
-//  public:
-//    bool isDrainingStopped() const override;
+//       // Set the current queue to mNewQueue.
+//       // We need to take care of this, so that we can save the old queue in the
+//       // member initializers above.
+//       *mCurrentQueue = mNewQueue;
+//     }
+//
+//     ~SavedQueue() {
+//       // TODO: assert that the context’s jobQueue hasn’t been cleared with
+//       // SetJobQueue(nullptr) or DestroyContext(). Don’t know how to do this
+//       // with only an opaque JSContext decl. Are we allowed to #include
+//       // "vm/JSContext.h"?
+//       //
+//       // MOZ_ASSERT(cx->jobQueue.ref());
+//
+//       // Check that the current queue is empty, as required by the SavedJobQueue
+//       // contract.
+//       MOZ_ASSERT(mTraps.empty(*mCurrentQueue));
+//
+//       // Destroy the topmost queue, checking that it was the queue this
+//       // SavedQueue expects to restore from. Imagine we have normal queue A,
+//       // then we switch to B (SavedQueue from B to A), then we switch to C
+//       // (SavedQueue from C to B). If the SavedQueue from B to A is restored
+//       // before the SavedQueue from C to B, the embedder will destroy both C and
+//       // B, but in the end, the queue will be set to B, a freed queue.
+//       MOZ_ASSERT(mTraps.popInterruptQueue(mInterruptQueues) == mNewQueue);
+//
+//       *mCurrentQueue = mSavedQueue;
+//     }
+//
+//    private:
+//     // Required for embedder FFI.
+//     JobQueueTraps mTraps;
+//     void* mInterruptQueues;
+//
+//     // Pointer to the RustJobQueue::mQueue field to write to when switching.
+//     const void** mCurrentQueue;
+//
+//     // The queue to switch to when saving.
+//     const void* mNewQueue;
+//
+//     // The queue to switch to when restoring.
+//     const void* mSavedQueue;
+//   };
+//
+//   virtual js::UniquePtr<SavedJobQueue> saveJobQueue(JSContext* cx) override {
+//     auto newQueue = mTraps.pushNewInterruptQueue(mInterruptQueues);
+//     // Servo uses infallible allocation here, so it should never return nullptr.
+//     MOZ_ASSERT(!!newQueue);
+//
+//     auto result =
+//         js::MakeUnique<SavedQueue>(mTraps, mInterruptQueues, &mQueue, newQueue);
+//     if (!result) {
+//       // “On OOM, this should call JS_ReportOutOfMemory on the given JSContext,
+//       // and return a null UniquePtr.”
+//       //
+//       // When the allocation in MakeUnique() fails, the SavedQueue constructor
+//       // is never called, so this->mQueue is still set to the old queue.
+//       js::ReportOutOfMemory(cx);
+//       return nullptr;
+//     }
+//     return result;
+//   }
 // };
 
 struct ReadableStreamUnderlyingSourceTraps {
@@ -400,12 +550,13 @@ class RustReadableStreamUnderlyingSource
 };
 
 struct JSExternalStringCallbacksTraps {
-  void (*finalize)(const void* privateData, char16_t* chars);
-  void (*finalize_latin1)(const void* privateData, JS::Latin1Char* chars);
-  size_t (*sizeOfBuffer)(const void* privateData, const char16_t* chars,
-                         mozilla::MallocSizeOf mallocSizeOf);
-  size_t (*sizeOfBuffer_latin1)(const void* privateData, const JS::Latin1Char* chars,
-                         mozilla::MallocSizeOf mallocSizeOf);
+  void (*latin1Finalize)(const void* privateData, JS::Latin1Char* chars);
+  void (*utf16Finalize)(const void* privateData, char16_t* chars);
+  size_t (*latin1SizeOfBuffer)(const void* privateData,
+                               const JS::Latin1Char* chars,
+                               mozilla::MallocSizeOf mallocSizeOf);
+  size_t (*utf16SizeOfBuffer)(const void* privateData, const char16_t* chars,
+                              mozilla::MallocSizeOf mallocSizeOf);
 };
 
 class RustJSExternalStringCallbacks final : public JSExternalStringCallbacks {
@@ -417,21 +568,22 @@ class RustJSExternalStringCallbacks final : public JSExternalStringCallbacks {
                                 void* privateData)
       : mTraps(aTraps), privateData(privateData) {}
 
-  void finalize(char16_t* chars) const override {
-    return mTraps.finalize(privateData, chars);
-  }
   void finalize(JS::Latin1Char* chars) const override {
-    return mTraps.finalize_latin1(privateData, chars);
+    return mTraps.latin1Finalize(privateData, chars);
   }
 
-  size_t sizeOfBuffer(const char16_t* chars,
-                      mozilla::MallocSizeOf mallocSizeOf) const override {
-    return mTraps.sizeOfBuffer(privateData, chars, mallocSizeOf);
+  void finalize(char16_t* chars) const override {
+    return mTraps.utf16Finalize(privateData, chars);
   }
 
   size_t sizeOfBuffer(const JS::Latin1Char* chars,
                       mozilla::MallocSizeOf mallocSizeOf) const override {
-    return mTraps.sizeOfBuffer_latin1(privateData, chars, mallocSizeOf);
+    return mTraps.latin1SizeOfBuffer(privateData, chars, mallocSizeOf);
+  }
+
+  size_t sizeOfBuffer(const char16_t* chars,
+                      mozilla::MallocSizeOf mallocSizeOf) const override {
+    return mTraps.utf16SizeOfBuffer(privateData, chars, mallocSizeOf);
   }
 };
 
@@ -441,7 +593,7 @@ struct ProxyTraps {
 
   bool (*getOwnPropertyDescriptor)(
       JSContext* cx, JS::HandleObject proxy, JS::HandleId id,
-      JS::MutableHandle<JS::PropertyDescriptor> desc, bool *isNone);
+      JS::MutableHandle<JS::PropertyDescriptor> desc, bool* isNone);
   bool (*defineProperty)(JSContext* cx, JS::HandleObject proxy, JS::HandleId id,
                          JS::Handle<JS::PropertyDescriptor> desc,
                          JS::ObjectOpResult& result);
@@ -497,7 +649,7 @@ struct ProxyTraps {
   bool (*defaultValue)(JSContext* cx, JS::HandleObject obj, JSType hint,
                        JS::MutableHandleValue vp);
   void (*trace)(JSTracer* trc, JSObject* proxy);
-  void (*finalize)(JS::GCContext *cx, JSObject* proxy);
+  void (*finalize)(JS::GCContext* cx, JSObject* proxy);
   size_t (*objectMoved)(JSObject* proxy, JSObject* old);
 
   bool (*isCallable)(JSObject* obj);
@@ -596,7 +748,8 @@ static int HandlerFamily;
     mTraps.trace ? mTraps.trace(trc, proxy) : _base::trace(trc, proxy);       \
   }                                                                           \
                                                                               \
-  virtual void finalize(JS::GCContext* context, JSObject* proxy) const override { \
+  virtual void finalize(JS::GCContext* context, JSObject* proxy)              \
+      const override {                                                        \
     mTraps.finalize ? mTraps.finalize(context, proxy)                         \
                     : _base::finalize(context, proxy);                        \
   }                                                                           \
@@ -652,11 +805,13 @@ class WrapperProxyHandler : public js::Wrapper {
 
   virtual bool getOwnPropertyDescriptor(
       JSContext* cx, JS::HandleObject proxy, JS::HandleId id,
-      JS::MutableHandle<mozilla::Maybe<JS::PropertyDescriptor>> desc) const override {
+      JS::MutableHandle<mozilla::Maybe<JS::PropertyDescriptor>> desc)
+      const override {
     if (mTraps.getOwnPropertyDescriptor) {
       JS::Rooted<JS::PropertyDescriptor> pd(cx);
       bool isNone = true;
-      bool result = mTraps.getOwnPropertyDescriptor(cx, proxy, id, &pd, &isNone);
+      bool result =
+          mTraps.getOwnPropertyDescriptor(cx, proxy, id, &pd, &isNone);
       if (isNone) {
         desc.set(mozilla::Nothing());
       } else {
@@ -722,7 +877,8 @@ class ForwardingProxyHandler : public js::BaseProxyHandler {
 
   virtual bool getOwnPropertyDescriptor(
       JSContext* cx, JS::HandleObject proxy, JS::HandleId id,
-      JS::MutableHandle<mozilla::Maybe<JS::PropertyDescriptor>> desc) const override {
+      JS::MutableHandle<mozilla::Maybe<JS::PropertyDescriptor>> desc)
+      const override {
     JS::Rooted<JS::PropertyDescriptor> pd(cx);
     bool isNone = true;
     bool result = mTraps.getOwnPropertyDescriptor(cx, proxy, id, &pd, &isNone);
@@ -846,10 +1002,10 @@ void* GetRustJSPrincipalsPrivate(JSPrincipals* principals) {
 
 bool InvokeGetOwnPropertyDescriptor(
     const void* handler, JSContext* cx, JS::HandleObject proxy, JS::HandleId id,
-    JS::MutableHandle<JS::PropertyDescriptor> desc, bool *isNone) {
+    JS::MutableHandle<JS::PropertyDescriptor> desc, bool* isNone) {
   JS::Rooted<mozilla::Maybe<JS::PropertyDescriptor>> mpd(cx);
   bool result = static_cast<const ForwardingProxyHandler*>(handler)
-      ->getOwnPropertyDescriptor(cx, proxy, id, &mpd);
+                    ->getOwnPropertyDescriptor(cx, proxy, id, &mpd);
   *isNone = mpd.isNothing();
   if (!*isNone) {
     desc.set(*mpd);
@@ -896,9 +1052,10 @@ const void* CreateWrapperProxyHandler(const ProxyTraps* aTraps) {
   return new WrapperProxyHandler(*aTraps);
 }
 
-const JSClass* GetClass(const JSObject* obj) {
-  return JS::GetClass(obj);
-}
+// void DeleteWrapperProxyHandler(const void* handler) {
+//   delete static_cast<const WrapperProxyHandler*>(handler);
+  // }
+
 
 const void* GetCrossCompartmentWrapper() {
   return &js::CrossCompartmentWrapper::singleton;
@@ -930,17 +1087,17 @@ JS::ReadOnlyCompileOptions* NewCompileOptions(JSContext* aCx, const char* aFile,
   return owned;
 }
 
-//JSObject* NewProxyObject(JSContext* aCx, const void* aHandler,
-//                         JS::HandleValue aPriv, JSObject* proto,
-//                         const JSClass* aClass, bool aLazyProto) {
-//  js::ProxyOptions options;
-//  if (aClass) {
-//    options.setClass(aClass);
-//  }
-//  options.setLazyProto(aLazyProto);
-//  return js::NewProxyObject(aCx, (js::BaseProxyHandler*)aHandler, aPriv, proto,
-//                            options);
-//}
+JSObject* NewProxyObject(JSContext* aCx, const void* aHandler,
+                         JS::HandleValue aPriv, JSObject* proto,
+                         const JSClass* aClass, bool aLazyProto) {
+  js::ProxyOptions options;
+  if (aClass) {
+    options.setClass(aClass);
+  }
+  options.setLazyProto(aLazyProto);
+  return js::NewProxyObject(aCx, (js::BaseProxyHandler*)aHandler, aPriv, proto,
+                            options);
+}
 
 JSObject* WrapperNew(JSContext* aCx, JS::HandleObject aObj,
                      const void* aHandler, const JSClass* aClass) {
@@ -1056,7 +1213,8 @@ JSObject* UnwrapObjectStatic(JSObject* obj) {
   return js::CheckedUnwrapStatic(obj);
 }
 
-JSObject* UnwrapObjectDynamic(JSObject* obj, JSContext* cx, bool stopAtWindowProxy) {
+JSObject* UnwrapObjectDynamic(JSObject* obj, JSContext* cx,
+                              bool stopAtWindowProxy) {
   return js::CheckedUnwrapDynamic(obj, cx, stopAtWindowProxy);
 }
 
@@ -1192,6 +1350,10 @@ void CallValueRootTracer(JSTracer* trc, JS::Value* valp, const char* name) {
   JS::TraceRoot(trc, valp, name);
 }
 
+void CallPropertyDescriptorTracer(JSTracer* trc, JS::PropertyDescriptor* desc) {
+  desc->trace(trc);
+}
+
 bool IsDebugBuild() {
 #ifdef JS_DEBUG
   return true;
@@ -1256,7 +1418,7 @@ bool WriteBytesToJSStructuredCloneData(const uint8_t* src, size_t len,
 
 // MSVC uses a different calling convention for functions
 // that return non-POD values. Unfortunately, this includes anything
-// with a constructor, such as JS::Value and JS::RegExpFlags, so we 
+// with a constructor, such as JS::Value and JS::RegExpFlags, so we
 // can't call these from Rust. These wrapper functions are only here
 // to ensure the calling convention is right.
 // https://web.archive.org/web/20180929193700/https://mozilla.logbot.info/jsapi/20180622#c14918658
@@ -1288,11 +1450,16 @@ void JS_GetPositiveInfinityValue(JSContext* cx, JS::Value* dest) {
   *dest = JS::InfinityValue();
 }
 
+void JS_GetEmptyStringValue(JSContext* cx, JS::Value* dest) {
+  *dest = JS_GetEmptyStringValue(cx);
+}
+
 void JS_GetReservedSlot(JSObject* obj, uint32_t index, JS::Value* dest) {
   *dest = JS::GetReservedSlot(obj, index);
 }
 
-void JS_GetRegExpFlags(JSContext* cx, JS::HandleObject obj, JS::RegExpFlags* flags) {
+void JS_GetRegExpFlags(JSContext* cx, JS::HandleObject obj,
+                       JS::RegExpFlags* flags) {
   *flags = JS::GetRegExpFlags(cx, obj);
 }
 
@@ -1309,9 +1476,9 @@ JSString* JS_ForgetStringLinearness(JSLinearString* str) {
   return JS_FORGET_STRING_LINEARNESS(str);
 }
 
-// TODO: restore
-// JS::JobQueue* CreateJobQueue(const JobQueueTraps* aTraps, const void* aQueue) {
-//   return new RustJobQueue(*aTraps, aQueue);
+// JS::JobQueue* CreateJobQueue(const JobQueueTraps* aTraps, const void* aQueue,
+//                              void* aInterruptQueues) {
+//   return new RustJobQueue(*aTraps, aQueue, aInterruptQueues);
 // }
 
 void DeleteJobQueue(JS::JobQueue* queue) { delete queue; }
@@ -1335,11 +1502,11 @@ void DeleteJSExternalStringCallbacks(JSExternalStringCallbacks* callbacks) {
   delete static_cast<RustJSExternalStringCallbacks*>(callbacks);
 }
 
-void DispatchableRun(JSContext* cx, JS::Dispatchable* ptr,
-                     JS::Dispatchable::MaybeShuttingDown mb) {
-  js::UniquePtr<JS::Dispatchable> uniquePtr(ptr);
+ void DispatchableRun(JSContext* cx, JS::Dispatchable* ptr,
+                      JS::Dispatchable::MaybeShuttingDown mb) {
+  js::UniquePtr<JS::Dispatchable> uniquePtr{ptr};
   JS::Dispatchable::Run(cx, std::move(uniquePtr), mb);
-}
+ }
 
 bool StreamConsumerConsumeChunk(JS::StreamConsumer* sc, const uint8_t* begin,
                                 size_t length) {
@@ -1370,180 +1537,30 @@ bool DescribeScriptedCaller(JSContext* cx, char* buffer, size_t buflen,
   return true;
 }
 
-void SetDataPropertyDescriptor(
-  JS::MutableHandle<JS::PropertyDescriptor> desc,
-  JS::HandleValue value,
-  uint32_t attrs
-) {
+void SetDataPropertyDescriptor(JS::MutableHandle<JS::PropertyDescriptor> desc,
+                               JS::HandleValue value, uint32_t attrs) {
   desc.set(JS::PropertyDescriptor::Data(value, attrs));
 }
 
 void SetAccessorPropertyDescriptor(
-    JS::MutableHandle<JS::PropertyDescriptor> desc,
-    JS::HandleObject getter,
-    JS::HandleObject setter,
-    uint32_t attrs
-) {
+    JS::MutableHandle<JS::PropertyDescriptor> desc, JS::HandleObject getter,
+    JS::HandleObject setter, uint32_t attrs) {
   desc.set(JS::PropertyDescriptor::Accessor(getter, setter, attrs));
 }
 
-// This creates a JSFunction and sets its length and name properties in the
-// order that ECMAScript's CreateBuiltinFunction does.
-static JSObject* CreateBuiltinFunctionForConstructor(
-    JSContext* cx, JSNative jsCtor, unsigned int argc,
-    const JSClass* cls, JS::HandleId name, JS::HandleObject proto) {
+void DumpJSStack(JSContext* cx, bool showArgs, bool showLocals,
+                 bool showThisProps) {
+  JS::AutoSaveExceptionState state(cx);
 
-  JSFunction* fun = js::NewFunctionByIdWithReservedAndProto(
-      cx, jsCtor, proto, argc, JSFUN_CONSTRUCTOR, name);
-  if (!fun) {
-    return nullptr;
-  }
+  JS::UniqueChars buf =
+      JS::FormatStackDump(cx, showArgs, showLocals, showThisProps);
 
-  JS::RootedObject constructor(cx, JS_GetFunctionObject(fun));
-  js::SetFunctionNativeReserved(constructor, 0, JS::PrivateValue((void*)cls));
+  state.restore();
 
-  // Eagerly force creation of the .length and .name properties, because
-  // SpiderMonkey creates them lazily (see
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=1629803).
-  bool unused;
-  if (!JS_HasProperty(cx, constructor, "length", &unused) ||
-      !JS_HasProperty(cx, constructor, "name", &unused)) {
-    return nullptr;
-      }
-
-  return constructor;
+  printf("%s\n", buf.get());
 }
 
-static bool DefineConstructor(JSContext* cx, JS::HandleObject global, JS::HandleId name,
-                              JS::HandleObject constructor) {
-  bool alreadyDefined;
-  if (!JS_AlreadyHasOwnPropertyById(cx, global, name, &alreadyDefined)) {
-    return false;
-  }
 
-  // This is Enumerable: False per spec.
-  return alreadyDefined ||
-         JS_DefinePropertyById(cx, global, name, constructor, JSPROP_RESOLVING);
-}
-
-struct ConstantSpec {
-  const char* name;
-  JS::Value value;
-};
-
-struct NativeProperties {
-  const JSFunctionSpec* methods;
-  const JSPropertySpec* properties;
-  const ConstantSpec* constants;
-};
-
-bool DefineConstants(JSContext* cx, JS::HandleObject obj, const ConstantSpec* cs) {
-  JS::Rooted<JS::Value> value(cx);
-  for (; cs->name; ++cs) {
-    value = cs->value;
-    bool ok = JS_DefineProperty(
-        cx, obj, cs->name, value,
-        JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT);
-    if (!ok) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool InitProperties(
-    JSContext* cx, JS::HandleObject obj,
-    const NativeProperties* properties) {
-  if (properties) {
-    if (properties->methods && !JS_DefineFunctions(cx, obj, properties->methods)) {
-      return false;
-    }
-
-    if (properties->properties && !JS_DefineProperties(cx, obj, properties->properties)) {
-      return false;
-    }
-
-    if (properties->constants && !DefineConstants(cx, obj, properties->constants)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool DefineToStringTag(JSContext* cx, JS::Handle<JSObject*> obj,
-                              JS::Handle<JSString*> class_name) {
-  JS::Rooted<jsid> toStringTagId(
-      cx, JS::GetWellKnownSymbolKey(cx, JS::SymbolCode::toStringTag));
-  return JS_DefinePropertyById(cx, obj, toStringTagId, class_name,
-                               JSPROP_READONLY);
-}
-
-// name must be an atom (or JS::PropertyKey::NonIntAtom will assert).
-JSObject* CreateBuiltinClass(
-    JSContext* cx, JSNative jsCtor, unsigned argc,
-    const JSClass* cls, const NativeProperties* properties,
-    const NativeProperties* ctorProperties,
-    const JSClass* protoClass, JS::HandleObject protoProto,
-    JS::HandleObject global, bool defineOnGlobal) {
-
-  MOZ_ASSERT(cls);
-
-  JS::RootedString nameStr(cx, JS_AtomizeString(cx, cls->name));
-  if (!nameStr) {
-    return nullptr;
-  }
-  JS::RootedId nameId(cx, JS::PropertyKey::NonIntAtom(nameStr));
-
-  JS::RootedObject proto(cx);
-  if (protoClass) {
-    proto = JS_NewObjectWithGivenProto(cx, protoClass, protoProto);
-    if (!proto) {
-      return nullptr;
-    }
-  }
-
-  if (!InitProperties(cx, proto, properties)) {
-    return nullptr;
-  }
-
-  if (!DefineToStringTag(cx, proto, nameStr)) {
-    return nullptr;
-  }
-
-
-  JS::RootedObject constructor(cx);
-  constructor = CreateBuiltinFunctionForConstructor(cx, jsCtor, argc, cls, nameId, proto);
-  if (!constructor) {
-    return nullptr;
-  }
-
-  if (proto && !JS_LinkConstructorAndPrototype(cx, constructor, proto)) {
-    return nullptr;
-  }
-
-  if (!InitProperties(cx, constructor, ctorProperties)) {
-    return nullptr;
-  }
-
-  if (defineOnGlobal && !DefineConstructor(cx, global, nameId, constructor)) {
-    return nullptr;
-  }
-
-  return constructor;
-}
-
-#if !defined(__wasi__)
-void FinishOffThreadStencil(
-  JSContext* cx,
-  JS::OffThreadToken* token,
-  JS::InstantiationStorage* storage,
-  already_AddRefed<JS::Stencil>* stencil
-) {
-  already_AddRefed<JS::Stencil> retval = JS::FinishOffThreadStencil(cx, token, storage);
-  *stencil = std::move(retval);
-}
-#endif
 
 }  // extern "C"
 

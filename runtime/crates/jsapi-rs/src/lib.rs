@@ -12,10 +12,12 @@ pub use encoding_c_mem;
 mod jsimpls;
 
 // Modules with public definitions
+pub mod glue;
 pub mod jsgc;
 pub mod jsid;
 pub mod jsval;
 pub mod jsapi;
+pub mod trace;
 
 /// Configure a panic hook to redirect rust panics to MFBT's MOZ_Crash.
 /// See <https://searchfox.org/mozilla-esr115/source/mozglue/static/rust/lib.rs#106>

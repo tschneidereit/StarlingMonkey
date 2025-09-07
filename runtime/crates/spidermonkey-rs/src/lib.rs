@@ -32,10 +32,67 @@ pub mod raw {
     pub use jsapi_rs::jsapi::*;
 }
 
+pub mod jsapi {
+    // Resolve ambiguous imports
+    pub use jsapi_rs::jsapi::js::detail;
+    pub use jsapi_rs::jsapi::JS::{FrontendContext, MemoryUse};
+
+    pub use jsapi_rs::jsapi::js::detail::*;
+    pub use jsapi_rs::jsapi::js::*;
+    pub use jsapi_rs::jsapi::js::ForwardingProxyHandler;
+    pub use jsapi_rs::jsapi::mozilla::MallocSizeOf;
+    pub use jsapi_rs::jsapi::JS::detail::*;
+    pub use jsapi_rs::jsapi::JS::shadow::Object;
+    pub use jsapi_rs::jsapi::JS::Scalar::Type;
+    pub use jsapi_rs::jsapi::JS::*;
+    pub use jsapi_rs::jsapi::*;
+    pub use jsapi_rs::jsapi::NewProxyObject;
+    pub mod glue {
+        pub use super::jsglue::*;
+    }
+}
+
+pub(crate) mod js {
+    pub mod glue {
+        pub use jsapi_rs::jsapi::jsglue::*;
+    }
+
+    pub use crate::conversions;
+    pub use crate::error;
+    pub use crate::rust;
+    pub use crate::jsval;
+    pub use crate::jsid;
+    pub use crate::gc;
+    pub use crate::rooted;
+    pub use crate::typedarray;
+    pub use crate::consts::*;
+
+
+    pub mod jsapi {
+        // Resolve ambiguous imports
+        pub use jsapi_rs::jsapi::js::detail;
+        pub use jsapi_rs::jsapi::JS::{FrontendContext, MemoryUse};
+
+        pub use jsapi_rs::jsapi::jsglue::ForwardingProxyHandler;
+        pub use jsapi_rs::jsapi::jsglue::*;
+        pub use jsapi_rs::jsapi::js::detail::*;
+        pub use jsapi_rs::jsapi::js::*;
+        pub use jsapi_rs::jsapi::mozilla::MallocSizeOf;
+        pub use jsapi_rs::jsapi::JS::detail::*;
+        pub use jsapi_rs::jsapi::JS::shadow::Object;
+        pub use jsapi_rs::jsapi::JS::Scalar::Type;
+        pub use jsapi_rs::jsapi::JS::*;
+        pub use jsapi_rs::jsapi::*;
+    }
+
+    pub use crate::jsval::JS_ARGV;
+    pub use crate::jsval::JS_CALLEE;
+}
+
 #[macro_use]
 pub mod rust;
 
-mod consts;
+pub mod consts;
 pub mod conversions;
 pub mod error;
 pub mod gc;
@@ -43,5 +100,10 @@ pub mod panic;
 pub mod typedarray;
 
 pub use crate::consts::*;
+pub use jsapi_rs::glue;
+pub use jsapi_rs::jsgc;
 pub use jsapi_rs::jsid;
 pub use jsapi_rs::jsval;
+
+pub use crate::jsval::JS_ARGV;
+pub use crate::jsval::JS_CALLEE;

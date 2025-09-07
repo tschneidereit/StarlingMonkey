@@ -16,6 +16,7 @@ use crate::jsapi::JS::Value;
 
 use libc::c_void;
 use std::default::Default;
+use std::mem;
 
 pub type JSVal = Value;
 
@@ -112,7 +113,7 @@ pub fn Int32Value(i: i32) -> JSVal {
 #[cfg(target_pointer_width = "64")]
 #[inline(always)]
 pub fn DoubleValue(f: f64) -> JSVal {
-    let bits: u64 = f64::to_bits(f);
+    let bits: u64 = unsafe { mem::transmute(f) };
     assert!(bits <= ValueShiftedTag::MAX_DOUBLE as u64);
     AsJSVal(bits)
 }
@@ -120,7 +121,7 @@ pub fn DoubleValue(f: f64) -> JSVal {
 #[cfg(target_pointer_width = "32")]
 #[inline(always)]
 pub fn DoubleValue(f: f64) -> JSVal {
-    let bits: u64 = f64::to_bits(f);
+    let bits: u64 = unsafe { f64::to_bits(f) };
     let val = AsJSVal(bits);
     assert!(val.is_double());
     val
@@ -429,7 +430,7 @@ impl JSVal {
     #[inline(always)]
     pub fn to_double(&self) -> f64 {
         assert!(self.is_double());
-        f64::from_bits(self.asBits())
+        unsafe { f64::from_bits(self.asBits()) }
     }
 
     #[inline(always)]

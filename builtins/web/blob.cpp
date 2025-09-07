@@ -557,7 +557,7 @@ bool Blob::init_options(JSContext *cx, HandleObject self, HandleValue initv) {
 }
 
 JSObject *Blob::create(JSContext *cx, UniqueChars data, size_t data_len, HandleString type) {
-  JSObject *self = JS_NewObjectWithGivenProto(cx, &class_, proto_obj);
+  JSObject *self = JS_NewObjectWithGivenProto(cx, &class_, proto(cx));
   if (!self) {
     return nullptr;
   }

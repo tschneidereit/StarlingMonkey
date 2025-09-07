@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+use bindgen::CodegenConfig;
 use std::{env, str};
 use std::process::Command;
 use std::fs;
@@ -53,7 +54,7 @@ fn format_rust_code(input_file: &str) -> String {
     if !output.status.success() {
         panic!("rustfmt failed: {}", String::from_utf8_lossy(&output.stderr));
     }
-    
+
     String::from_utf8(output.stdout)
         .expect("Failed to convert rustfmt output to string")
 }
@@ -65,6 +66,7 @@ fn process_bindings_content(content: &str) -> Vec<String> {
         .remove_empty_braces()
         .normalize_pub_keywords()
         .remove_semicolons()
+        .remove_namespaces()
         .filter_function_declarations()
         .apply_namespace_transforms()
         .filter_unwanted_return_types()
@@ -142,6 +144,14 @@ impl BindingsProcessor {
         self
     }
 
+    fn remove_namespaces(mut self) -> Self {
+        self.content = self.content
+            .replace(" raw::JS::", " ")
+            .replace(" raw::js::", " ")
+            .replace(" raw::", " ");
+        self
+    }
+
     fn filter_function_declarations(mut self) -> Self {
         let lines: Vec<String> = self.content
             .lines()
@@ -166,7 +176,12 @@ impl BindingsProcessor {
     fn apply_namespace_transforms(mut self) -> Self {
         self.content = self.content
             .replace("root::", "raw::")
-            .replace("Handle<*mut JSObject>", "HandleObject");
+            .replace("raw::JS::Handle", "Handle")
+            .replace("raw::JS::MutableHandle", "MutableHandle")
+            .replace("Handle<*mut raw::JSString>", "HandleString")
+            .replace("Handle<raw::JS::Value>", "HandleValue")
+            .replace("Handle<*mut raw::JSScript>", "HandleScript")
+            .replace("Handle<*mut raw::JSObject>", "HandleObject");
         self
     }
 
@@ -202,7 +217,10 @@ mod raw {
   pub use crate::raw::JS::detail::*;
   pub use crate::raw::js::*;
   pub use crate::raw::jsglue::*;
+  pub use crate::raw::jsglue::NewProxyObject;
 }
+use crate::gc::*;
+use jsapi_rs::jsapi::JS::{HandleObjectVector, HandleValueArray, MutableHandleIdVector};
 
 "#
     );
@@ -228,9 +246,9 @@ fn generate_bindings(config: &impl BindgenConfig, build_dir: &str) {
         .derive_partialeq(true)
         .derive_debug(true)
         .merge_extern_blocks(true)
-        .wrap_static_fns(true)
-        .translate_enum_integer_types(true)
-        .fit_macro_constants(true)
+        // .wrap_static_fns(true)
+        // .translate_enum_integer_types(true)
+        // .fit_macro_constants(true)
         .generate_cstr(true)
         .size_t_is_usize(true)
         .enable_function_attribute_detection()
@@ -246,11 +264,24 @@ fn generate_bindings(config: &impl BindgenConfig, build_dir: &str) {
         .emit_diagnostics()
         ;
 
-    match get_env("SYSROOT").as_str() {
-        "" => {}
-        sysroot_path => {
-            builder = builder.clang_arg("--sysroot")
-                .clang_arg(sysroot_path);
+    // let bindgen_env = format!("LIBCLANG_PATH={}", get_env("LIBCLANG_PATH"));
+
+    match get_env("WASI_SDK_PATH").as_str() {
+        wasi_sdk_path if !wasi_sdk_path.is_empty() => {
+            let sysroot_path = format!("{wasi_sdk_path}/share/wasi-sysroot");
+            builder = builder.clang_arg("--sysroot").clang_arg(&sysroot_path);
+        }
+        _ => {
+            match get_env("SYSROOT").as_str() {
+                sysroot_path if !sysroot_path.is_empty() => {
+                    builder = builder.clang_arg("--sysroot")
+                        .clang_arg(sysroot_path);
+                }
+                _ => {
+                    // If no SYSROOT or WASI_SDK_PATH is set, we assume the default sysroot.
+                    println!("cargo::warning=No SYSROOT or WASI_SDK_PATH set, using default sysroot.");
+                }
+            }
         }
     }
 
@@ -524,14 +555,17 @@ impl BindgenConfig for JSAPIBindgenConfig {
     ];
 
     const BLOCKLIST_FUNCTIONS: &'static [&'static str] = &[
+        "JSAutoRealm.*",
         "JS::CopyAsyncStack",
         "JS::CreateError",
         "JS::DecodeMultiStencilsOffThread",
         "JS::DecodeStencilOffThread",
         "JS::DescribeScriptedCaller",
         "JS::EncodeStencil",
+        "JS::ObjectOpResult.*",
         "JS::FinishDecodeMultiStencilsOffThread",
         "JS::FinishIncrementalEncoding",
+        "JS::ForOfIterator.*",
         "JS::FromPropertyDescriptor",
         "JS::GetExceptionCause",
         "JS::GetModulePrivate",
@@ -591,6 +625,17 @@ impl BindgenConfig for JSAPIBindgenConfig {
         ("root::JS", "pub type Heap<T> = crate::jsgc::Heap<T>;"),
         ("root::JS", "pub type Rooted<T> = crate::jsgc::Rooted<T>;"),
     ];
+
+    fn apply_additional(&self, builder: Builder) -> Builder {
+        // By default, constructors, destructors and methods declared in .h files are inlined,
+        // so their symbols aren't available. Adding the -fkeep-inlined-functions option
+        // causes the jsapi library to bloat from 500M to 6G, so that's not an option.
+        let mut cg_config = CodegenConfig::all();
+        cg_config &= !CodegenConfig::CONSTRUCTORS;
+        cg_config &= !CodegenConfig::DESTRUCTORS;
+        cg_config &= !CodegenConfig::METHODS;
+        builder.with_codegen_config(cg_config)
+    }
 
     fn in_file(&self) -> &str {
         "../jsapi-rs/cpp/jsglue.cpp"

@@ -12,10 +12,15 @@ debugmozjs = ['jsapi-rs/debugmozjs']
 jitspew = ['jsapi-rs/jitspew']
 profilemozjs = ['jsapi-rs/profilemozjs']
 streams = ['jsapi-rs/streams']
+crown = ['jsapi-rs/crown']
 
 [dependencies]
 jsapi-rs.workspace = true
 libc.workspace = true
 lazy_static = "1"
-log = "0.4"
+log.workspace = true
 num-traits = "0.2"
+encoding_rs = "0.8.34"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(crown)'] }
