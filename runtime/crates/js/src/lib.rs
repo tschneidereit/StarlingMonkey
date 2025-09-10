@@ -1,3 +1,6 @@
+
+extern crate spidermonkey_rs;
+
 pub mod glue {
     pub use jsapi_rs::jsapi::jsglue::*;
 }
@@ -8,6 +11,7 @@ pub use spidermonkey_rs::rust;
 pub use spidermonkey_rs::jsval;
 pub use spidermonkey_rs::jsid;
 pub use spidermonkey_rs::gc;
+pub use spidermonkey_rs::panic;
 pub use spidermonkey_rs::rooted;
 pub use spidermonkey_rs::typedarray;
 pub use spidermonkey_rs::consts::*;
@@ -18,7 +22,8 @@ pub mod jsapi {
     pub use jsapi_rs::jsapi::js::detail;
     pub use jsapi_rs::jsapi::JS::{FrontendContext, MemoryUse};
 
-    pub use jsapi_rs::jsapi::jsglue::ForwardingProxyHandler;
+    // Resolve ambiguous imports
+    pub use jsapi_rs::jsapi::jsglue::{ForwardingProxyHandler, NewProxyObject};
     pub use jsapi_rs::jsapi::jsglue::*;
     pub use jsapi_rs::jsapi::js::detail::*;
     pub use jsapi_rs::jsapi::js::*;
@@ -28,6 +33,7 @@ pub mod jsapi {
     pub use jsapi_rs::jsapi::JS::Scalar::Type;
     pub use jsapi_rs::jsapi::JS::*;
     pub use jsapi_rs::jsapi::*;
+    pub use super::glue;
 }
 
 pub use crate::jsval::JS_ARGV;

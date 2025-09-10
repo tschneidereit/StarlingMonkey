@@ -3,7 +3,7 @@ version = "0.0.1"
 repository = "https://github.com/bytecodealliance/starlingmonkey"
 license = "MPL-2.0"
 authors = ["The StarlingMonkey project contributors", "The Servo Project Developers"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.88.0"
 publish = false
 
@@ -15,27 +15,57 @@ members = [
     "generate-bindings",
     "spidermonkey-macros",
     "js",
-    "test-builtin"
-, "script", "script_bindings"]
+    "script",
+    "script_bindings",
+    "test-builtin",
+]
 resolver = "2"
 
 [workspace.dependencies]
+accountable-refcell = "0.2.2"
+app_units = "0.7"
+atomic_refcell = "0.1.13"
+bitflags = "2.9"
+content-security-policy = { git = "https://github.com/servo/rust-content-security-policy", branch = "servo-csp", features = ["serde"] }
 deny_public_fields = { path = "deny_public_fields" }
 dom_struct = { path = "dom_struct" }
 domobject_derive = { path = "domobject_derive" }
+encoding_rs = "0.8"
+fnv = "1.0"
+indexmap = { version = "2.10.0", features = ["std"] }
+mime = "0.3.13"
 num-traits = "0.2.19"
+smallvec = { version = "1.15", features = ["serde", "union"] }
+stylo_malloc_size_of = { git = "https://github.com/servo/stylo", branch = "2025-08-01" }
 jsapi-rs = { path = "jsapi-rs" }
-js = { path = "js" }
+js = { package = "spidermonkey-rs", path = "spidermonkey-rs" }
 jstraceable_derive = { path = "jstraceable_derive" }
 starlingmonkey-rs = { path = "starlingmonkey-rs" }
 spidermonkey-rs = { path = "spidermonkey-rs" }
+script = { path = "script" }
 script_bindings = { path = "script_bindings" }
 quote = "1.0.40"
+parking_lot = "0.12"
+phf = "0.11"
 proc-macro2 = "1.0.101"
-serde = "1.0.219"
+rand = "0.8"
+rand_core = "0.6"
+rand_isaac = "0.3"
+regex = "1.11"
+serde = { version = "1.0.219", features = ["derive", "rc"] }
 serde_json = "1.0"
+servo_arc = { git = "https://github.com/servo/stylo", branch = "2025-08-01", features = ["servo"] }
+servo_config = { path = "config" }
+stylo_config = "0.6.0"
 syn = "2.0.106"
 synstructure = "0.13.2"
+malloc_size_of = { package = "servo_malloc_size_of", path = "malloc_size_of" }
+malloc_size_of_derive = "0.1"
+time = { package = "time", version = "0.3", features = ["large-dates", "local-offset", "serde"] }
+tracing = "0.1.41"
+url = { version = "2.5", features = ["serde"] }
+urlpattern = "0.3"
+uuid = { version = "1.12.1", features = ["v4"] }
 
 bindgen = { version = "0.72", default-features = false, features = [
     "runtime",
@@ -50,7 +80,6 @@ lto = true
 panic = 'abort'
 
 [profile.dev]
-lto = true
 panic = 'abort'
 
 [profile.dev.build-override]

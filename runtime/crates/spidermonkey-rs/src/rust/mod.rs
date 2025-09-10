@@ -16,7 +16,7 @@ use std::ptr::{self, NonNull};
 use std::slice;
 use std::str;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::consts::{JSCLASS_GLOBAL_SLOT_COUNT, JSCLASS_RESERVED_SLOTS_MASK};
 use crate::consts::{JSCLASS_IS_DOMJSCLASS, JSCLASS_IS_GLOBAL};
@@ -34,16 +34,15 @@ use crate::glue::{
 };
 use crate::jsapi;
 use crate::jsapi::glue::{DeleteRealmOptions, JS_Init, JS_NewRealmOptions};
-use crate::jsapi::js::frontend::InitialStencilAndDelazifications;
 use crate::jsapi::mozilla::Utf8Unit;
 use crate::jsapi::shadow::BaseShape;
 use crate::jsapi::HandleObjectVector as RawHandleObjectVector;
 use crate::jsapi::HandleValue as RawHandleValue;
 use crate::jsapi::JS_AddExtraGCRootsTracer;
 use crate::jsapi::MutableHandleIdVector as RawMutableHandleIdVector;
-use crate::jsapi::{already_AddRefed, jsid};
+use crate::jsapi::jsid;
 use crate::jsapi::{BuildStackString, CaptureCurrentStack, StackFormat};
-use crate::jsapi::{Evaluate2, HandleValueArray};
+use crate::jsapi::Evaluate2;
 use crate::jsapi::{InitSelfHostedCode, IsWindowSlow};
 use crate::jsapi::{
     JSAutoRealm, JS_SetGCParameter, JS_SetNativeStackQuota, JS_WrapObject, JS_WrapValue,
@@ -318,10 +317,10 @@ pub struct Runtime {
     /// to represent the resulting ownership graph and risk destroying a Runtime on
     /// the wrong thread.
     outstanding_children: Arc<()>,
-    // /// An `Option` that holds the same pointer as `cx`.
-    // /// This is shared with all [`ThreadSafeJSContext`]s, so
-    // /// they can detect when it's destroyed on the main thread.
-    // thread_safe_handle: Arc<RwLock<Option<*mut JSContext>>>,
+    /// An `Option` that holds the same pointer as `cx`.
+    /// This is shared with all [`ThreadSafeJSContext`]s, so
+    /// they can detect when it's destroyed on the main thread.
+    thread_safe_handle: Arc<RwLock<Option<*mut JSContext>>>,
 }
 
 impl Runtime {
@@ -331,10 +330,10 @@ impl Runtime {
         NonNull::new(cx)
     }
 
-    // /// Create a [`ThreadSafeJSContext`] that can detect when this `Runtime` is destroyed.
-    // pub fn thread_safe_js_context(&self) -> ThreadSafeJSContext {
-    //     ThreadSafeJSContext(self.thread_safe_handle.clone())
-    // }
+    /// Create a [`ThreadSafeJSContext`] that can detect when this `Runtime` is destroyed.
+    pub fn thread_safe_js_context(&self) -> ThreadSafeJSContext {
+        ThreadSafeJSContext(self.thread_safe_handle.clone())
+    }
 
     /// Creates a new `JSContext`.
     pub fn new(engine: JSEngineHandle) -> Runtime {
@@ -405,7 +404,7 @@ impl Runtime {
             _parent_child_count: parent.map(|p| p.children_of_parent),
             cx: js_context,
             outstanding_children: Arc::new(()),
-            // thread_safe_handle: Arc::new(RwLock::new(Some(js_context))),
+            thread_safe_handle: Arc::new(RwLock::new(Some(js_context))),
         }
     }
 
@@ -457,7 +456,7 @@ impl Runtime {
 
 impl Drop for Runtime {
     fn drop(&mut self) {
-        // self.thread_safe_handle.write().unwrap().take();
+        self.thread_safe_handle.write().unwrap().take();
         assert!(
             Arc::get_mut(&mut self.outstanding_children).is_some(),
             "This runtime still has live children."
@@ -473,44 +472,47 @@ impl Drop for Runtime {
     }
 }
 
-// /// A version of the [`JSContext`] that can be used from other threads and is thus
-// /// `Send` and `Sync`. This should only ever expose operations that are marked as
-// /// thread-safe by the SpiderMonkey API, ie ones that only atomic fields in JSContext.
-// #[derive(Clone)]
-// pub struct ThreadSafeJSContext(Arc<RwLock<Option<*mut JSContext>>>);
-// 
-// unsafe impl Send for ThreadSafeJSContext {}
-// unsafe impl Sync for ThreadSafeJSContext {}
-// 
-// impl ThreadSafeJSContext {
-//     /// Call `JS_RequestInterruptCallback` from the SpiderMonkey API.
-//     /// This is thread-safe according to
-//     /// <https://searchfox.org/mozilla-central/rev/7a85a111b5f42cdc07f438e36f9597c4c6dc1d48/js/public/Interrupt.h#19>
-//     pub fn request_interrupt_callback(&self) {
-//         if let Some(&cx) = self.0.read().unwrap().as_ref() {
-//             unsafe {
-//                 JS_RequestInterruptCallback(cx);
-//             }
-//         }
-//     }
-// 
-//     /// Call `JS_RequestInterruptCallbackCanWait` from the SpiderMonkey API.
-//     /// This is thread-safe according to
-//     /// <https://searchfox.org/mozilla-central/rev/7a85a111b5f42cdc07f438e36f9597c4c6dc1d48/js/public/Interrupt.h#19>
-//     pub fn request_interrupt_callback_can_wait(&self) {
-//         if let Some(&cx) = self.0.read().unwrap().as_ref() {
-//             unsafe {
-//                 JS_RequestInterruptCallbackCanWait(cx);
-//             }
-//         }
-//     }
-// }
+/// A version of the [`JSContext`] that can be used from other threads and is thus
+/// `Send` and `Sync`. This should only ever expose operations that are marked as
+/// thread-safe by the SpiderMonkey API, ie ones that only atomic fields in JSContext.
+#[derive(Clone)]
+#[allow(dead_code)]
+pub struct ThreadSafeJSContext(Arc<RwLock<Option<*mut JSContext>>>);
+
+unsafe impl Send for ThreadSafeJSContext {}
+unsafe impl Sync for ThreadSafeJSContext {}
+
+impl ThreadSafeJSContext {
+    /// Call `JS_RequestInterruptCallback` from the SpiderMonkey API.
+    /// This is thread-safe according to
+    /// <https://searchfox.org/mozilla-central/rev/7a85a111b5f42cdc07f438e36f9597c4c6dc1d48/js/public/Interrupt.h#19>
+    pub fn request_interrupt_callback(&self) {
+        unimplemented!();
+        // if let Some(&cx) = self.0.read().unwrap().as_ref() {
+        //     unsafe {
+        //         JS_RequestInterruptCallback(cx);
+        //     }
+        // }
+    }
+
+    /// Call `JS_RequestInterruptCallbackCanWait` from the SpiderMonkey API.
+    /// This is thread-safe according to
+    /// <https://searchfox.org/mozilla-central/rev/7a85a111b5f42cdc07f438e36f9597c4c6dc1d48/js/public/Interrupt.h#19>
+    pub fn request_interrupt_callback_can_wait(&self) {
+        unimplemented!();
+        // if let Some(&cx) = self.0.read().unwrap().as_ref() {
+        //     unsafe {
+        //         JS_RequestInterruptCallbackCanWait(cx);
+        //     }
+        // }
+    }
+}
 
 const ChunkShift: usize = 20;
 const ChunkSize: usize = 1 << ChunkShift;
 
-#[cfg(target_pointer_width = "32")]
-const ChunkLocationOffset: usize = ChunkSize - 2 * 4 - 8;
+// #[cfg(target_pointer_width = "32")]
+// const ChunkLocationOffset: usize = ChunkSize - 2 * 4 - 8;
 
 // ___________________________________________________________________________
 // Wrappers around things in jsglue.cpp
@@ -605,7 +607,7 @@ impl Drop for JSAutoStructuredCloneBufferWrapper {
 }
 
 pub struct Stencil {
-    inner: already_AddRefed<InitialStencilAndDelazifications>,
+    // inner: already_AddRefed<InitialStencilAndDelazifications>,
 }
 
 /*unsafe impl Send for Stencil {}

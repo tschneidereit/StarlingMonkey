@@ -10,8 +10,9 @@ edition.workspace = true
 
 [dependencies]
 starlingmonkey-rs.workspace = true
-spidermonkey-rs.workspace = true
+#spidermonkey-rs.workspace = true
 spidermonkey-macros = { path = "../spidermonkey-macros" }
+script.workspace = true
 script_bindings.workspace = true
 js.workspace = true
 jstraceable_derive.workspace = true
@@ -23,10 +24,10 @@ num-traits.workspace = true
 libc.workspace = true
 
 [features]
-debugmozjs = ['spidermonkey-rs/debugmozjs']
-jitspew = ['spidermonkey-rs/jitspew']
-profilemozjs = ['spidermonkey-rs/profilemozjs']
-streams = ['spidermonkey-rs/streams']
+debugmozjs = ['js/debugmozjs']
+jitspew = ['js/jitspew']
+profilemozjs = ['js/profilemozjs']
+streams = ['js/streams']
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(crown)'] }

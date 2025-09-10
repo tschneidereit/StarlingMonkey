@@ -2,23 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use std::ptr;
+use std::{ptr, slice};
 
-use crate::js;
 use js::conversions::{
-    ConversionResult, FromJSValConvertible, ToJSValConvertible,
+    ConversionResult, FromJSValConvertible, ToJSValConvertible, jsstr_to_string,
 };
 use js::error::throw_type_error;
 use js::glue::{
-    GetProxyHandlerExtra, GetProxyReservedSlot, IsProxyHandlerFamily,
-    JS_GetReservedSlot,
+    GetProxyHandlerExtra, GetProxyReservedSlot, IsProxyHandlerFamily, IsWrapper,
+    JS_GetReservedSlot, UnwrapObjectDynamic,
 };
 use js::jsapi::{
-    Heap, JSContext, JSObject,
+    Heap, IsWindowProxy, JS_DeprecatedStringHasLatin1Chars, JS_GetLatin1StringCharsAndLength,
+    JS_GetTwoByteStringCharsAndLength, JS_NewStringCopyN, JSContext, JSObject,
 };
-use js::jsval::{ObjectValue, UndefinedValue};
+use js::jsval::{ObjectValue, StringValue, UndefinedValue};
+use js::rust::wrappers::IsArrayObject;
 use js::rust::{
-    HandleValue, MutableHandleValue, get_object_class, is_dom_class,
+    HandleId, HandleValue, MutableHandleValue, ToString, get_object_class, is_dom_class,
     is_dom_object, maybe_wrap_value,
 };
 use num_traits::Float;
@@ -28,8 +29,8 @@ use crate::inheritance::Castable;
 use crate::num::Finite;
 use crate::reflector::{DomObject, Reflector};
 use crate::root::DomRoot;
-use js::rust::SafeJSContext;
-// use crate::str::{ByteString, DOMString, USVString};
+use crate::script_runtime::JSContext as SafeJSContext;
+use crate::str::{ByteString, DOMString, USVString};
 use crate::trace::RootedTraceableBox;
 use crate::utils::{DOMClass, DOMJSClass};
 
@@ -53,28 +54,28 @@ pub trait IDLInterface {
 /// A trait to mark an IDL interface as deriving from another one.
 pub trait DerivedFrom<T: Castable>: Castable {}
 
-// // http://heycam.github.io/webidl/#es-USVString
-// impl ToJSValConvertible for USVString {
-//     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue) {
-//         self.0.to_jsval(cx, rval);
-//     }
-// }
-//
-// /// Behavior for stringification of `JSVal`s.
-// #[derive(Clone, PartialEq)]
-// pub enum StringificationBehavior {
-//     /// Convert `null` to the string `"null"`.
-//     Default,
-//     /// Convert `null` to the empty string.
-//     Empty,
-// }
-//
-// // https://heycam.github.io/webidl/#es-DOMString
-// impl ToJSValConvertible for DOMString {
-//     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue) {
-//         (**self).to_jsval(cx, rval);
-//     }
-// }
+// http://heycam.github.io/webidl/#es-USVString
+impl ToJSValConvertible for USVString {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue) {
+        self.0.to_jsval(cx, rval);
+    }
+}
+
+/// Behavior for stringification of `JSVal`s.
+#[derive(Clone, PartialEq)]
+pub enum StringificationBehavior {
+    /// Convert `null` to the string `"null"`.
+    Default,
+    /// Convert `null` to the empty string.
+    Empty,
+}
+
+// https://heycam.github.io/webidl/#es-DOMString
+impl ToJSValConvertible for DOMString {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue) {
+        (**self).to_jsval(cx, rval);
+    }
+}
 
 /// A safe wrapper for `FromJSValConvertible`.
 pub trait SafeFromJSValConvertible: Sized {
@@ -100,114 +101,114 @@ impl<T: FromJSValConvertible> SafeFromJSValConvertible for T {
     }
 }
 
-// // https://heycam.github.io/webidl/#es-DOMString
-// impl FromJSValConvertible for DOMString {
-//     type Config = StringificationBehavior;
-//     unsafe fn from_jsval(
-//         cx: *mut JSContext,
-//         value: HandleValue,
-//         null_behavior: StringificationBehavior,
-//     ) -> Result<ConversionResult<DOMString>, ()> {
-//         if null_behavior == StringificationBehavior::Empty && value.get().is_null() {
-//             Ok(ConversionResult::Success(DOMString::new()))
-//         } else {
-//             match ptr::NonNull::new(ToString(cx, value)) {
-//                 Some(jsstr) => Ok(ConversionResult::Success(DOMString::from_string(
-//                     jsstr_to_string(cx, jsstr),
-//                 ))),
-//                 None => {
-//                     debug!("ToString failed");
-//                     Err(())
-//                 },
-//             }
-//         }
-//     }
-// }
-//
-// // http://heycam.github.io/webidl/#es-USVString
-// impl FromJSValConvertible for USVString {
-//     type Config = ();
-//     unsafe fn from_jsval(
-//         cx: *mut JSContext,
-//         value: HandleValue,
-//         _: (),
-//     ) -> Result<ConversionResult<USVString>, ()> {
-//         let Some(jsstr) = ptr::NonNull::new(ToString(cx, value)) else {
-//             debug!("ToString failed");
-//             return Err(());
-//         };
-//         let latin1 = JS_DeprecatedStringHasLatin1Chars(jsstr.as_ptr());
-//         if latin1 {
-//             // FIXME(ajeffrey): Convert directly from DOMString to USVString
-//             return Ok(ConversionResult::Success(USVString(jsstr_to_string(
-//                 cx, jsstr,
-//             ))));
-//         }
-//         let mut length = 0;
-//         let chars = JS_GetTwoByteStringCharsAndLength(cx, ptr::null(), jsstr.as_ptr(), &mut length);
-//         assert!(!chars.is_null());
-//         let char_vec = slice::from_raw_parts(chars, length);
-//         Ok(ConversionResult::Success(USVString(
-//             String::from_utf16_lossy(char_vec),
-//         )))
-//     }
-// }
-//
-// // http://heycam.github.io/webidl/#es-ByteString
-// impl ToJSValConvertible for ByteString {
-//     unsafe fn to_jsval(&self, cx: *mut JSContext, mut rval: MutableHandleValue) {
-//         let jsstr = JS_NewStringCopyN(
-//             cx,
-//             self.as_ptr() as *const libc::c_char,
-//             self.len() as libc::size_t,
-//         );
-//         if jsstr.is_null() {
-//             panic!("JS_NewStringCopyN failed");
-//         }
-//         rval.set(StringValue(&*jsstr));
-//     }
-// }
-//
-// // http://heycam.github.io/webidl/#es-ByteString
-// impl FromJSValConvertible for ByteString {
-//     type Config = ();
-//     unsafe fn from_jsval(
-//         cx: *mut JSContext,
-//         value: HandleValue,
-//         _option: (),
-//     ) -> Result<ConversionResult<ByteString>, ()> {
-//         let string = ToString(cx, value);
-//         if string.is_null() {
-//             debug!("ToString failed");
-//             return Err(());
-//         }
-//
-//         let latin1 = JS_DeprecatedStringHasLatin1Chars(string);
-//         if latin1 {
-//             let mut length = 0;
-//             let chars = JS_GetLatin1StringCharsAndLength(cx, ptr::null(), string, &mut length);
-//             assert!(!chars.is_null());
-//
-//             let char_slice = slice::from_raw_parts(chars as *mut u8, length);
-//             return Ok(ConversionResult::Success(ByteString::new(
-//                 char_slice.to_vec(),
-//             )));
-//         }
-//
-//         let mut length = 0;
-//         let chars = JS_GetTwoByteStringCharsAndLength(cx, ptr::null(), string, &mut length);
-//         let char_vec = slice::from_raw_parts(chars, length);
-//
-//         if char_vec.iter().any(|&c| c > 0xFF) {
-//             throw_type_error(cx, "Invalid ByteString");
-//             Err(())
-//         } else {
-//             Ok(ConversionResult::Success(ByteString::new(
-//                 char_vec.iter().map(|&c| c as u8).collect(),
-//             )))
-//         }
-//     }
-// }
+// https://heycam.github.io/webidl/#es-DOMString
+impl FromJSValConvertible for DOMString {
+    type Config = StringificationBehavior;
+    unsafe fn from_jsval(
+        cx: *mut JSContext,
+        value: HandleValue,
+        null_behavior: StringificationBehavior,
+    ) -> Result<ConversionResult<DOMString>, ()> {
+        if null_behavior == StringificationBehavior::Empty && value.get().is_null() {
+            Ok(ConversionResult::Success(DOMString::new()))
+        } else {
+            match ptr::NonNull::new(ToString(cx, value)) {
+                Some(jsstr) => Ok(ConversionResult::Success(DOMString::from_string(
+                    jsstr_to_string(cx, jsstr),
+                ))),
+                None => {
+                    debug!("ToString failed");
+                    Err(())
+                },
+            }
+        }
+    }
+}
+
+// http://heycam.github.io/webidl/#es-USVString
+impl FromJSValConvertible for USVString {
+    type Config = ();
+    unsafe fn from_jsval(
+        cx: *mut JSContext,
+        value: HandleValue,
+        _: (),
+    ) -> Result<ConversionResult<USVString>, ()> {
+        let Some(jsstr) = ptr::NonNull::new(ToString(cx, value)) else {
+            debug!("ToString failed");
+            return Err(());
+        };
+        let latin1 = JS_DeprecatedStringHasLatin1Chars(jsstr.as_ptr());
+        if latin1 {
+            // FIXME(ajeffrey): Convert directly from DOMString to USVString
+            return Ok(ConversionResult::Success(USVString(jsstr_to_string(
+                cx, jsstr,
+            ))));
+        }
+        let mut length = 0;
+        let chars = JS_GetTwoByteStringCharsAndLength(cx, ptr::null(), jsstr.as_ptr(), &mut length);
+        assert!(!chars.is_null());
+        let char_vec = slice::from_raw_parts(chars, length);
+        Ok(ConversionResult::Success(USVString(
+            String::from_utf16_lossy(char_vec),
+        )))
+    }
+}
+
+// http://heycam.github.io/webidl/#es-ByteString
+impl ToJSValConvertible for ByteString {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, mut rval: MutableHandleValue) {
+        let jsstr = JS_NewStringCopyN(
+            cx,
+            self.as_ptr() as *const libc::c_char,
+            self.len() as libc::size_t,
+        );
+        if jsstr.is_null() {
+            panic!("JS_NewStringCopyN failed");
+        }
+        rval.set(StringValue(&*jsstr));
+    }
+}
+
+// http://heycam.github.io/webidl/#es-ByteString
+impl FromJSValConvertible for ByteString {
+    type Config = ();
+    unsafe fn from_jsval(
+        cx: *mut JSContext,
+        value: HandleValue,
+        _option: (),
+    ) -> Result<ConversionResult<ByteString>, ()> {
+        let string = ToString(cx, value);
+        if string.is_null() {
+            debug!("ToString failed");
+            return Err(());
+        }
+
+        let latin1 = JS_DeprecatedStringHasLatin1Chars(string);
+        if latin1 {
+            let mut length = 0;
+            let chars = JS_GetLatin1StringCharsAndLength(cx, ptr::null(), string, &mut length);
+            assert!(!chars.is_null());
+
+            let char_slice = slice::from_raw_parts(chars as *mut u8, length);
+            return Ok(ConversionResult::Success(ByteString::new(
+                char_slice.to_vec(),
+            )));
+        }
+
+        let mut length = 0;
+        let chars = JS_GetTwoByteStringCharsAndLength(cx, ptr::null(), string, &mut length);
+        let char_vec = slice::from_raw_parts(chars, length);
+
+        if char_vec.iter().any(|&c| c > 0xFF) {
+            throw_type_error(cx, "Invalid ByteString");
+            Err(())
+        } else {
+            Ok(ConversionResult::Success(ByteString::new(
+                char_vec.iter().map(|&c| c as u8).collect(),
+            )))
+        }
+    }
+}
 
 impl ToJSValConvertible for Reflector {
     unsafe fn to_jsval(&self, cx: *mut JSContext, mut rval: MutableHandleValue) {
@@ -218,20 +219,20 @@ impl ToJSValConvertible for Reflector {
     }
 }
 
-// impl<T: DomObject + IDLInterface> FromJSValConvertible for DomRoot<T> {
-//     type Config = ();
-//
-//     unsafe fn from_jsval(
-//         cx: *mut JSContext,
-//         value: HandleValue,
-//         _config: Self::Config,
-//     ) -> Result<ConversionResult<DomRoot<T>>, ()> {
-//         Ok(match root_from_handlevalue(value, cx) {
-//             Ok(result) => ConversionResult::Success(result),
-//             Err(()) => ConversionResult::Failure("value is not an object".into()),
-//         })
-//     }
-// }
+impl<T: DomObject + IDLInterface> FromJSValConvertible for DomRoot<T> {
+    type Config = ();
+
+    unsafe fn from_jsval(
+        cx: *mut JSContext,
+        value: HandleValue,
+        _config: Self::Config,
+    ) -> Result<ConversionResult<DomRoot<T>>, ()> {
+        Ok(match root_from_handlevalue(value, cx) {
+            Ok(result) => ConversionResult::Success(result),
+            Err(()) => ConversionResult::Failure("value is not an object".into()),
+        })
+    }
+}
 
 impl<T: DomObject> ToJSValConvertible for DomRoot<T> {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue) {
@@ -304,128 +305,127 @@ pub enum PrototypeCheck {
     Depth { depth: usize, proto_id: u16 },
 }
 
-// /// Get a `*const libc::c_void` for the given DOM object, unwrapping any
-// /// wrapper around it first, and checking if the object is of the correct type.
-// ///
-// /// Returns Err(()) if `obj` is an opaque security wrapper or if the object is
-// /// not an object for a DOM object of the given type (as defined by the
-// /// proto_id and proto_depth).
-// ///
-// /// # Safety
-// /// obj must point to a valid, non-null JS object.
-// /// cx must point to a valid, non-null JS context.
-// #[inline]
-// #[allow(clippy::result_unit_err)]
-// pub unsafe fn private_from_proto_check(
-//     mut obj: *mut JSObject,
-//     cx: *mut JSContext,
-//     proto_check: PrototypeCheck,
-// ) -> Result<*const libc::c_void, ()> {
-//     let dom_class = get_dom_class(obj).or_else(|_| {
-//         if IsWrapper(obj) {
-//             trace!("found wrapper");
-//             obj = UnwrapObjectDynamic(obj, cx, /* stopAtWindowProxy = */ false);
-//             if obj.is_null() {
-//                 trace!("unwrapping security wrapper failed");
-//                 Err(())
-//             } else {
-//                 assert!(!IsWrapper(obj));
-//                 trace!("unwrapped successfully");
-//                 get_dom_class(obj)
-//             }
-//         } else {
-//             trace!("not a dom wrapper");
-//             Err(())
-//         }
-//     })?;
-//
-//     let prototype_matches = true;
-//     // let prototype_matches = match proto_check {
-//     //     PrototypeCheck::Derive(f) => (f)(dom_class),
-//     //     PrototypeCheck::Depth { depth, proto_id } => {
-//     //         dom_class.interface_chain[depth] as u16 == proto_id
-//     //     },
-//     // };
-//
-//     if prototype_matches {
-//         trace!("good prototype");
-//         Ok(private_from_object(obj))
-//     } else {
-//         trace!("bad prototype");
-//         Err(())
-//     }
-// }
-//
-// /// Get a `*const T` for a DOM object accessible from a `JSObject`.
-// ///
-// /// # Safety
-// /// obj must point to a valid, non-null JS object.
-// /// cx must point to a valid, non-null JS context.
-// #[allow(clippy::result_unit_err)]
-// pub unsafe fn native_from_object<T>(obj: *mut JSObject, cx: *mut JSContext) -> Result<*const T, ()>
-// where
-//     T: DomObject + IDLInterface,
-// {
-//     unsafe {
-//         private_from_proto_check(obj, cx, PrototypeCheck::Derive(T::derives))
-//             .map(|ptr| ptr as *const T)
-//     }
-// }
+/// Get a `*const libc::c_void` for the given DOM object, unwrapping any
+/// wrapper around it first, and checking if the object is of the correct type.
+///
+/// Returns Err(()) if `obj` is an opaque security wrapper or if the object is
+/// not an object for a DOM object of the given type (as defined by the
+/// proto_id and proto_depth).
+///
+/// # Safety
+/// obj must point to a valid, non-null JS object.
+/// cx must point to a valid, non-null JS context.
+#[inline]
+#[allow(clippy::result_unit_err)]
+pub unsafe fn private_from_proto_check(
+    mut obj: *mut JSObject,
+    cx: *mut JSContext,
+    proto_check: PrototypeCheck,
+) -> Result<*const libc::c_void, ()> {
+    let dom_class = get_dom_class(obj).or_else(|_| {
+        if IsWrapper(obj) {
+            trace!("found wrapper");
+            obj = UnwrapObjectDynamic(obj, cx, /* stopAtWindowProxy = */ false);
+            if obj.is_null() {
+                trace!("unwrapping security wrapper failed");
+                Err(())
+            } else {
+                assert!(!IsWrapper(obj));
+                trace!("unwrapped successfully");
+                get_dom_class(obj)
+            }
+        } else {
+            trace!("not a dom wrapper");
+            Err(())
+        }
+    })?;
 
-// /// Get a `DomRoot<T>` for the given DOM object, unwrapping any wrapper
-// /// around it first, and checking if the object is of the correct type.
-// ///
-// /// Returns Err(()) if `obj` is an opaque security wrapper or if the object is
-// /// not a reflector for a DOM object of the given type (as defined by the
-// /// proto_id and proto_depth).
-// ///
-// /// # Safety
-// /// obj must point to a valid, non-null JS object.
-// /// cx must point to a valid, non-null JS context.
-// #[allow(clippy::result_unit_err)]
-// pub unsafe fn root_from_object<T>(obj: *mut JSObject, cx: *mut JSContext) -> Result<DomRoot<T>, ()>
-// where
-//     T: DomObject + IDLInterface,
-// {
-//     native_from_object(obj, cx).map(|ptr| unsafe { DomRoot::from_ref(&*ptr) })
-// }
-//
-// /// Get a `DomRoot<T>` for a DOM object accessible from a `HandleValue`.
-// /// Caller is responsible for throwing a JS exception if needed in case of error.
-// ///
-// /// # Safety
-// /// cx must point to a valid, non-null JS context.
-// #[allow(clippy::result_unit_err)]
-// pub unsafe fn root_from_handlevalue<T>(v: HandleValue, cx: *mut JSContext) -> Result<DomRoot<T>, ()>
-// where
-//     T: DomObject + IDLInterface,
-// {
-//     if !v.get().is_object() {
-//         return Err(());
-//     }
-//     root_from_object(v.get().to_object(), cx)
-// }
+    let prototype_matches = match proto_check {
+        PrototypeCheck::Derive(f) => (f)(dom_class),
+        PrototypeCheck::Depth { depth, proto_id } => {
+            dom_class.interface_chain[depth] as u16 == proto_id
+        },
+    };
 
-// /// Convert `id` to a `DOMString`. Returns `None` if `id` is not a string or
-// /// integer.
-// ///
-// /// Handling of invalid UTF-16 in strings depends on the relevant option.
-// ///
-// /// # Safety
-// /// - cx must point to a non-null, valid JSContext instance.
-// pub unsafe fn jsid_to_string(cx: *mut JSContext, id: HandleId) -> Option<DOMString> {
-//     let id_raw = *id;
-//     if id_raw.is_string() {
-//         let jsstr = std::ptr::NonNull::new(id_raw.to_string()).unwrap();
-//         return Some(DOMString::from_string(jsstr_to_string(cx, jsstr)));
-//     }
-//
-//     if id_raw.is_int() {
-//         return Some(id_raw.to_int().to_string().into());
-//     }
-//
-//     None
-// }
+    if prototype_matches {
+        trace!("good prototype");
+        Ok(private_from_object(obj))
+    } else {
+        trace!("bad prototype");
+        Err(())
+    }
+}
+
+/// Get a `*const T` for a DOM object accessible from a `JSObject`.
+///
+/// # Safety
+/// obj must point to a valid, non-null JS object.
+/// cx must point to a valid, non-null JS context.
+#[allow(clippy::result_unit_err)]
+pub unsafe fn native_from_object<T>(obj: *mut JSObject, cx: *mut JSContext) -> Result<*const T, ()>
+where
+    T: DomObject + IDLInterface,
+{
+    unsafe {
+        private_from_proto_check(obj, cx, PrototypeCheck::Derive(T::derives))
+            .map(|ptr| ptr as *const T)
+    }
+}
+
+/// Get a `DomRoot<T>` for the given DOM object, unwrapping any wrapper
+/// around it first, and checking if the object is of the correct type.
+///
+/// Returns Err(()) if `obj` is an opaque security wrapper or if the object is
+/// not a reflector for a DOM object of the given type (as defined by the
+/// proto_id and proto_depth).
+///
+/// # Safety
+/// obj must point to a valid, non-null JS object.
+/// cx must point to a valid, non-null JS context.
+#[allow(clippy::result_unit_err)]
+pub unsafe fn root_from_object<T>(obj: *mut JSObject, cx: *mut JSContext) -> Result<DomRoot<T>, ()>
+where
+    T: DomObject + IDLInterface,
+{
+    native_from_object(obj, cx).map(|ptr| unsafe { DomRoot::from_ref(&*ptr) })
+}
+
+/// Get a `DomRoot<T>` for a DOM object accessible from a `HandleValue`.
+/// Caller is responsible for throwing a JS exception if needed in case of error.
+///
+/// # Safety
+/// cx must point to a valid, non-null JS context.
+#[allow(clippy::result_unit_err)]
+pub unsafe fn root_from_handlevalue<T>(v: HandleValue, cx: *mut JSContext) -> Result<DomRoot<T>, ()>
+where
+    T: DomObject + IDLInterface,
+{
+    if !v.get().is_object() {
+        return Err(());
+    }
+    root_from_object(v.get().to_object(), cx)
+}
+
+/// Convert `id` to a `DOMString`. Returns `None` if `id` is not a string or
+/// integer.
+///
+/// Handling of invalid UTF-16 in strings depends on the relevant option.
+///
+/// # Safety
+/// - cx must point to a non-null, valid JSContext instance.
+pub unsafe fn jsid_to_string(cx: *mut JSContext, id: HandleId) -> Option<DOMString> {
+    let id_raw = *id;
+    if id_raw.is_string() {
+        let jsstr = std::ptr::NonNull::new(id_raw.to_string()).unwrap();
+        return Some(DOMString::from_string(jsstr_to_string(cx, jsstr)));
+    }
+
+    if id_raw.is_int() {
+        return Some(id_raw.to_int().to_string().into());
+    }
+
+    None
+}
 
 impl<T: Float + ToJSValConvertible> ToJSValConvertible for Finite<T> {
     #[inline]
@@ -495,21 +495,21 @@ where
     private_from_proto_check_static(obj, T::derives).map(|ptr| ptr as *const T)
 }
 
-// /// Get a `*const T` for a DOM object accessible from a `HandleValue`.
-// /// Caller is responsible for throwing a JS exception if needed in case of error.
-// ///
-// /// # Safety
-// /// `cx` must point to a valid, non-null JSContext.
-// #[allow(clippy::result_unit_err)]
-// pub unsafe fn native_from_handlevalue<T>(v: HandleValue, cx: *mut JSContext) -> Result<*const T, ()>
-// where
-//     T: DomObject + IDLInterface,
-// {
-//     if !v.get().is_object() {
-//         return Err(());
-//     }
-//     native_from_object(v.get().to_object(), cx)
-// }
+/// Get a `*const T` for a DOM object accessible from a `HandleValue`.
+/// Caller is responsible for throwing a JS exception if needed in case of error.
+///
+/// # Safety
+/// `cx` must point to a valid, non-null JSContext.
+#[allow(clippy::result_unit_err)]
+pub unsafe fn native_from_handlevalue<T>(v: HandleValue, cx: *mut JSContext) -> Result<*const T, ()>
+where
+    T: DomObject + IDLInterface,
+{
+    if !v.get().is_object() {
+        return Err(());
+    }
+    native_from_object(v.get().to_object(), cx)
+}
 
 impl<T: ToJSValConvertible + JSTraceable> ToJSValConvertible for RootedTraceableBox<T> {
     #[inline]
@@ -540,62 +540,43 @@ where
     }
 }
 
-// /// Returns whether `value` is an array-like object (Array, FileList,
-// /// HTMLCollection, HTMLFormControlsCollection, HTMLOptionsCollection,
-// /// NodeList, DOMTokenList).
-// ///
-// /// # Safety
-// /// `cx` must point to a valid, non-null JSContext.
-// pub unsafe fn is_array_like<D: crate::DomTypes>(cx: *mut JSContext, value: HandleValue) -> bool {
-//     let mut is_array = false;
-//     assert!(IsArrayObject(cx, value, &mut is_array));
-//     if is_array {
-//         return true;
-//     }
-//
-//     let object: *mut JSObject = match FromJSValConvertible::from_jsval(cx, value, ()).unwrap() {
-//         ConversionResult::Success(object) => object,
-//         _ => return false,
-//     };
-//
-//     // TODO: HTMLAllCollection
-//     if root_from_object::<D::DOMTokenList>(object, cx).is_ok() {
-//         return true;
-//     }
-//     if root_from_object::<D::FileList>(object, cx).is_ok() {
-//         return true;
-//     }
-//     if root_from_object::<D::HTMLCollection>(object, cx).is_ok() {
-//         return true;
-//     }
-//     if root_from_object::<D::HTMLFormControlsCollection>(object, cx).is_ok() {
-//         return true;
-//     }
-//     if root_from_object::<D::HTMLOptionsCollection>(object, cx).is_ok() {
-//         return true;
-//     }
-//     if root_from_object::<D::NodeList>(object, cx).is_ok() {
-//         return true;
-//     }
-//
-//     false
-// }
+/// Returns whether `value` is an array-like object (Array, FileList,
+/// HTMLCollection, HTMLFormControlsCollection, HTMLOptionsCollection,
+/// NodeList, DOMTokenList).
+///
+/// # Safety
+/// `cx` must point to a valid, non-null JSContext.
+pub unsafe fn is_array_like<D: crate::DomTypes>(cx: *mut JSContext, value: HandleValue) -> bool {
+    let mut is_array = false;
+    assert!(IsArrayObject(cx, value, &mut is_array));
+    if is_array {
+        return true;
+    }
 
-// /// Get a `DomRoot<T>` for a WindowProxy accessible from a `HandleValue`.
-// /// Caller is responsible for throwing a JS exception if needed in case of error.
-// pub(crate) unsafe fn windowproxy_from_handlevalue<D: crate::DomTypes>(
-//     v: HandleValue,
-//     _cx: *mut JSContext,
-// ) -> Result<DomRoot<D::WindowProxy>, ()> {
-//     if !v.get().is_object() {
-//         return Err(());
-//     }
-//     let object = v.get().to_object();
-//     if !IsWindowProxy(object) {
-//         return Err(());
-//     }
-//     let mut value = UndefinedValue();
-//     GetProxyReservedSlot(object, 0, &mut value);
-//     let ptr = value.to_private() as *const D::WindowProxy;
-//     Ok(DomRoot::from_ref(&*ptr))
-// }
+    // let object: *mut JSObject = match FromJSValConvertible::from_jsval(cx, value, ()).unwrap() {
+    //     ConversionResult::Success(object) => object,
+    //     _ => return false,
+    // };
+    //
+    // // TODO: HTMLAllCollection
+    // if root_from_object::<D::DOMTokenList>(object, cx).is_ok() {
+    //     return true;
+    // }
+    // if root_from_object::<D::FileList>(object, cx).is_ok() {
+    //     return true;
+    // }
+    // if root_from_object::<D::HTMLCollection>(object, cx).is_ok() {
+    //     return true;
+    // }
+    // if root_from_object::<D::HTMLFormControlsCollection>(object, cx).is_ok() {
+    //     return true;
+    // }
+    // if root_from_object::<D::HTMLOptionsCollection>(object, cx).is_ok() {
+    //     return true;
+    // }
+    // if root_from_object::<D::NodeList>(object, cx).is_ok() {
+    //     return true;
+    // }
+
+    false
+}

@@ -2,20 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use js::jsapi::JSObject;
-use js::jsapi::JSTracer;
 use std::cell::{Cell, UnsafeCell};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::{fmt, mem, ptr};
 
-use log::trace;
-
 use js::gc::Traceable as JSTraceable;
-// use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
-// use style::thread_state;
+use js::jsapi::{JSObject, JSTracer};
+use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 
-// use crate::conversions::DerivedFrom;
+use crate::conversions::DerivedFrom;
+use crate::inheritance::Castable;
 use crate::reflector::{DomObject, MutDomObject, Reflector};
 use crate::trace::trace_reflector;
 
@@ -162,13 +159,13 @@ pub struct Dom<T> {
     ptr: ptr::NonNull<T>,
 }
 
-// // Dom<T> is similar to Rc<T>, in that it's not always clear how to avoid double-counting.
-// // For now, we choose not to follow any such pointers.
-// impl<T> MallocSizeOf for Dom<T> {
-//     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
-//         0
-//     }
-// }
+// Dom<T> is similar to Rc<T>, in that it's not always clear how to avoid double-counting.
+// For now, we choose not to follow any such pointers.
+impl<T> MallocSizeOf for Dom<T> {
+    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
+        0
+    }
+}
 
 impl<T> PartialEq for Dom<T> {
     fn eq(&self, other: &Dom<T>) -> bool {
@@ -294,28 +291,28 @@ where
 /// A rooted reference to a DOM object.
 pub type DomRoot<T> = Root<Dom<T>>;
 
-// impl<T: Castable> DomRoot<T> {
-//     /// Cast a DOM object root upwards to one of the interfaces it derives from.
-//     pub fn upcast<U>(root: DomRoot<T>) -> DomRoot<U>
-//     where
-//         U: Castable,
-//         T: DerivedFrom<U>,
-//     {
-//         unsafe { mem::transmute::<DomRoot<T>, DomRoot<U>>(root) }
-//     }
-//
-//     /// Cast a DOM object root downwards to one of the interfaces it might implement.
-//     pub fn downcast<U>(root: DomRoot<T>) -> Option<DomRoot<U>>
-//     where
-//         U: DerivedFrom<T>,
-//     {
-//         if root.is::<U>() {
-//             Some(unsafe { mem::transmute::<DomRoot<T>, DomRoot<U>>(root) })
-//         } else {
-//             None
-//         }
-//     }
-// }
+impl<T: Castable> DomRoot<T> {
+    /// Cast a DOM object root upwards to one of the interfaces it derives from.
+    pub fn upcast<U>(root: DomRoot<T>) -> DomRoot<U>
+    where
+        U: Castable,
+        T: DerivedFrom<U>,
+    {
+        unsafe { mem::transmute::<DomRoot<T>, DomRoot<U>>(root) }
+    }
+
+    /// Cast a DOM object root downwards to one of the interfaces it might implement.
+    pub fn downcast<U>(root: DomRoot<T>) -> Option<DomRoot<U>>
+    where
+        U: DerivedFrom<T>,
+    {
+        if root.is::<U>() {
+            Some(unsafe { mem::transmute::<DomRoot<T>, DomRoot<U>>(root) })
+        } else {
+            None
+        }
+    }
+}
 
 impl<T: DomObject> DomRoot<T> {
     /// Generate a new root from a reference
@@ -335,14 +332,14 @@ impl<T: DomObject> DomRoot<T> {
     }
 }
 
-// impl<T> MallocSizeOf for DomRoot<T>
-// where
-//     T: DomObject + MallocSizeOf,
-// {
-//     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
-//         0
-//     }
-// }
+impl<T> MallocSizeOf for DomRoot<T>
+where
+    T: DomObject + MallocSizeOf,
+{
+    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
+        0
+    }
+}
 
 impl<T> PartialEq for DomRoot<T>
 where

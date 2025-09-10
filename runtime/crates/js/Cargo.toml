@@ -12,3 +12,9 @@ publish.workspace = true
 [dependencies]
 jsapi-rs.workspace = true
 spidermonkey-rs.workspace = true
+
+[features]
+crown = []
+debugmozjs = []
+jitspew = []
+profilemozjs = []

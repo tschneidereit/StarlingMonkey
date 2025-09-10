@@ -29,7 +29,7 @@ impl<T> ThreadUnsafeOnceLock<T> {
     ///   The caller must ensure that it does not mutate value contained inside this lock
     ///   (using interior mutability).
     pub unsafe fn get(&self) -> &T {
-        self.0.get().expect("Must be initialized before use")
+        self.0.get().unwrap()
     }
 }
 

@@ -8,16 +8,28 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+# https://github.com/rust-lang/cargo/issues/3544
+links = "script_bindings_crate"
+
 [dependencies]
-deny_public_fields = { path = "../deny_public_fields" }
-dom_struct = { path = "../dom_struct" }
-domobject_derive = { path = "../domobject_derive" }
-js = { workspace = true }
+bitflags = { workspace = true }
+deny_public_fields = { workspace = true }
+dom_struct = { workspace = true }
+domobject_derive = { workspace = true }
+indexmap = { workspace = true }
+js = { package = "spidermonkey-rs", path = "../spidermonkey-rs" }
 jstraceable_derive = { path = "../jstraceable_derive" }
 libc = { workspace = true }
 log = { workspace = true }
+malloc_size_of = { workspace = true }
+malloc_size_of_derive = { workspace = true }
 num-traits = { workspace = true }
-phf = "0.11"
+parking_lot = { workspace = true }
+phf = { workspace = true }
+servo_arc = { workspace = true }
+servo_url = { path = "../url" }
+smallvec = { workspace = true }
+tracing = { workspace = true, optional = true }
 
 [build-dependencies]
 phf_codegen = "0.11"

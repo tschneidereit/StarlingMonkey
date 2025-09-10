@@ -5,12 +5,12 @@
 use js::error::throw_type_error;
 use js::jsapi::JS_IsExceptionPending;
 
-// use crate::codegen::PrototypeList::proto_id_to_name;
-use js::rust::SafeJSContext;
+use crate::codegen::PrototypeList::proto_id_to_name;
+use crate::script_runtime::JSContext as SafeJSContext;
 
 /// DOM exceptions that can be thrown by a native DOM method.
 /// <https://webidl.spec.whatwg.org/#dfn-error-names-table>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, MallocSizeOf)]
 pub enum Error {
     /// IndexSizeError DOMException
     IndexSize,
@@ -93,7 +93,6 @@ pub type ErrorResult = Fallible<()>;
 /// given DOM type.
 pub fn throw_invalid_this(cx: SafeJSContext, proto_id: u16) {
     debug_assert!(unsafe { !JS_IsExceptionPending(*cx) });
-    // let name = starlingmonkey_rs::Engine_get_builtin_proto()
     let error = format!(
         "\"this\" object does not implement interface {}.",
         proto_id_to_name(proto_id)
@@ -105,8 +104,4 @@ pub fn throw_constructor_without_new(cx: SafeJSContext, name: &str) {
     debug_assert!(unsafe { !JS_IsExceptionPending(*cx) });
     let error = format!("{} constructor: 'new' is required", name);
     unsafe { throw_type_error(*cx, &error) };
-}
-
-fn proto_id_to_name(proto_id: u16) -> &'static str {
-    "[proto_id_to_name Not yet implemented]"
 }

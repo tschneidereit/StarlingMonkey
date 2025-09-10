@@ -2,12 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+// A global scope for StarlingMonkey, and a reduced version of DedicatedWorkerGlobalScope.
+// This pretends to be all the global scopes, because that way other WebIDLs don't have to be adjusted
+// to not mention any of these scopes.
 // https://html.spec.whatwg.org/multipage/#dedicatedworkerglobalscope
 [Global=(Window,Worker,DedicatedWorker, PaintWorklet), Exposed=DedicatedWorker]
 /*sealed*/ interface DedicatedWorkerGlobalScope : WorkerGlobalScope {
-  //[Throws] undefined postMessage(any message, sequence<object> transfer);
-  //[Throws] undefined postMessage(any message, optional StructuredSerializeOptions options = {});
-  //attribute EventHandler onmessage;
-//
-  //undefined close();
 };

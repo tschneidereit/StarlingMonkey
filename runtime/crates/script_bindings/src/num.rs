@@ -7,7 +7,7 @@
 use std::default::Default;
 use std::ops::Deref;
 
-// use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
+use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 use num_traits::Float;
 
 /// Encapsulates the IDL restricted float type.
@@ -44,11 +44,11 @@ impl<T: Float> Deref for Finite<T> {
     }
 }
 
-// impl<T: Float + MallocSizeOf> MallocSizeOf for Finite<T> {
-//     fn size_of(&self, ops: &mut MallocSizeOfOps) -> usize {
-//         (**self).size_of(ops)
-//     }
-// }
+impl<T: Float + MallocSizeOf> MallocSizeOf for Finite<T> {
+    fn size_of(&self, ops: &mut MallocSizeOfOps) -> usize {
+        (**self).size_of(ops)
+    }
+}
 
 impl<T: Float + Default> Default for Finite<T> {
     fn default() -> Finite<T> {
