@@ -96,58 +96,25 @@ use crate::task::TaskCanceller;
 
 // https://html.spec.whatwg.org/multipage/#the-workerglobalscope-common-interface
 #[dom_struct]
-pub(crate) struct WorkerGlobalScope {
+pub struct WorkerGlobalScope {
     globalscope: GlobalScope,
 
     worker_name: DOMString,
-    // worker_type: WorkerType,
 
-    // #[no_trace]
-    // worker_id: WorkerId,
     #[no_trace]
     worker_url: DomRefCell<ServoUrl>,
     #[ignore_malloc_size_of = "Defined in js"]
     runtime: DomRefCell<Option<Runtime>>,
     // location: MutNullableDom<WorkerLocation>,
-    // navigator: MutNullableDom<WorkerNavigator>,
-    // #[no_trace]
-    // /// <https://html.spec.whatwg.org/multipage/#the-workerglobalscope-common-interface:policy-container>
-    // policy_container: DomRefCell<PolicyContainer>,
-    //
-    // #[ignore_malloc_size_of = "Defined in ipc-channel"]
-    // #[no_trace]
-    // /// A `Sender` for sending messages to devtools. This is unused but is stored here to
-    // /// keep the channel alive.
-    // _devtools_sender: Option<IpcSender<DevtoolScriptControlMsg>>,
-    //
-    // #[ignore_malloc_size_of = "Defined in crossbeam"]
-    // #[no_trace]
-    // /// A `Receiver` for receiving messages from devtools.
-    // devtools_receiver: Option<Receiver<DevtoolScriptControlMsg>>,
 
     // #[no_trace]
     // navigation_start: CrossProcessInstant,
     // performance: MutNullableDom<Performance>,
-    // indexeddb: MutNullableDom<IDBFactory>,
-    // trusted_types: MutNullableDom<TrustedTypePolicyFactory>,
     //
     // /// A [`TimerScheduler`] used to schedule timers for this [`WorkerGlobalScope`].
     // /// Timers are handled in the service worker event loop.
     // #[no_trace]
     // timer_scheduler: RefCell<TimerScheduler>,
-    //
-    // #[no_trace]
-    // insecure_requests_policy: InsecureRequestsPolicy,
-
-    // /// <https://w3c.github.io/reporting/#windoworworkerglobalscope-registered-reporting-observer-list>
-    // reporting_observer_list: DomRefCell<Vec<DomRoot<ReportingObserver>>>,
-    //
-    // /// <https://w3c.github.io/reporting/#windoworworkerglobalscope-reports>
-    // report_list: DomRefCell<Vec<Report>>,
-    //
-    // /// <https://w3c.github.io/reporting/#windoworworkerglobalscope-endpoints>
-    // #[no_trace]
-    // endpoints_list: DomRefCell<Vec<ReportingEndpoint>>,
 }
 
 impl WorkerGlobalScope {
@@ -156,21 +123,15 @@ impl WorkerGlobalScope {
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_name: DOMString,
-        // worker_type: WorkerType,
         worker_url: ServoUrl,
         runtime: Runtime,
-        // devtools_receiver: Receiver<DevtoolScriptControlMsg>,
     ) -> Self {
-        // Install a pipeline-namespace in the current thread.
-        // PipelineNamespace::auto_install();
-
         Self {
             globalscope: GlobalScope::new_inherited(
                 origin,
                 creation_url,
                 None,
                 // runtime.microtask_queue.clone(),
-                // init.inherited_secure_context,
                 // false,
             ),
             worker_name,
@@ -178,19 +139,9 @@ impl WorkerGlobalScope {
             worker_url: DomRefCell::new(worker_url),
             runtime: DomRefCell::new(Some(runtime)),
             // location: Default::default(),
-            // navigator: Default::default(),
-            // policy_container: Default::default(),
-            // devtools_receiver,
-            // _devtools_sender: init.from_devtools_sender,
             // navigation_start: CrossProcessInstant::now(),
             // performance: Default::default(),
-            // indexeddb: Default::default(),
             // timer_scheduler: RefCell::default(),
-            // insecure_requests_policy,
-            // trusted_types: Default::default(),
-            // reporting_observer_list: Default::default(),
-            // report_list: Default::default(),
-            // endpoints_list: Default::default(),
         }
     }
 
@@ -212,10 +163,6 @@ impl WorkerGlobalScope {
             .prepare_for_new_child()
     }
 
-    // pub(crate) fn devtools_receiver(&self) -> Option<&Receiver<DevtoolScriptControlMsg>> {
-    //     self.devtools_receiver.as_ref()
-    // }
-
     #[allow(unsafe_code)]
     pub(crate) fn get_cx(&self) -> JSContext {
         unsafe { JSContext::from_ptr(self.runtime.borrow().as_ref().unwrap().cx()) }
@@ -228,75 +175,6 @@ impl WorkerGlobalScope {
     pub(crate) fn set_url(&self, url: ServoUrl) {
         *self.worker_url.borrow_mut() = url;
     }
-
-    // pub(crate) fn get_worker_id(&self) -> WorkerId {
-    //     self.worker_id
-    // }
-
-    // pub(crate) fn pipeline_id(&self) -> PipelineId {
-    //     self.globalscope.pipeline_id()
-    // }
-
-    // pub(crate) fn policy_container(&self) -> Ref<PolicyContainer> {
-    //     self.policy_container.borrow()
-    // }
-
-    // pub(crate) fn set_csp_list(&self, csp_list: Option<CspList>) {
-    //     self.policy_container.borrow_mut().set_csp_list(csp_list);
-    // }
-
-    // pub(crate) fn set_referrer_policy(&self, referrer_policy: ReferrerPolicy) {
-    //     self.policy_container
-    //         .borrow_mut()
-    //         .set_referrer_policy(referrer_policy);
-    // }
-
-    // pub(crate) fn append_reporting_observer(&self, reporting_observer: DomRoot<ReportingObserver>) {
-    //     self.reporting_observer_list
-    //         .borrow_mut()
-    //         .push(reporting_observer);
-    // }
-    //
-    // pub(crate) fn remove_reporting_observer(&self, reporting_observer: &ReportingObserver) {
-    //     if let Some(index) = self
-    //         .reporting_observer_list
-    //         .borrow()
-    //         .iter()
-    //         .position(|observer| &**observer == reporting_observer)
-    //     {
-    //         self.reporting_observer_list.borrow_mut().remove(index);
-    //     }
-    // }
-    //
-    // pub(crate) fn registered_reporting_observers(&self) -> Vec<DomRoot<ReportingObserver>> {
-    //     self.reporting_observer_list.borrow().clone()
-    // }
-    //
-    // pub(crate) fn append_report(&self, report: Report) {
-    //     self.report_list.borrow_mut().push(report);
-    //     let trusted_worker = Trusted::new(self);
-    //     self.upcast::<GlobalScope>()
-    //         .task_manager()
-    //         .dom_manipulation_task_source()
-    //         .queue(task!(send_to_reporting_endpoints: move || {
-    //             let worker = trusted_worker.root();
-    //             let reports = std::mem::take(&mut *worker.report_list.borrow_mut());
-    //             worker.upcast::<GlobalScope>().send_reports_to_endpoints(
-    //                 reports,
-    //                 worker.endpoints_list.borrow().clone(),
-    //             );
-    //         }));
-    // }
-    //
-    // pub(crate) fn buffered_reports(&self) -> Vec<Report> {
-    //     self.report_list.borrow().clone()
-    // }
-    //
-    // pub(crate) fn set_endpoints_list(&self, endpoints: Option<Vec<ReportingEndpoint>>) {
-    //     if let Some(endpoints) = endpoints {
-    //         *self.endpoints_list.borrow_mut() = endpoints;
-    //     }
-    // }
 
     // /// Get a mutable reference to the [`TimerScheduler`] for this [`ServiceWorkerGlobalScope`].
     // pub(crate) fn timer_scheduler(&self) -> RefMut<TimerScheduler> {
@@ -480,7 +358,9 @@ impl WorkerGlobalScope {
             rval.handle_mut(),
             options,
         ) {
-            Ok(_) => (),
+            Ok(_) => {
+                println!("Script executed successfully");
+            },
             Err(_) => {
                 
                 // TODO: An error needs to be dispatched to the parent.

@@ -72,12 +72,6 @@ use crate::script_runtime::{
 //         }
 //     }
 // 
-//     fn pipeline_id(&self) -> Option<PipelineId> {
-//         // Workers always return None, since the pipeline_id is only used to check for document activity,
-//         // and this check does not apply to worker event-loops.
-//         None
-//     }
-// 
 //     fn into_queued_task(self) -> Option<QueuedTask> {
 //         let (worker, common_worker_msg) = match self {
 //             DedicatedWorkerScriptMsg::CommonWorker(worker, common_worker_msg) => {
@@ -120,36 +114,16 @@ use crate::script_runtime::{
 
 // unsafe_no_jsmanaged_fields!(TaskQueue<DedicatedWorkerScriptMsg>);
 
-// struct DedicatedWorkerCspProcessor {
-//     parent_event_loop_sender: ScriptEventLoopSender,
-//     pipeline_id: PipelineId,
-// }
-// 
-// impl CspViolationsProcessor for DedicatedWorkerCspProcessor {
-//     fn process_csp_violations(&self, violations: Vec<Violation>) {
-//         let _ = self
-//             .parent_event_loop_sender
-//             .send(CommonScriptMsg::ReportCspViolations(
-//                 self.pipeline_id,
-//                 violations,
-//             ));
-//     }
-// }
-
 // https://html.spec.whatwg.org/multipage/#dedicatedworkerglobalscope
 #[dom_struct]
-pub(crate) struct DedicatedWorkerGlobalScope {
+pub struct DedicatedWorkerGlobalScope {
     workerglobalscope: WorkerGlobalScope,
     // #[ignore_malloc_size_of = "Defined in std"]
     // task_queue: TaskQueue<DedicatedWorkerScriptMsg>,
     // own_sender: Sender<DedicatedWorkerScriptMsg>,
-    // #[ignore_malloc_size_of = "Trusted<T> has unclear ownership like Dom<T>"]
-    // worker: DomRefCell<Option<TrustedWorkerAddress>>,
     // #[ignore_malloc_size_of = "Can't measure trait objects"]
     // /// Sender to the parent thread.
     // parent_event_loop_sender: ScriptEventLoopSender,
-    // #[no_trace]
-    // browsing_context: Option<BrowsingContextId>,
 }
 
 // impl WorkerEventLoopMethods for DedicatedWorkerGlobalScope {
@@ -221,32 +195,20 @@ impl DedicatedWorkerGlobalScope {
     }
 
     #[allow(unsafe_code, clippy::too_many_arguments)]
-    pub(crate) fn new(
+    pub fn new(
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_name: DOMString,
-        // worker_type: WorkerType,
         worker_url: ServoUrl,
-        // from_devtools_receiver: Receiver<DevtoolScriptControlMsg>,
         runtime: Runtime,
-        // parent_event_loop_sender: ScriptEventLoopSender,
-        // own_sender: Sender<DedicatedWorkerScriptMsg>,
-        // receiver: Receiver<DedicatedWorkerScriptMsg>,
-        // insecure_requests_policy: InsecureRequestsPolicy,
     ) -> DomRoot<DedicatedWorkerGlobalScope> {
         let cx = runtime.cx();
         let scope = Box::new(DedicatedWorkerGlobalScope::new_inherited(
             origin,
             creation_url,
             worker_name,
-            // worker_type,
             worker_url,
-            // from_devtools_receiver,
             runtime,
-            // parent_event_loop_sender,
-            // own_sender,
-            // receiver,
-            // insecure_requests_policy,
         ));
         unsafe {
             DedicatedWorkerGlobalScopeBinding::Wrap::<crate::DomTypeHolder>(
@@ -258,277 +220,37 @@ impl DedicatedWorkerGlobalScope {
 
     /// <https://html.spec.whatwg.org/multipage/#run-a-worker>
     #[allow(unsafe_code, clippy::too_many_arguments)]
-    pub(crate) fn run_worker_scope(
+    pub fn run_worker_scope(
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_url: ServoUrl,
-        // from_devtools_receiver: IpcReceiver<DevtoolScriptControlMsg>,
-        // worker: TrustedWorkerAddress,
-        // parent_event_loop_sender: ScriptEventLoopSender,
-        // own_sender: Sender<DedicatedWorkerScriptMsg>,
-        // receiver: Receiver<DedicatedWorkerScriptMsg>,
-        // worker_load_origin: WorkerScriptLoadOrigin,
         worker_name: String,
-        // worker_type: WorkerType,
-        // browsing_context: Option<BrowsingContextId>,
-        // context_sender: Sender<ThreadSafeJSContext>,
-        // insecure_requests_policy: InsecureRequestsPolicy,
-        // policy_container: PolicyContainer,
     ) -> DomRoot<DedicatedWorkerGlobalScope> {
         let serialized_worker_url = worker_url.to_string();
-        // let webview_id = WebViewId::installed();
-        let current_global = GlobalScope::current().expect("No current global object");
-        let origin = current_global.origin().clone();
-        // let referrer = current_global.get_referrer();
-        let parent = current_global.runtime_handle();
-        // let current_global_https_state = current_global.get_https_state();
-        // let current_global_ancestor_trustworthy = current_global.has_trustworthy_ancestor_origin();
-        // let is_secure_context = current_global.is_secure_context();
+        let runtime = Runtime::new();
+        let global = DedicatedWorkerGlobalScope::new(
+            origin,
+            creation_url,
+            DOMString::from_string(worker_name),
+            worker_url,
+            runtime,
+        );
+        let scope = global.upcast::<WorkerGlobalScope>();
+        {
+            let realm = enter_realm(scope);
+            define_all_exposed_interfaces(
+                global.upcast(),
+                InRealm::entered(&realm),
+                CanGc::note(),
+            );
+        }
 
-        // thread::Builder::new()
-        //     .name(format!("WW:{}", worker_url.debug_compact()))
-        //     .spawn(move || {
-                // thread_state::initialize(ThreadState::SCRIPT | ThreadState::IN_WORKER);
-
-                // if let Some(webview_id) = webview_id {
-                //     WebViewId::install(webview_id);
-                // }
-
-                let roots = RootCollection::new();
-                let _stack_roots = ThreadLocalStackRoots::new(&roots);
-
-                // let WorkerScriptLoadOrigin {
-                //     referrer_url,
-                //     referrer_policy,
-                //     pipeline_id,
-                // } = worker_load_origin;
-                //
-                // let referrer = referrer_url.map(Referrer::ReferrerUrl).unwrap_or(referrer);
-
-                // let request = RequestBuilder::new(webview_id, worker_url.clone(), referrer)
-                //     .destination(Destination::Worker)
-                //     .mode(RequestMode::SameOrigin)
-                //     .credentials_mode(CredentialsMode::CredentialsSameOrigin)
-                //     .parser_metadata(ParserMetadata::NotParserInserted)
-                //     .use_url_credentials(true)
-                //     .pipeline_id(Some(pipeline_id))
-                //     .referrer_policy(referrer_policy)
-                //     .insecure_requests_policy(insecure_requests_policy)
-                //     .has_trustworthy_ancestor_origin(current_global_ancestor_trustworthy)
-                //     .policy_container(policy_container.clone())
-                //     .origin(origin);
-
-                let runtime = unsafe {
-                    // let task_source = SendableTaskSource {
-                    //     sender: ScriptEventLoopSender::DedicatedWorker {
-                    //         sender: own_sender.clone(),
-                    //         main_thread_worker: worker.clone(),
-                    //     },
-                    //     pipeline_id,
-                    //     name: TaskSourceName::Networking,
-                    //     canceller: Default::default(),
-                    // };
-                    Runtime::new_with_parent(Some(parent), 
-                                             // Some(task_source)
-                    )
-                };
-                // let debugger_global = DebuggerGlobalScope::new(
-                //     &runtime,
-                //     pipeline_id,
-                //     init.to_devtools_sender.clone(),
-                //     init.mem_profiler_chan.clone(),
-                //     init.time_profiler_chan.clone(),
-                //     init.script_to_constellation_chan.clone(),
-                //     init.resource_threads.clone(),
-                //     #[cfg(feature = "webgpu")]
-                //     gpu_id_hub.clone(),
-                //     CanGc::note(),
-                // );
-                // debugger_global.execute(CanGc::note());
-
-                // let context_for_interrupt = runtime.thread_safe_js_context();
-                // let _ = context_sender.send(context_for_interrupt);
-
-                // let (devtools_mpsc_chan, devtools_mpsc_port) = unbounded();
-                // ROUTER.route_ipc_receiver_to_crossbeam_sender(
-                //     from_devtools_receiver,
-                //     devtools_mpsc_chan,
-                // );
-
-                // Step 8 "Set up a worker environment settings object [...]"
-                //
-                // <https://html.spec.whatwg.org/multipage/#script-settings-for-workers>
-                //
-                // > The origin: Return a unique opaque origin if `worker global
-                // > scope`'s url's scheme is "data", and `inherited origin`
-                // > otherwise.
-                // if worker_url.scheme() == "data" {
-                //     // Workers created from a data: url are secure if they were created from secure contexts
-                //     if is_secure_context {
-                //         init.origin = ImmutableOrigin::new_opaque_data_url_worker();
-                //     } else {
-                //         init.origin = ImmutableOrigin::new_opaque();
-                //     }
-                // }
-
-                // let worker_id = init.worker_id;
-                let global = DedicatedWorkerGlobalScope::new(
-                    origin,
-                    creation_url,
-                    DOMString::from_string(worker_name),
-                    // worker_type,
-                    worker_url,
-                    // devtools_mpsc_port,
-                    runtime,
-                    // parent_event_loop_sender.clone(),
-                    // own_sender,
-                    // receiver,
-                    // insecure_requests_policy,
-                );
-                // debugger_global.fire_add_debuggee(
-                //     CanGc::note(),
-                //     global.upcast(),
-                //     pipeline_id,
-                //     Some(worker_id),
-                // );
-                // FIXME(njn): workers currently don't have a unique ID suitable for using in reporter
-                // registration (#6631), so we instead use a random number and cross our fingers.
-                let scope = global.upcast::<WorkerGlobalScope>();
-                let global_scope = global.upcast::<GlobalScope>();
-
-                // global_scope.set_https_state(current_global_https_state);
-
-                // let (metadata, bytes) = match load_whole_resource(
-                //     request,
-                //     &global_scope.resource_threads().sender(),
-                //     global_scope,
-                //     // &DedicatedWorkerCspProcessor {
-                //     //     parent_event_loop_sender: parent_event_loop_sender.clone(),
-                //     //     pipeline_id,
-                //     // },
-                //     CanGc::note(),
-                // ) {
-                //     Err(e) => {
-                //         error!("error loading script {} ({:?})", serialized_worker_url, e);
-                //         // parent_event_loop_sender
-                //         //     .send(CommonScriptMsg::Task(
-                //         //         WorkerEvent,
-                //         //         Box::new(SimpleWorkerErrorHandler::new(worker)),
-                //         //         Some(pipeline_id),
-                //         //         TaskSourceName::DOMManipulation,
-                //         //     ))
-                //         //     .unwrap();
-                //         scope.clear_js_runtime();
-                //         return;
-                //     },
-                //     Ok((metadata, bytes)) => (metadata, bytes),
-                // };
-                // scope.set_url(metadata.final_url.clone());
-                // Self::initialize_policy_container_for_worker_global_scope(
-                //     scope,
-                //     &metadata,
-                //     &policy_container,
-                // );
-                // scope.set_endpoints_list(ReportingEndpoint::parse_reporting_endpoints_header(
-                //     &metadata.final_url.clone(),
-                //     &metadata.headers,
-                // ));
-                // global_scope.set_https_state(metadata.https_state);
-                // let source = String::from_utf8_lossy(&bytes);
-                // if let Some(chan) = global_scope.devtools_chan() {
-                //     let pipeline_id = global_scope.pipeline_id();
-                //     let source_info = SourceInfo {
-                //         url: metadata.final_url,
-                //         introduction_type: IntroductionType::WORKER
-                //             .to_str()
-                //             .expect("Guaranteed by definition")
-                //             .to_owned(),
-                //         external: true, // Worker scripts are always external.
-                //         worker_id: Some(global.upcast::<WorkerGlobalScope>().get_worker_id()),
-                //         content: Some(source.to_string()),
-                //         content_type: metadata.content_type.map(|c_type| c_type.0.to_string()),
-                //     };
-                //     // let _ = chan.send(ScriptToDevtoolsControlMsg::CreateSourceActor(
-                //     //     pipeline_id,
-                //     //     source_info,
-                //     // ));
-                // }
-                //
-                // // if scope.is_closing() {
-                // //     scope.clear_js_runtime();
-                // //     return;
-                // // }
-                //
-                // {
-                //     let _ar = AutoWorkerReset::new(&global, worker.clone());
-                //     let realm = enter_realm(scope);
-                //     define_all_exposed_interfaces(
-                //         global.upcast(),
-                //         InRealm::entered(&realm),
-                //         CanGc::note(),
-                //     );
-                //     scope.execute_script(DOMString::from(source), CanGc::note());
-                // }
-                
-                global
-
-                // let reporter_name = format!("dedicated-worker-reporter-{}", random::<u64>());
-                // scope
-                //     .upcast::<GlobalScope>()
-                //     .mem_profiler_chan()
-                //     .run_with_memory_reporting(
-                //         || {
-                //             // Step 27, Run the responsible event loop specified
-                //             // by inside settings until it is destroyed.
-                //             // The worker processing model remains on this step
-                //             // until the event loop is destroyed,
-                //             // which happens after the closing flag is set to true.
-                //             while !scope.is_closing() {
-                //                 run_worker_event_loop(&*global, Some(&worker), CanGc::note());
-                //             }
-                //         },
-                //         reporter_name,
-                //         parent_event_loop_sender,
-                //         CommonScriptMsg::CollectReports,
-                //     );
-                // 
-                // scope.clear_js_runtime();
-            // })
-            // .expect("Thread spawning failed")
+        global
     }
 
-    // /// <https://html.spec.whatwg.org/multipage/#initialize-worker-policy-container> and
-    // /// <https://html.spec.whatwg.org/multipage/#creating-a-policy-container-from-a-fetch-response>
-    // fn initialize_policy_container_for_worker_global_scope(
-    //     scope: &WorkerGlobalScope,
-    //     metadata: &Metadata,
-    //     parent_policy_container: &PolicyContainer,
-    // ) {
-    //     // Step 1. If workerGlobalScope's url is local but its scheme is not "blob":
-    //     //
-    //     // Note that we also allow for blob here, as the parent_policy_container is in both cases
-    //     // the container that we need to clone.
-    //     if metadata.final_url.is_local_scheme() {
-    //         // Step 1.2. Set workerGlobalScope's policy container to a clone of workerGlobalScope's
-    //         // owner set[0]'s relevant settings object's policy container.
-    //         //
-    //         // Step 1. If response's URL's scheme is "blob", then return a clone of response's URL's
-    //         // blob URL entry's environment's policy container.
-    //         scope.set_csp_list(parent_policy_container.csp_list.clone());
-    //         scope.set_referrer_policy(parent_policy_container.get_referrer_policy());
-    //         return;
-    //     }
-    //     // Step 3. Set result's CSP list to the result of parsing a response's Content Security Policies given response.
-    //     scope.set_csp_list(parse_csp_list_from_metadata(&metadata.headers));
-    //     // Step 5. Set result's referrer policy to the result of parsing the `Referrer-Policy`
-    //     // header given response. [REFERRERPOLICY]
-    //     let referrer_policy = metadata
-    //         .headers
-    //         .as_ref()
-    //         .and_then(|headers| headers.typed_get::<ReferrerPolicyHeader>())
-    //         .into();
-    //     scope.set_referrer_policy(referrer_policy);
-    // }
+    pub fn execute_script(&self, source: DOMString, can_gc: CanGc) {
+        self.upcast::<WorkerGlobalScope>().execute_script(source, can_gc)
+    }
 
     // pub(crate) fn event_loop_sender(&self) -> Option<ScriptEventLoopSender> {
     //     Some(ScriptEventLoopSender::DedicatedWorker {
@@ -604,44 +326,6 @@ impl DedicatedWorkerGlobalScope {
     //         MixedMessage::Timer => {},
     //     }
     //     true
-    // }
-
-    // // https://html.spec.whatwg.org/multipage/#runtime-script-errors-2
-    // #[allow(unsafe_code)]
-    // pub(crate) fn forward_error_to_worker_object(&self, error_info: ErrorInfo) {
-    //     let worker = self.worker.borrow().as_ref().unwrap().clone();
-    //     let pipeline_id = self.upcast::<GlobalScope>().pipeline_id();
-    //     let task = Box::new(task!(forward_error_to_worker_object: move || {
-    //         let worker = worker.root();
-    //         let global = worker.global();
-    // 
-    //         // Step 1.
-    //         let event = ErrorEvent::new(
-    //             &global,
-    //             atom!("error"),
-    //             EventBubbles::DoesNotBubble,
-    //             EventCancelable::Cancelable,
-    //             error_info.message.as_str().into(),
-    //             error_info.filename.as_str().into(),
-    //             error_info.lineno,
-    //             error_info.column,
-    //             HandleValue::null(),
-    //             CanGc::note(),
-    //         );
-    // 
-    //         // Step 2.
-    //         if event.upcast::<Event>().fire(worker.upcast::<EventTarget>(), CanGc::note()) {
-    //             global.report_an_error(error_info, HandleValue::null(), CanGc::note());
-    //         }
-    //     }));
-    //     self.parent_event_loop_sender
-    //         .send(CommonScriptMsg::Task(
-    //             WorkerEvent,
-    //             task,
-    //             Some(pipeline_id),
-    //             TaskSourceName::DOMManipulation,
-    //         ))
-    //         .unwrap();
     // }
 }
 

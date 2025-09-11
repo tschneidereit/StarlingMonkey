@@ -27,7 +27,7 @@ num-traits = { workspace = true }
 parking_lot = { workspace = true }
 phf = { workspace = true }
 servo_arc = { workspace = true }
-servo_url = { path = "../url" }
+servo_url = { workspace = true }
 smallvec = { workspace = true }
 tracing = { workspace = true, optional = true }
 

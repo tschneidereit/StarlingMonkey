@@ -85,7 +85,7 @@ pub(crate) enum SourceCode {
 }
 
 #[dom_struct]
-pub(crate) struct GlobalScope {
+pub struct GlobalScope {
     reflector: Reflector,
     // eventtarget: EventTarget,
     // crypto: MutNullableDom<Crypto>,

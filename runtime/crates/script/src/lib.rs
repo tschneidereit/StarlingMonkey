@@ -80,3 +80,6 @@ pub(crate) use crate::dom::bindings::codegen::DomTypeHolder::DomTypeHolder;
 pub(crate) use crate::dom::bindings::inheritance::HasParent;
 pub(crate) use crate::dom::bindings::reflector::{DomObject, MutDomObject, Reflector};
 pub(crate) use crate::dom::bindings::trace::{CustomTraceable, JSTraceable};
+
+pub use script_runtime::{Runtime, CanGc};
+pub use dom::dedicatedworkerglobalscope::DedicatedWorkerGlobalScope as GlobalScope;

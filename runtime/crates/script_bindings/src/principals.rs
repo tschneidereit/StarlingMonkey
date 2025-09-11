@@ -23,14 +23,13 @@ impl ServoJSPrincipals {
     pub fn new<D: DomTypes>(origin: &MutableOrigin) -> Self {
         unsafe {
             let private: Box<MutableOrigin> = Box::new(origin.clone());
-            // let raw = CreateRustJSPrincipals(
-            //     <D as DomHelpers<D>>::principals_callbacks(),
-            //     Box::into_raw(private) as _,
-            // );
+            let raw = CreateRustJSPrincipals(
+                <D as DomHelpers<D>>::principals_callbacks(),
+                Box::into_raw(private) as _,
+            );
             // The created `JSPrincipals` object has an initial reference
             // count of zero, so the following code will set it to one
-            // Self::from_raw_nonnull(NonNull::new_unchecked(raw))
-            unimplemented!()
+            Self::from_raw_nonnull(NonNull::new_unchecked(raw))
         }
     }
 

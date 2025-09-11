@@ -257,7 +257,7 @@ pub(crate) mod bindings;
 // pub(crate) mod closeevent;
 // pub(crate) mod comment;
 // pub(crate) mod compositionevent;
-// pub(crate) mod console;
+pub(crate) mod console;
 // pub(crate) mod constantsourcenode;
 // pub(crate) mod countqueuingstrategy;
 // mod create;

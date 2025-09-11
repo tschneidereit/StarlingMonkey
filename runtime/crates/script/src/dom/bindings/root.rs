@@ -43,16 +43,16 @@ use crate::dom::bindings::reflector::DomObject;
 use crate::dom::bindings::trace::JSTraceable;
 // use crate::dom::node::Node;
 
-pub(crate) struct ThreadLocalStackRoots<'a>(PhantomData<&'a u32>);
+pub(crate) struct ThreadLocalStackRoots();
 
-impl<'a> ThreadLocalStackRoots<'a> {
-    pub(crate) fn new(roots: &'a RootCollection) -> Self {
+impl ThreadLocalStackRoots {
+    pub(crate) fn new(roots: *const RootCollection) -> Self {
         STACK_ROOTS.with(|r| r.set(Some(roots)));
-        ThreadLocalStackRoots(PhantomData)
+        ThreadLocalStackRoots()
     }
 }
 
-impl Drop for ThreadLocalStackRoots<'_> {
+impl Drop for ThreadLocalStackRoots {
     fn drop(&mut self) {
         STACK_ROOTS.with(|r| r.set(None));
     }

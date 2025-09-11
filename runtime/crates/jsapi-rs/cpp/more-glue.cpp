@@ -1,9 +1,9 @@
 #include "jsapi.hpp"
 
-// // There's code in SpiderMonkey that unconditionally calls getpid() instead of the MOZ_GET_PID() macro.
-// extern "C" int getpid() {
-//   return -1;
-// }
+ // There's code in SpiderMonkey that unconditionally calls getpid() instead of the MOZ_GET_PID() macro.
+ extern "C" int getpid() {
+   return -1;
+ }
 
 namespace jsglue {
 extern "C" {

@@ -50,6 +50,7 @@ use js::rust::{
 };
 use malloc_size_of::MallocSizeOfOps;
 use malloc_size_of_derive::MallocSizeOf;
+use script_bindings::root::RootCollection;
 // use profile_traits::mem::{Report, ReportKind};
 // use profile_traits::path;
 // use profile_traits::time::ProfilerCategory;
@@ -70,7 +71,7 @@ use servo_config::{opts, pref};
 //     LiveDOMReferences, Trusted, TrustedPromise, trace_refcounted_objects,
 // };
 // use crate::dom::bindings::reflector::{DomGlobal, DomObject};
-// use crate::dom::bindings::root::trace_roots;
+use crate::dom::bindings::root::{trace_roots, ThreadLocalStackRoots};
 // use crate::dom::bindings::utils::DOM_CALLBACKS;
 // use crate::dom::bindings::{principals, settings_stack};
 // use crate::dom::csp::CspReporting;
@@ -579,12 +580,16 @@ unsafe extern "C" fn get_host_defined_data(
 // }
 
 #[derive(JSTraceable)]
-pub(crate) struct Runtime {
+pub struct Runtime {
     rt: RustRuntime,
     // /// Our actual microtask queue, which is preserved and untouched by the debugger when running debugger scripts.
     // pub(crate) microtask_queue: Rc<MicrotaskQueue>,
     // job_queue: *mut JobQueue,
     // networking_task_src: Option<Box<SendableTaskSource>>,
+    #[no_trace("Manually traced in trace_rust_roots")]
+    roots: Box<RootCollection>,
+    #[no_trace("Manually traced in trace_rust_roots")]
+    stack_roots: ThreadLocalStackRoots,
 }
 
 impl Runtime {
@@ -598,7 +603,7 @@ impl Runtime {
     ///
     /// This, like many calls to SpiderMoney API, is unsafe.
     #[allow(unsafe_code)]
-    pub(crate) fn new(
+    pub fn new(
         // networking_task_source: Option<SendableTaskSource>
     ) -> Runtime {
         unsafe { Self::new_with_parent(None,
@@ -619,7 +624,7 @@ impl Runtime {
     ///
     /// This, like many calls to the SpiderMoney API, is unsafe.
     #[allow(unsafe_code)]
-    pub(crate) unsafe fn new_with_parent(
+    pub unsafe fn new_with_parent(
         parent: Option<ParentRuntime>,
         // networking_task_source: Option<SendableTaskSource>,
     ) -> Runtime {
@@ -631,6 +636,9 @@ impl Runtime {
             let runtime = RustRuntime::new(JS_ENGINE.lock().unwrap().as_ref().unwrap().clone());
             (runtime.cx(), runtime)
         };
+
+        let roots = Box::new(RootCollection::new());
+        let stack_roots = ThreadLocalStackRoots::new(roots.deref());
 
         JS_AddExtraGCRootsTracer(cx, Some(trace_rust_roots), ptr::null_mut());
 
@@ -843,6 +851,8 @@ impl Runtime {
 
         Runtime {
             rt: runtime,
+            roots,
+            stack_roots,
             // microtask_queue,
             // job_queue,
             // networking_task_src: (!networking_task_src_ptr.is_null())
@@ -987,9 +997,9 @@ unsafe extern "C" fn trace_rust_roots(tr: *mut JSTracer, _data: *mut os::raw::c_
     }
     trace!("starting custom root handler");
     // trace_thread(tr);
-    // trace_roots(tr);
+    trace_roots(tr);
     // trace_refcounted_objects(tr);
-    // settings_stack::trace(tr);
+    settings_stack::trace(tr);
     trace!("done custom root handler");
 }
 
@@ -1252,7 +1262,9 @@ impl Runnable {
     }
 }
 
-pub(crate) use script_bindings::script_runtime::CanGc;
+pub use script_bindings::script_runtime::CanGc;
+use script_bindings::utils::AsVoidPtr;
+use crate::dom::bindings::settings_stack;
 
 /// `introductionType` values in SpiderMonkey TransitiveCompileOptions.
 ///
@@ -1263,37 +1275,37 @@ pub(crate) struct IntroductionType;
 impl IntroductionType {
     /// `introductionType` for code evaluated by debugger.
     /// This includes code run via the devtools repl, even if the thread is not paused.
-    pub const DEBUGGER_EVAL: &CStr = c"debugger eval";
+    pub const DEBUGGER_EVAL: &'static CStr = c"debugger eval";
 
     /// `introductionType` for code loaded by worklet.
-    pub const WORKLET: &CStr = c"Worklet";
+    pub const WORKLET: &'static CStr = c"Worklet";
 
     /// `introductionType` for code belonging to `<script src="file.js">` elements.
     /// This includes `<script type="module" src="...">`.
-    pub const SRC_SCRIPT: &CStr = c"srcScript";
+    pub const SRC_SCRIPT: &'static CStr = c"srcScript";
 
     /// `introductionType` for code belonging to `<script>code;</script>` elements.
     /// This includes `<script type="module" src="...">`.
-    pub const INLINE_SCRIPT: &CStr = c"inlineScript";
+    pub const INLINE_SCRIPT: &'static CStr = c"inlineScript";
 
     /// `introductionType` for code belonging to scripts that *would* be `"inlineScript"` except that they were not
     /// part of the initial file itself.
     /// For example, scripts created via:
     /// - `document.write("<script>code;</script>")`
     /// - `var s = document.createElement("script"); s.text = "code";`
-    pub const INJECTED_SCRIPT: &CStr = c"injectedScript";
+    pub const INJECTED_SCRIPT: &'static CStr = c"injectedScript";
 
     /// `introductionType` for code that was loaded indirectly by being imported by another script
     /// using ESM static or dynamic imports.
-    pub const IMPORTED_MODULE: &CStr = c"importedModule";
+    pub const IMPORTED_MODULE: &'static CStr = c"importedModule";
 
     /// `introductionType` for code presented in `javascript:` URLs.
-    pub const JAVASCRIPT_URL: &CStr = c"javascriptURL";
+    pub const JAVASCRIPT_URL: &'static CStr = c"javascriptURL";
 
     /// `introductionType` for code passed to `setTimeout`/`setInterval` as a string.
-    pub const DOM_TIMER: &CStr = c"domTimer";
+    pub const DOM_TIMER: &'static CStr = c"domTimer";
 
     /// `introductionType` for web workers.
     /// <https://searchfox.org/mozilla-central/rev/202069c4c5113a1a9052d84fa4679d4c1b22113e/devtools/docs/user/debugger-api/debugger.source/index.rst#96>
-    pub const WORKER: &CStr = c"Worker";
+    pub const WORKER: &'static CStr = c"Worker";
 }

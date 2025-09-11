@@ -21,7 +21,7 @@ BINDINGS = {
     # "BodyInit",
     # # "Client",
     # # "CloseEvent",
-    # # "Console",
+    "Console",
     # # "Crypto",
     # # "CryptoKey",
     # # "CustomEvent",

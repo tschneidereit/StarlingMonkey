@@ -491,7 +491,8 @@ trait BindgenConfig {
 
             println!("cargo::error=SM_HEADERS must be set to the directory containing \
                           SpiderMonkey's headers");
-            std::process::exit(1);
+            return "../libspidermonkey/include".to_string();
+            // std::process::exit(1);
         }
         path
     }
