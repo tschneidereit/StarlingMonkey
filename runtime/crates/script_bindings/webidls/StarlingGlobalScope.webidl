@@ -7,5 +7,6 @@
 // to not mention any of these scopes.
 // https://html.spec.whatwg.org/multipage/#dedicatedworkerglobalscope
 [Global=(Window,Worker,DedicatedWorker, PaintWorklet), Exposed=DedicatedWorker]
-/*sealed*/ interface DedicatedWorkerGlobalScope : WorkerGlobalScope {
+/*sealed*/ interface StarlingGlobalScope : GlobalScope {
+  [BinaryName="Self_"] readonly attribute StarlingGlobalScope self;
 };

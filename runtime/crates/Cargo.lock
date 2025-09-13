@@ -1356,6 +1356,7 @@ dependencies = [
  "phf_shared",
  "serde_json",
  "servo_arc",
+ "servo_config",
  "servo_malloc_size_of",
  "servo_url",
  "smallvec",

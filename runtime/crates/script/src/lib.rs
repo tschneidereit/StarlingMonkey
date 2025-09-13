@@ -23,23 +23,13 @@ extern crate malloc_size_of_derive;
 // mod body;
 #[macro_use]
 mod task;
-// pub(crate) mod clipboard_provider;
 // pub(crate) mod conversions;
 // mod devtools;
-// pub(crate) mod document_loader;
 #[macro_use]
 mod dom;
-// mod canvas_context;
-// mod canvas_state;
 // pub(crate) mod fetch;
 // pub(crate) mod indexed_db;
 mod init;
-// mod layout_image;
-
-// pub(crate) mod document_collection;
-// pub(crate) mod iframe_collection;
-// pub(crate) mod image_animation;
-// pub mod layout_dom;
 // #[allow(unsafe_code)]
 // pub(crate) mod messaging;
 // mod microtask;
@@ -51,27 +41,14 @@ mod realms;
 // #[allow(dead_code)]
 // mod script_module;
 pub(crate) mod script_runtime;
-// #[allow(unsafe_code)]
-// pub(crate) mod script_thread;
-// pub(crate) mod security_manager;
-// pub(crate) mod serviceworker_manager;
-// mod stylesheet_loader;
-// mod stylesheet_set;
 // mod task_manager;
 // mod task_queue;
 // mod task_source;
-// pub mod test;
-// #[allow(dead_code)]
-// pub mod textinput;
 // mod timers;
-// mod webdriver_handlers;
-// mod window_named_properties;
 
 pub use init::init;
 pub(crate) use script_bindings::DomTypes;
 pub use script_runtime::JSEngineSetup;
-// pub use script_thread::ScriptThread;
-// pub use serviceworker_manager::ServiceWorkerManager;
 
 pub(crate) use crate::dom::bindings::codegen::DomTypeHolder::DomTypeHolder;
 // These trait exports are public, because they are used in the DOM bindings.
@@ -82,4 +59,4 @@ pub(crate) use crate::dom::bindings::reflector::{DomObject, MutDomObject, Reflec
 pub(crate) use crate::dom::bindings::trace::{CustomTraceable, JSTraceable};
 
 pub use script_runtime::{Runtime, CanGc};
-pub use dom::dedicatedworkerglobalscope::DedicatedWorkerGlobalScope as GlobalScope;
+pub use dom::starlingglobalscope::StarlingGlobalScope as GlobalScope;

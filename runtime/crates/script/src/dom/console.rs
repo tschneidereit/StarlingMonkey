@@ -25,9 +25,8 @@ use script_bindings::conversions::get_dom_class;
 use crate::dom::bindings::codegen::Bindings::ConsoleBinding::consoleMethods;
 use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::str::DOMString;
-use crate::dom::dedicatedworkerglobalscope::DedicatedWorkerGlobalScope;
 use crate::dom::globalscope::GlobalScope;
-use crate::dom::workerglobalscope::WorkerGlobalScope;
+use crate::dom::starlingglobalscope::StarlingGlobalScope;
 use crate::script_runtime::JSContext;
 
 /// The maximum object depth logged by console methods.
@@ -49,7 +48,7 @@ impl Console {
     }
 
     fn method(
-        global: &DedicatedWorkerGlobalScope,
+        global: &GlobalScope,
         level: LogLevel,
         messages: Vec<HandleValue>,
         include_stacktrace: IncludeStackTrace,
@@ -315,7 +314,7 @@ fn stringify_handle_values(messages: &[HandleValue]) -> DOMString {
 /// already forwards all messages to the logger with appropriate level
 /// this does not need to do anything for these targets.
 #[allow(unused_variables)]
-fn console_message_to_stdout(global: &DedicatedWorkerGlobalScope, message: &DOMString) {
+fn console_message_to_stdout(global: &GlobalScope, message: &DOMString) {
     #[cfg(not(any(target_os = "android", target_env = "ohos")))]
     {
         let prefix = ""; // global.current_group_label().unwrap_or_default();
@@ -334,8 +333,8 @@ enum IncludeStackTrace {
 
 impl consoleMethods<crate::DomTypeHolder> for Console {
     // https://developer.mozilla.org/en-US/docs/Web/API/Console/log
-    fn Log(_cx: JSContext, global: &DedicatedWorkerGlobalScope, messages: Vec<HandleValue>) {
-        Console::method(global, LogLevel::Log, messages, IncludeStackTrace::No);
+    fn Log(_cx: JSContext, global: &StarlingGlobalScope, messages: Vec<HandleValue>) {
+        Console::method(global.upcast(), LogLevel::Log, messages, IncludeStackTrace::No);
     }
 }
 

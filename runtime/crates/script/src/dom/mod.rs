@@ -210,6 +210,8 @@ pub(crate) mod types {
     include!(concat!(env!("OUT_DIR"), "/InterfaceTypes.rs"));
 }
 
+pub(crate) mod starlingglobalscope;
+
 // pub(crate) mod abortcontroller;
 // pub(crate) mod abortsignal;
 // #[allow(dead_code)]
@@ -291,7 +293,7 @@ pub(crate) mod console;
 // pub(crate) mod datatransferitemlist;
 // pub(crate) mod debuggeradddebuggeeevent;
 // pub(crate) mod debuggerglobalscope;
-pub(crate) mod dedicatedworkerglobalscope;
+// pub(crate) mod dedicatedworkerglobalscope;
 // pub(crate) mod defaultteereadrequest;
 // pub(crate) mod defaultteeunderlyingsource;
 // pub(crate) mod dissimilaroriginlocation;
@@ -672,7 +674,7 @@ pub(crate) mod globalscope;
 // pub(crate) mod windowproxy;
 // pub(crate) mod worker;
 // #[allow(dead_code)]
-pub(crate) mod workerglobalscope;
+// pub(crate) mod workerglobalscope;
 // pub(crate) mod workerlocation;
 // pub(crate) mod workernavigator;
 // pub(crate) mod worklet;

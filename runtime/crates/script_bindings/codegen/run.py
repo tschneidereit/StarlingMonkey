@@ -127,8 +127,9 @@ BINDINGS = {
 def include_binding(name: str) -> bool:
     if not name.endswith(".webidl"):
         return False
-    name = os.path.basename(name).split(".")[0]
-    return name in BINDINGS
+    return True
+    # name = os.path.basename(name).split(".")[0]
+    # return name in BINDINGS
 
 def main() -> None:
     os.chdir(os.path.join(os.path.dirname(__file__)))

@@ -35,7 +35,6 @@ use crate::dom::bindings::cell::{DomRefCell, RefMut};
 // use crate::dom::bindings::codegen::Bindings::EventSourceBinding::EventSource_Binding::EventSourceMethods;
 // use crate::dom::bindings::codegen::Bindings::FunctionBinding::Function;
 // use crate::dom::bindings::codegen::Bindings::VoidFunctionBinding::VoidFunction;
-use crate::dom::bindings::codegen::Bindings::WorkerGlobalScopeBinding::WorkerGlobalScopeMethods;
 use crate::dom::bindings::conversions::{root_from_object, root_from_object_static};
 use crate::dom::bindings::error::{Error, ErrorInfo, report_pending_exception};
 use crate::dom::bindings::frozenarray::CachedFrozenArray;
@@ -49,9 +48,7 @@ use crate::dom::bindings::str::DOMString;
 // use crate::dom::bindings::structuredclone;
 use crate::dom::bindings::trace::CustomTraceable;
 use crate::dom::bindings::weakref::{DOMTracker, WeakRef};
-use crate::dom::dedicatedworkerglobalscope::{
-    DedicatedWorkerGlobalScope,
-};
+use crate::dom::types::StarlingGlobalScope;
 // use crate::dom::errorevent::ErrorEvent;
 // use crate::dom::event::{Event, EventBubbles, EventCancelable};
 // use crate::dom::eventsource::EventSource;
@@ -62,7 +59,6 @@ use crate::dom::dedicatedworkerglobalscope::{
 // use crate::dom::readablestream::{CrossRealmTransformReadable, ReadableStream};
 // use crate::dom::reportingobserver::ReportingObserver;
 // use crate::dom::types::{DebuggerGlobalScope, MessageEvent};
-use crate::dom::workerglobalscope::WorkerGlobalScope;
 // use crate::microtask::{Microtask, MicrotaskQueue, UserMicrotask};
 use crate::realms::{InRealm, enter_realm};
 // use crate::script_module::{
@@ -235,7 +231,6 @@ impl GlobalScope {
             // blob_state: Default::default(),
             // eventtarget: EventTarget::new_inherited(),
             // crypto: Default::default(),
-            // pipeline_id,
             // console_timers: DomRefCell::new(Default::default()),
             // module_map: DomRefCell::new(Default::default()),
             // inline_module_map: DomRefCell::new(Default::default()),
@@ -253,7 +248,6 @@ impl GlobalScope {
             console_group_stack: DomRefCell::new(Vec::new()),
             console_count_map: Default::default(),
             // dynamic_modules: DomRefCell::new(DynamicModuleList::new()),
-            // inherited_secure_context,
             // byte_length_queuing_strategy_size_function: OnceCell::new(),
             // count_queuing_strategy_size_function: OnceCell::new(),
             // import_map: Default::default(),
@@ -472,7 +466,7 @@ impl GlobalScope {
     /// Get the [base url](https://html.spec.whatwg.org/multipage/#api-base-url)
     /// for this global scope.
     pub(crate) fn api_base_url(&self) -> ServoUrl {
-        if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
+        if let Some(worker) = self.downcast::<StarlingGlobalScope>() {
             // https://html.spec.whatwg.org/multipage/#script-settings-for-workers:api-base-url
             return worker.get_url().clone();
         }
@@ -484,7 +478,7 @@ impl GlobalScope {
 
     /// Get the URL for this global scope.
     pub(crate) fn get_url(&self) -> ServoUrl {
-        if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
+        if let Some(worker) = self.downcast::<StarlingGlobalScope>() {
             return worker.get_url().clone();
         }
         // if let Some(_debugger_global) = self.downcast::<DebuggerGlobalScope>() {
@@ -492,24 +486,6 @@ impl GlobalScope {
         // }
         unreachable!();
     }
-
-    // /// Get the Referrer Policy for this global scope.
-    // pub(crate) fn get_referrer_policy(&self) -> ReferrerPolicy {
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         let policy_container = worker.policy_container().to_owned();
-    //
-    //         return policy_container.get_referrer_policy();
-    //     }
-    //     unreachable!();
-    // }
-
-    // /// Determine the Referrer for a request whose Referrer is "client"
-    // pub(crate) fn get_referrer(&self) -> Referrer {
-    //     // Step 3 of https://w3c.github.io/webappsec-referrer-policy/#determine-requests-referrer
-    //     // Substep 3.1 doesn't apply, because there are only workers
-    //     // Substep 3.2
-    //     Referrer::Client(self.get_url())
-    // }
 
     // /// <https://html.spec.whatwg.org/multipage/#report-the-error>
     // pub(crate) fn report_an_error(&self, error_info: ErrorInfo, value: HandleValue, can_gc: CanGc) {
@@ -582,124 +558,124 @@ impl GlobalScope {
     //     })
     // }
 
-    // /// Evaluate JS code on this global scope.
-    // pub(crate) fn evaluate_js_on_global_with_result(
-    //     &self,
-    //     code: &str,
-    //     rval: MutableHandleValue,
-    //     // fetch_options: ScriptFetchOptions,
-    //     script_base_url: ServoUrl,
-    //     can_gc: CanGc,
-    //     introduction_type: Option<&'static CStr>,
-    // ) -> bool {
-    //     let source_code = SourceCode::Text(Rc::new(DOMString::from_string((*code).to_string())));
-    //     self.evaluate_script_on_global_with_result(
-    //         &source_code,
-    //         "",
-    //         rval,
-    //         1,
-    //         // fetch_options,
-    //         script_base_url,
-    //         can_gc,
-    //         introduction_type,
-    //     )
-    // }
-    //
-    // /// Evaluate a JS script on this global scope.
-    // #[allow(unsafe_code)]
-    // #[allow(clippy::too_many_arguments)]
-    // pub(crate) fn evaluate_script_on_global_with_result(
-    //     &self,
-    //     code: &SourceCode,
-    //     filename: &str,
-    //     rval: MutableHandleValue,
-    //     line_number: u32,
-    //     // fetch_options: ScriptFetchOptions,
-    //     script_base_url: ServoUrl,
-    //     can_gc: CanGc,
-    //     introduction_type: Option<&'static CStr>,
-    // ) -> bool {
-    //     let cx = GlobalScope::get_cx();
-    //
-    //     let ar = enter_realm(self);
-    //
-    //     let _aes = AutoEntryScript::new(self);
-    //
-    //     unsafe {
-    //         rooted!(in(*cx) let mut compiled_script = std::ptr::null_mut::<JSScript>());
-    //         match code {
-    //             SourceCode::Text(text_code) => {
-    //                 let mut options = CompileOptionsWrapper::new(*cx, filename, line_number);
-    //                 if let Some(introduction_type) = introduction_type {
-    //                     options.set_introduction_type(introduction_type);
-    //                 }
-    //
-    //                 debug!("compiling dom string");
-    //                 compiled_script.set(Compile1(
-    //                     *cx,
-    //                     options.ptr,
-    //                     &mut transform_str_to_source_text(text_code),
-    //                 ));
-    //
-    //                 if compiled_script.is_null() {
-    //                     debug!("error compiling Dom string");
-    //                     report_pending_exception(cx, true, InRealm::Entered(&ar), can_gc);
-    //                     return false;
-    //                 }
-    //             },
-    //             // SourceCode::Compiled(pre_compiled_script) => {
-    //             //     let options = InstantiateOptions {
-    //             //         skipFilenameValidation: false,
-    //             //         hideScriptFromDebugger: false,
-    //             //         deferDebugMetadata: false,
-    //             //         eagerDelazificationStrategy_: DelazificationOption::OnDemandOnly,
-    //             //     };
-    //             //     let script = InstantiateGlobalStencil(
-    //             //         *cx,
-    //             //         &options,
-    //             //         *pre_compiled_script.source_code,
-    //             //         ptr::null_mut(),
-    //             //     );
-    //             //     compiled_script.set(script);
-    //             // },
-    //         };
-    //
-    //         assert!(!compiled_script.is_null());
-    //
-    //         rooted!(in(*cx) let mut script_private = UndefinedValue());
-    //         JS_GetScriptPrivate(*compiled_script, script_private.handle_mut());
-    //
-    //         // When `ScriptPrivate` for the compiled script is undefined,
-    //         // we need to set it so that it can be used in dynamic import context.
-    //         if script_private.is_undefined() {
-    //             debug!("Set script private for {}", script_base_url);
-    //
-    //             let module_script_data = Rc::new(ModuleScript::new(
-    //                 script_base_url,
-    //                 fetch_options,
-    //                 // We can't initialize an module owner here because
-    //                 // the executing context of script might be different
-    //                 // from the dynamic import script's executing context.
-    //                 None,
-    //             ));
-    //
-    //             SetScriptPrivate(
-    //                 *compiled_script,
-    //                 &PrivateValue(Rc::into_raw(module_script_data) as *const _),
-    //             );
-    //         }
-    //
-    //         let result = JS_ExecuteScript(*cx, compiled_script.handle(), rval);
-    //
-    //         if !result {
-    //             debug!("error evaluating Dom string");
-    //             report_pending_exception(cx, true, InRealm::Entered(&ar), can_gc);
-    //         }
-    //
-    //         maybe_resume_unwind();
-    //         result
-    //     }
-    // }
+    /// Evaluate JS code on this global scope.
+    pub(crate) fn evaluate_js_on_global_with_result(
+        &self,
+        code: &str,
+        rval: MutableHandleValue,
+        // fetch_options: ScriptFetchOptions,
+        script_base_url: ServoUrl,
+        can_gc: CanGc,
+        introduction_type: Option<&'static CStr>,
+    ) -> bool {
+        let source_code = SourceCode::Text(Rc::new(DOMString::from_string((*code).to_string())));
+        self.evaluate_script_on_global_with_result(
+            &source_code,
+            "",
+            rval,
+            1,
+            // fetch_options,
+            script_base_url,
+            can_gc,
+            introduction_type,
+        )
+    }
+
+    /// Evaluate a JS script on this global scope.
+    #[allow(unsafe_code)]
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn evaluate_script_on_global_with_result(
+        &self,
+        code: &SourceCode,
+        filename: &str,
+        rval: MutableHandleValue,
+        line_number: u32,
+        // fetch_options: ScriptFetchOptions,
+        script_base_url: ServoUrl,
+        can_gc: CanGc,
+        introduction_type: Option<&'static CStr>,
+    ) -> bool {
+        let cx = GlobalScope::get_cx();
+
+        let ar = enter_realm(self);
+
+        let _aes = AutoEntryScript::new(self);
+
+        unsafe {
+            rooted!(in(*cx) let mut compiled_script = std::ptr::null_mut::<JSScript>());
+            match code {
+                SourceCode::Text(text_code) => {
+                    let mut options = CompileOptionsWrapper::new(*cx, filename, line_number);
+                    if let Some(introduction_type) = introduction_type {
+                        options.set_introduction_type(introduction_type);
+                    }
+
+                    debug!("compiling dom string");
+                    compiled_script.set(Compile1(
+                        *cx,
+                        options.ptr,
+                        &mut transform_str_to_source_text(text_code),
+                    ));
+
+                    if compiled_script.is_null() {
+                        debug!("error compiling Dom string");
+                        report_pending_exception(cx, true, InRealm::Entered(&ar), can_gc);
+                        return false;
+                    }
+                },
+                // SourceCode::Compiled(pre_compiled_script) => {
+                //     let options = InstantiateOptions {
+                //         skipFilenameValidation: false,
+                //         hideScriptFromDebugger: false,
+                //         deferDebugMetadata: false,
+                //         eagerDelazificationStrategy_: DelazificationOption::OnDemandOnly,
+                //     };
+                //     let script = InstantiateGlobalStencil(
+                //         *cx,
+                //         &options,
+                //         *pre_compiled_script.source_code,
+                //         ptr::null_mut(),
+                //     );
+                //     compiled_script.set(script);
+                // },
+            };
+
+            assert!(!compiled_script.is_null());
+
+            rooted!(in(*cx) let mut script_private = UndefinedValue());
+            JS_GetScriptPrivate(*compiled_script, script_private.handle_mut());
+
+            // When `ScriptPrivate` for the compiled script is undefined,
+            // we need to set it so that it can be used in dynamic import context.
+            if script_private.is_undefined() {
+                debug!("Set script private for {}", script_base_url);
+
+                // let module_script_data = Rc::new(ModuleScript::new(
+                //     script_base_url,
+                //     fetch_options,
+                //     // We can't initialize an module owner here because
+                //     // the executing context of script might be different
+                //     // from the dynamic import script's executing context.
+                //     None,
+                // ));
+                //
+                // SetScriptPrivate(
+                //     *compiled_script,
+                //     &PrivateValue(Rc::into_raw(module_script_data) as *const _),
+                // );
+            }
+
+            let result = JS_ExecuteScript(*cx, compiled_script.handle(), rval);
+
+            if !result {
+                debug!("error evaluating Dom string");
+                report_pending_exception(cx, true, InRealm::Entered(&ar), can_gc);
+            }
+
+            maybe_resume_unwind();
+            result
+        }
+    }
 
     // /// <https://html.spec.whatwg.org/multipage/#timer-initialisation-steps>
     // pub(crate) fn schedule_callback(
@@ -773,17 +749,6 @@ impl GlobalScope {
     //     }
     //     unreachable!();
     // }
-
-    // /// Returns a boolean indicating whether the event-loop
-    // /// where this global is running on can continue running JS.
-    // pub(crate) fn can_continue_running(&self) -> bool {
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         return !worker.is_closing();
-    //     }
-    //
-    //     // TODO: plug worklets into this.
-    //     true
-    // }
     //
     // /// Perform a microtask checkpoint.
     // pub(crate) fn perform_a_microtask_checkpoint(&self, can_gc: CanGc) {
@@ -822,7 +787,7 @@ impl GlobalScope {
     // }
 
     pub(crate) fn runtime_handle(&self) -> ParentRuntime {
-        if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
+        if let Some(worker) = self.downcast::<StarlingGlobalScope>() {
             worker.runtime_handle()
         } else {
             unreachable!()
@@ -887,41 +852,6 @@ impl GlobalScope {
     //         retval,
     //         can_gc,
     //     );
-    // }
-
-    // /// <https://html.spec.whatwg.org/multipage/#secure-context>
-    // pub(crate) fn is_secure_context(&self) -> bool {
-    //     // This differs from the specification, but it seems that
-    //     // `inherited_secure_context` implements more-or-less the exact same logic, in a
-    //     // different manner. Workers inherit whether or not their in a secure context and
-    //     // worklets do as well (they can only be created in secure contexts).
-    //     if Some(false) == self.inherited_secure_context {
-    //         return false;
-    //     }
-    //     // Step 1. If environment is an environment settings object, then:
-    //     // Step 1.1. Let global be environment's global object.
-    //     match self.top_level_creation_url() {
-    //         None => {
-    //             // Workers and worklets don't have a top-level creation URL
-    //             assert!(
-    //                 self.downcast::<WorkerGlobalScope>().is_some() ||
-    //                     self.downcast::<WorkletGlobalScope>().is_some()
-    //             );
-    //             true
-    //         },
-    //         Some(top_level_creation_url) => {
-    //             assert!(self.downcast::<Window>().is_some());
-    //             // Step 2. If the result of Is url potentially trustworthy?
-    //             // given environment's top-level creation URL is "Potentially Trustworthy", then return true.
-    //             // Step 3. Return false.
-    //             if top_level_creation_url.scheme() == "blob" &&
-    //                 Some(true) == self.inherited_secure_context
-    //             {
-    //                 return true;
-    //             }
-    //             top_level_creation_url.is_potentially_trustworthy()
-    //         },
-    //     }
     // }
     //
     // pub(crate) fn current_group_label(&self) -> Option<DOMString> {
@@ -1043,66 +973,6 @@ impl GlobalScope {
     //     self.count_queuing_strategy_size_function.get().cloned()
     // }
 
-    // pub(crate) fn trusted_types(&self, can_gc: CanGc) -> DomRoot<TrustedTypePolicyFactory> {
-    //     if let Some(window) = self.downcast::<Window>() {
-    //         return window.TrustedTypes(can_gc);
-    //     }
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         return worker.TrustedTypes(can_gc);
-    //     }
-    //     unreachable!();
-    // }
-    // 
-    // pub(crate) fn append_reporting_observer(&self, reporting_observer: &ReportingObserver) {
-    //     if let Some(window) = self.downcast::<Window>() {
-    //         return window.append_reporting_observer(DomRoot::from_ref(reporting_observer));
-    //     }
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         return worker.append_reporting_observer(DomRoot::from_ref(reporting_observer));
-    //     }
-    //     unreachable!();
-    // }
-    // 
-    // pub(crate) fn remove_reporting_observer(&self, reporting_observer: &ReportingObserver) {
-    //     if let Some(window) = self.downcast::<Window>() {
-    //         return window.remove_reporting_observer(reporting_observer);
-    //     }
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         return worker.remove_reporting_observer(reporting_observer);
-    //     }
-    //     unreachable!();
-    // }
-    // 
-    // pub(crate) fn registered_reporting_observers(&self) -> Vec<DomRoot<ReportingObserver>> {
-    //     if let Some(window) = self.downcast::<Window>() {
-    //         return window.registered_reporting_observers();
-    //     }
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         return worker.registered_reporting_observers();
-    //     }
-    //     unreachable!();
-    // }
-    // 
-    // pub(crate) fn append_report(&self, report: Report) {
-    //     if let Some(window) = self.downcast::<Window>() {
-    //         return window.append_report(report);
-    //     }
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         return worker.append_report(report);
-    //     }
-    //     unreachable!();
-    // }
-    // 
-    // pub(crate) fn buffered_reports(&self) -> Vec<Report> {
-    //     if let Some(window) = self.downcast::<Window>() {
-    //         return window.buffered_reports();
-    //     }
-    //     if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-    //         return worker.buffered_reports();
-    //     }
-    //     unreachable!();
-    // }
-
     // pub(crate) fn import_map(&self) -> Ref<'_, ImportMap> {
     //     self.import_map.borrow()
     // }
@@ -1202,6 +1072,6 @@ impl GlobalScopeHelpers<crate::DomTypeHolder> for GlobalScope {
     }
 
     fn is_secure_context(&self) -> bool {
-        self.is_secure_context()
+        unimplemented!()
     }
 }
