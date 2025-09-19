@@ -1,5 +1,5 @@
 [package]
-name = "servo_malloc_size_of"
+name = "malloc_size_of"
 license = "MIT OR Apache-2.0"
 version.workspace = true
 authors.workspace = true

@@ -62,7 +62,7 @@ servo_url = { path = "url" }
 stylo_config = "0.6.0"
 syn = "2.0.106"
 synstructure = "0.13.2"
-malloc_size_of = { package = "servo_malloc_size_of", path = "malloc_size_of" }
+malloc_size_of = { path = "malloc_size_of" }
 malloc_size_of_derive = "0.1"
 time = { package = "time", version = "0.3", features = ["large-dates", "local-offset", "serde"] }
 tracing = "0.1.41"
