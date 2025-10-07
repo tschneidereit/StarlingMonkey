@@ -17,7 +17,7 @@ deny_public_fields = { workspace = true }
 dom_struct = { workspace = true }
 domobject_derive = { workspace = true }
 indexmap = { workspace = true }
-js = { package = "spidermonkey-rs", path = "../spidermonkey-rs" }
+js.workspace = true
 jstraceable_derive = { path = "../jstraceable_derive" }
 libc = { workspace = true }
 log = { workspace = true }

@@ -6,18 +6,14 @@ authors = ["The StarlingMonkey project contributors", "The Servo Project Develop
 edition = "2024"
 rust-version = "1.88.0"
 publish = false
+keywords = ["javascript", "spidermonkey", "wasm", "runtime"]
+categories = ["development-tools", "wasm"]
 
 [workspace]
 members = [
-    "jsapi-rs",
-    "spidermonkey-rs",
-    "starlingmonkey-rs",
-    "generate-bindings",
-    "spidermonkey-macros",
-    "js",
     "script",
     "script_bindings",
-    "test-builtin", "starlingshell",
+    "starlingshell",
 ]
 resolver = "2"
 
@@ -39,11 +35,8 @@ mime = "0.3.13"
 num-traits = "0.2.19"
 smallvec = { version = "1.15", features = ["serde", "union"] }
 stylo_malloc_size_of = { git = "https://github.com/servo/stylo", branch = "2025-08-01" }
-jsapi-rs = { path = "jsapi-rs" }
-js = { package = "spidermonkey-rs", path = "spidermonkey-rs" }
+js = { package = "mozjs", git = "https://github.com/tschneidereit/mozjs", branch = "wasi", default-features = false, features = ["libz-rs", "intl"] }
 jstraceable_derive = { path = "jstraceable_derive" }
-starlingmonkey-rs = { path = "starlingmonkey-rs" }
-spidermonkey-rs = { path = "spidermonkey-rs" }
 script = { path = "script" }
 script_bindings = { path = "script_bindings" }
 quote = "1.0.40"
@@ -87,3 +80,8 @@ panic = 'abort'
 
 [profile.dev.build-override]
 opt-level = 3
+
+[profile.release-small]
+inherits = "release"
+opt-level = "s"
+strip = "all"

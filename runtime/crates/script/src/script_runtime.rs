@@ -21,7 +21,7 @@ use std::{os, ptr, thread};
 // use background_hang_monitor_api::ScriptHangAnnotation;
 use js::conversions::jsstr_to_string;
 use js::glue::{
-    CollectServoSizes, DeleteJobQueue, DispatchableRun, JS_GetReservedSlot,
+    CollectServoSizes, DeleteJobQueue, DispatchableRun, DispatchablePointer, JS_GetReservedSlot,
     JobQueueTraps, RUST_js_GetErrorMessage, SetBuildId, StreamConsumerConsumeChunk,
     StreamConsumerNoteResponseURLs, StreamConsumerStreamEnd, StreamConsumerStreamError,
 };
@@ -1246,7 +1246,7 @@ unsafe extern "C" fn report_stream_error(_cx: *mut RawJSContext, error_code: usi
     );
 }
 
-pub(crate) struct Runnable(*mut JSRunnable);
+pub(crate) struct Runnable(*mut DispatchablePointer);
 
 #[allow(unsafe_code)]
 unsafe impl Sync for Runnable {}
