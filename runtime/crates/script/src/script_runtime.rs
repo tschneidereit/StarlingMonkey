@@ -20,11 +20,7 @@ use std::{os, ptr, thread};
 
 // use background_hang_monitor_api::ScriptHangAnnotation;
 use js::conversions::jsstr_to_string;
-use js::glue::{
-    CollectServoSizes, DeleteJobQueue, DispatchableRun, DispatchablePointer, JS_GetReservedSlot,
-    JobQueueTraps, RUST_js_GetErrorMessage, SetBuildId, StreamConsumerConsumeChunk,
-    StreamConsumerNoteResponseURLs, StreamConsumerStreamEnd, StreamConsumerStreamError,
-};
+use js::glue::{CollectServoSizes, DeleteJobQueue, DispatchableRun, DispatchablePointer, JS_GetReservedSlot, JobQueueTraps, RUST_js_GetErrorMessage, SetBuildId, StreamConsumerConsumeChunk, StreamConsumerNoteResponseURLs, StreamConsumerStreamEnd, StreamConsumerStreamError, CreateJobQueue};
 use js::jsapi::{
     AsmJSOption, BuildIdCharVector, CompilationType, ContextOptionsRef, Dispatchable as JSRunnable,
     Dispatchable_MaybeShuttingDown, GCDescription, GCOptions, GCProgress, GCReason,
@@ -50,6 +46,7 @@ use js::rust::{
 };
 use malloc_size_of::MallocSizeOfOps;
 use malloc_size_of_derive::MallocSizeOf;
+use script_bindings::reflector::DomObject;
 use script_bindings::root::RootCollection;
 // use profile_traits::mem::{Report, ReportKind};
 // use profile_traits::path;
@@ -82,22 +79,20 @@ use crate::dom::bindings::root::{trace_roots, ThreadLocalStackRoots};
 // use crate::dom::promiserejectionevent::PromiseRejectionEvent;
 // use crate::dom::response::Response;
 // use crate::microtask::{EnqueuedPromiseCallback, Microtask, MicrotaskQueue};
-use crate::realms::{AlreadyInRealm, InRealm,
-                    // enter_realm
-};
+use crate::realms::{AlreadyInRealm, InRealm, enter_realm};
 // use crate::script_module::EnsureModuleHooksInitialized;
 // use crate::script_thread::trace_thread;
 // use crate::task_source::SendableTaskSource;
 
-// static JOB_QUEUE_TRAPS: JobQueueTraps = JobQueueTraps {
-//     getHostDefinedData: Some(get_host_defined_data),
-//     enqueuePromiseJob: Some(enqueue_promise_job),
-//     runJobs: Some(run_jobs),
-//     empty: Some(empty),
-//     pushNewInterruptQueue: Some(push_new_interrupt_queue),
-//     popInterruptQueue: Some(pop_interrupt_queue),
-//     dropInterruptQueues: Some(drop_interrupt_queues),
-// };
+static JOB_QUEUE_TRAPS: JobQueueTraps = JobQueueTraps {
+    getHostDefinedData: Some(get_host_defined_data),
+    enqueuePromiseJob: Some(enqueue_promise_job),
+    runJobs: Some(run_jobs),
+    empty: Some(empty),
+    pushNewInterruptQueue: Some(push_new_interrupt_queue),
+    popInterruptQueue: Some(pop_interrupt_queue),
+    dropInterruptQueues: Some(drop_interrupt_queues),
+};
 //
 // static SECURITY_CALLBACKS: JSSecurityCallbacks = JSSecurityCallbacks {
 //     contentSecurityPolicyAllows: Some(content_security_policy_allows),
@@ -265,211 +260,211 @@ unsafe extern "C" fn get_host_defined_data(
     cx: *mut RawJSContext,
     data: MutableHandleObject,
 ) -> bool {
-    // wrap_panic(&mut || {
-    //     let Some(incumbent_global) = GlobalScope::incumbent() else {
-    //         data.set(ptr::null_mut());
-    //         return;
-    //     };
-    //
-    //     let _realm = enter_realm(&*incumbent_global);
-    //
-    //     rooted!(in(cx) let result = JS_NewObject(cx, &HOST_DEFINED_DATA_CLASS));
-    //     assert!(!result.is_null());
-    //
-    //     JS_SetReservedSlot(
-    //         *result,
-    //         INCUMBENT_SETTING_SLOT,
-    //         &ObjectValue(*incumbent_global.reflector().get_jsobject()),
-    //     );
-    //
-    //     data.set(result.get());
-    // });
+    wrap_panic(&mut || {
+        let Some(incumbent_global) = GlobalScope::incumbent() else {
+            data.set(ptr::null_mut());
+            return;
+        };
+
+        let _realm = enter_realm(&*incumbent_global);
+
+        rooted!(in(cx) let result = JS_NewObject(cx, &HOST_DEFINED_DATA_CLASS));
+        assert!(!result.is_null());
+
+        JS_SetReservedSlot(
+            *result,
+            INCUMBENT_SETTING_SLOT,
+            &ObjectValue(*incumbent_global.reflector().get_jsobject()),
+        );
+
+        data.set(result.get());
+    });
     true
 }
 
-// #[allow(unsafe_code)]
-// unsafe extern "C" fn run_jobs(microtask_queue: *const c_void, cx: *mut RawJSContext) {
-//     let cx = JSContext::from_ptr(cx);
-//     wrap_panic(&mut || {
-//         let microtask_queue = &*(microtask_queue as *const MicrotaskQueue);
-//         // TODO: run Promise- and User-variant Microtasks, and do #notify-about-rejected-promises.
-//         // Those will require real `target_provider` and `globalscopes` values.
-//         microtask_queue.checkpoint(cx, |_| None, vec![], CanGc::note());
-//     });
-// }
-//
-// #[allow(unsafe_code)]
-// unsafe extern "C" fn empty(extra: *const c_void) -> bool {
-//     let mut result = false;
-//     wrap_panic(&mut || {
-//         let microtask_queue = &*(extra as *const MicrotaskQueue);
-//         result = microtask_queue.empty()
-//     });
-//     result
-// }
-//
-// #[allow(unsafe_code)]
-// unsafe extern "C" fn push_new_interrupt_queue(interrupt_queues: *mut c_void) -> *const c_void {
-//     let mut result = std::ptr::null();
-//     wrap_panic(&mut || {
-//         let mut interrupt_queues = Box::from_raw(interrupt_queues as *mut Vec<Rc<MicrotaskQueue>>);
-//         let new_queue = Rc::new(MicrotaskQueue::default());
-//         result = Rc::as_ptr(&new_queue) as *const c_void;
-//         interrupt_queues.push(new_queue.clone());
-//         std::mem::forget(interrupt_queues);
-//     });
-//     result
-// }
-//
-// #[allow(unsafe_code)]
-// unsafe extern "C" fn pop_interrupt_queue(interrupt_queues: *mut c_void) -> *const c_void {
-//     let mut result = std::ptr::null();
-//     wrap_panic(&mut || {
-//         let mut interrupt_queues = Box::from_raw(interrupt_queues as *mut Vec<Rc<MicrotaskQueue>>);
-//         let popped_queue: Rc<MicrotaskQueue> =
-//             interrupt_queues.pop().expect("Guaranteed by SpiderMonkey?");
-//         // Dangling, but jsglue.cpp will only use this for pointer comparison.
-//         result = Rc::as_ptr(&popped_queue) as *const c_void;
-//         std::mem::forget(interrupt_queues);
-//     });
-//     result
-// }
-//
-// #[allow(unsafe_code)]
-// unsafe extern "C" fn drop_interrupt_queues(interrupt_queues: *mut c_void) {
-//     wrap_panic(&mut || {
-//         let interrupt_queues = Box::from_raw(interrupt_queues as *mut Vec<Rc<MicrotaskQueue>>);
-//         drop(interrupt_queues);
-//     });
-// }
-//
-// /// <https://searchfox.org/mozilla-central/rev/2a8a30f4c9b918b726891ab9d2d62b76152606f1/xpcom/base/CycleCollectedJSContext.cpp#355>
-// /// SM callback for promise job resolution. Adds a promise callback to the current
-// /// global's microtask queue.
-// #[allow(unsafe_code)]
-// unsafe extern "C" fn enqueue_promise_job(
-//     extra: *const c_void,
-//     cx: *mut RawJSContext,
-//     promise: HandleObject,
-//     job: HandleObject,
-//     _allocation_site: HandleObject,
-//     host_defined_data: HandleObject,
-// ) -> bool {
-//     let cx = JSContext::from_ptr(cx);
-//     let mut result = false;
-//     wrap_panic(&mut || {
-//         let microtask_queue = &*(extra as *const MicrotaskQueue);
-//         let global = if !host_defined_data.is_null() {
-//             let mut incumbent_global = UndefinedValue();
-//             JS_GetReservedSlot(
-//                 host_defined_data.get(),
-//                 INCUMBENT_SETTING_SLOT,
-//                 &mut incumbent_global,
-//             );
-//             GlobalScope::from_object(incumbent_global.to_object())
-//         } else {
-//             let realm = AlreadyInRealm::assert_for_cx(cx);
-//             GlobalScope::from_context(*cx, InRealm::already(&realm))
-//         };
-//         let pipeline = global.pipeline_id();
-//         let interaction = if promise.get().is_null() {
-//             PromiseUserInputEventHandlingState::DontCare
-//         } else {
-//             GetPromiseUserInputEventHandlingState(promise)
-//         };
-//         let is_user_interacting =
-//             interaction == PromiseUserInputEventHandlingState::HadUserInteractionAtCreation;
-//         microtask_queue.enqueue(
-//             Microtask::Promise(EnqueuedPromiseCallback {
-//                 callback: PromiseJobCallback::new(cx, job.get()),
-//                 pipeline,
-//                 is_user_interacting,
-//             }),
-//             cx,
-//         );
-//         result = true
-//     });
-//     result
-// }
-//
-// #[allow(unsafe_code)]
-// #[cfg_attr(crown, allow(crown::unrooted_must_root))]
-// /// <https://html.spec.whatwg.org/multipage/#the-hostpromiserejectiontracker-implementation>
-// unsafe extern "C" fn promise_rejection_tracker(
-//     cx: *mut RawJSContext,
-//     _muted_errors: bool,
-//     promise: HandleObject,
-//     state: PromiseRejectionHandlingState,
-//     _data: *mut c_void,
-// ) {
-//     // TODO: Step 2 - If script's muted errors is true, terminate these steps.
-//
-//     // Step 3.
-//     let cx = JSContext::from_ptr(cx);
-//     let in_realm_proof = AlreadyInRealm::assert_for_cx(cx);
-//     let global = GlobalScope::from_context(*cx, InRealm::Already(&in_realm_proof));
-//
-//     wrap_panic(&mut || {
-//         match state {
-//             // Step 4.
-//             PromiseRejectionHandlingState::Unhandled => {
-//                 global.add_uncaught_rejection(promise);
-//             },
-//             // Step 5.
-//             PromiseRejectionHandlingState::Handled => {
-//                 // Step 5-1.
-//                 if global
-//                     .get_uncaught_rejections()
-//                     .borrow()
-//                     .contains(&Heap::boxed(promise.get()))
-//                 {
-//                     global.remove_uncaught_rejection(promise);
-//                     return;
-//                 }
-//
-//                 // Step 5-2.
-//                 if !global
-//                     .get_consumed_rejections()
-//                     .borrow()
-//                     .contains(&Heap::boxed(promise.get()))
-//                 {
-//                     return;
-//                 }
-//
-//                 // Step 5-3.
-//                 global.remove_consumed_rejection(promise);
-//
-//                 // let target = Trusted::new(global.upcast::<EventTarget>());
-//                 // let promise = Promise::new_with_js_promise(Handle::from_raw(promise), cx);
-//                 // let trusted_promise = TrustedPromise::new(promise.clone());
-//
-//                 // Step 5-4.
-//             //     global.task_manager().dom_manipulation_task_source().queue(
-//             //     task!(rejection_handled_event: move || {
-//             //         let target = target.root();
-//             //         let cx = GlobalScope::get_cx();
-//             //         let root_promise = trusted_promise.root();
-//             //
-//             //         rooted!(in(*cx) let mut reason = UndefinedValue());
-//             //         JS_GetPromiseResult(root_promise.reflector().get_jsobject(), reason.handle_mut());
-//             //
-//             //         let event = PromiseRejectionEvent::new(
-//             //             &target.global(),
-//             //             atom!("rejectionhandled"),
-//             //             EventBubbles::DoesNotBubble,
-//             //             EventCancelable::Cancelable,
-//             //             root_promise,
-//             //             reason.handle(),
-//             //             CanGc::note()
-//             //         );
-//             //
-//             //         event.upcast::<Event>().fire(&target, CanGc::note());
-//             //     })
-//             // );
-//             },
-//         };
-//     })
-// }
+#[allow(unsafe_code)]
+unsafe extern "C" fn run_jobs(microtask_queue: *const c_void, cx: *mut RawJSContext) {
+    let cx = JSContext::from_ptr(cx);
+    wrap_panic(&mut || {
+        let microtask_queue = &*(microtask_queue as *const MicrotaskQueue);
+        // TODO: run Promise- and User-variant Microtasks, and do #notify-about-rejected-promises.
+        // Those will require real `target_provider` and `globalscopes` values.
+        microtask_queue.checkpoint(cx, |_| None, vec![], CanGc::note());
+    });
+}
+
+#[allow(unsafe_code)]
+unsafe extern "C" fn empty(extra: *const c_void) -> bool {
+    let mut result = false;
+    wrap_panic(&mut || {
+        let microtask_queue = &*(extra as *const MicrotaskQueue);
+        result = microtask_queue.empty()
+    });
+    result
+}
+
+#[allow(unsafe_code)]
+unsafe extern "C" fn push_new_interrupt_queue(interrupt_queues: *mut c_void) -> *const c_void {
+    let mut result = std::ptr::null();
+    wrap_panic(&mut || {
+        let mut interrupt_queues = Box::from_raw(interrupt_queues as *mut Vec<Rc<MicrotaskQueue>>);
+        let new_queue = Rc::new(MicrotaskQueue::default());
+        result = Rc::as_ptr(&new_queue) as *const c_void;
+        interrupt_queues.push(new_queue.clone());
+        std::mem::forget(interrupt_queues);
+    });
+    result
+}
+
+#[allow(unsafe_code)]
+unsafe extern "C" fn pop_interrupt_queue(interrupt_queues: *mut c_void) -> *const c_void {
+    let mut result = std::ptr::null();
+    wrap_panic(&mut || {
+        let mut interrupt_queues = Box::from_raw(interrupt_queues as *mut Vec<Rc<MicrotaskQueue>>);
+        let popped_queue: Rc<MicrotaskQueue> =
+            interrupt_queues.pop().expect("Guaranteed by SpiderMonkey?");
+        // Dangling, but jsglue.cpp will only use this for pointer comparison.
+        result = Rc::as_ptr(&popped_queue) as *const c_void;
+        std::mem::forget(interrupt_queues);
+    });
+    result
+}
+
+#[allow(unsafe_code)]
+unsafe extern "C" fn drop_interrupt_queues(interrupt_queues: *mut c_void) {
+    wrap_panic(&mut || {
+        let interrupt_queues = Box::from_raw(interrupt_queues as *mut Vec<Rc<MicrotaskQueue>>);
+        drop(interrupt_queues);
+    });
+}
+
+/// <https://searchfox.org/mozilla-central/rev/2a8a30f4c9b918b726891ab9d2d62b76152606f1/xpcom/base/CycleCollectedJSContext.cpp#355>
+/// SM callback for promise job resolution. Adds a promise callback to the current
+/// global's microtask queue.
+#[allow(unsafe_code)]
+unsafe extern "C" fn enqueue_promise_job(
+    extra: *const c_void,
+    cx: *mut RawJSContext,
+    promise: HandleObject,
+    job: HandleObject,
+    _allocation_site: HandleObject,
+    host_defined_data: HandleObject,
+) -> bool {
+    let cx = JSContext::from_ptr(cx);
+    let mut result = false;
+    wrap_panic(&mut || {
+        let microtask_queue = &*(extra as *const MicrotaskQueue);
+        let global = if !host_defined_data.is_null() {
+            let mut incumbent_global = UndefinedValue();
+            JS_GetReservedSlot(
+                host_defined_data.get(),
+                INCUMBENT_SETTING_SLOT,
+                &mut incumbent_global,
+            );
+            GlobalScope::from_object(incumbent_global.to_object())
+        } else {
+            let realm = AlreadyInRealm::assert_for_cx(cx);
+            GlobalScope::from_context(*cx, InRealm::already(&realm))
+        };
+        let pipeline = global.pipeline_id();
+        let interaction = if promise.get().is_null() {
+            PromiseUserInputEventHandlingState::DontCare
+        } else {
+            GetPromiseUserInputEventHandlingState(promise)
+        };
+        let is_user_interacting =
+            interaction == PromiseUserInputEventHandlingState::HadUserInteractionAtCreation;
+        microtask_queue.enqueue(
+            Microtask::Promise(EnqueuedPromiseCallback {
+                callback: PromiseJobCallback::new(cx, job.get()),
+                pipeline,
+                is_user_interacting,
+            }),
+            cx,
+        );
+        result = true
+    });
+    result
+}
+
+#[allow(unsafe_code)]
+#[cfg_attr(crown, allow(crown::unrooted_must_root))]
+/// <https://html.spec.whatwg.org/multipage/#the-hostpromiserejectiontracker-implementation>
+unsafe extern "C" fn promise_rejection_tracker(
+    cx: *mut RawJSContext,
+    _muted_errors: bool,
+    promise: HandleObject,
+    state: PromiseRejectionHandlingState,
+    _data: *mut c_void,
+) {
+    // TODO: Step 2 - If script's muted errors is true, terminate these steps.
+
+    // Step 3.
+    let cx = JSContext::from_ptr(cx);
+    let in_realm_proof = AlreadyInRealm::assert_for_cx(cx);
+    let global = GlobalScope::from_context(*cx, InRealm::Already(&in_realm_proof));
+
+    wrap_panic(&mut || {
+        match state {
+            // Step 4.
+            PromiseRejectionHandlingState::Unhandled => {
+                global.add_uncaught_rejection(promise);
+            },
+            // Step 5.
+            PromiseRejectionHandlingState::Handled => {
+                // Step 5-1.
+                if global
+                    .get_uncaught_rejections()
+                    .borrow()
+                    .contains(&Heap::boxed(promise.get()))
+                {
+                    global.remove_uncaught_rejection(promise);
+                    return;
+                }
+
+                // Step 5-2.
+                if !global
+                    .get_consumed_rejections()
+                    .borrow()
+                    .contains(&Heap::boxed(promise.get()))
+                {
+                    return;
+                }
+
+                // Step 5-3.
+                global.remove_consumed_rejection(promise);
+
+                // let target = Trusted::new(global.upcast::<EventTarget>());
+                // let promise = Promise::new_with_js_promise(Handle::from_raw(promise), cx);
+                // let trusted_promise = TrustedPromise::new(promise.clone());
+
+                // Step 5-4.
+            //     global.task_manager().dom_manipulation_task_source().queue(
+            //     task!(rejection_handled_event: move || {
+            //         let target = target.root();
+            //         let cx = GlobalScope::get_cx();
+            //         let root_promise = trusted_promise.root();
+            //
+            //         rooted!(in(*cx) let mut reason = UndefinedValue());
+            //         JS_GetPromiseResult(root_promise.reflector().get_jsobject(), reason.handle_mut());
+            //
+            //         let event = PromiseRejectionEvent::new(
+            //             &target.global(),
+            //             atom!("rejectionhandled"),
+            //             EventBubbles::DoesNotBubble,
+            //             EventCancelable::Cancelable,
+            //             root_promise,
+            //             reason.handle(),
+            //             CanGc::note()
+            //         );
+            //
+            //         event.upcast::<Event>().fire(&target, CanGc::note());
+            //     })
+            // );
+            },
+        };
+    })
+}
 
 // #[allow(unsafe_code)]
 // unsafe extern "C" fn content_security_policy_allows(
@@ -505,86 +500,86 @@ unsafe extern "C" fn get_host_defined_data(
 //     true
 // }
 //
-// #[allow(unsafe_code)]
-// #[cfg_attr(crown, allow(crown::unrooted_must_root))]
-// /// <https://html.spec.whatwg.org/multipage/#notify-about-rejected-promises>
-// pub(crate) fn notify_about_rejected_promises(global: &GlobalScope) {
-//     let cx = GlobalScope::get_cx();
-//     unsafe {
-//         // Step 2.
-//         if global.get_uncaught_rejections().borrow().len() > 0 {
-//             // Step 1.
-//             let uncaught_rejections: Vec<TrustedPromise> = global
-//                 .get_uncaught_rejections()
-//                 .borrow()
-//                 .iter()
-//                 .map(|promise| {
-//                     let promise =
-//                         Promise::new_with_js_promise(Handle::from_raw(promise.handle()), cx);
-//
-//                     TrustedPromise::new(promise)
-//                 })
-//                 .collect();
-//
-//             // Step 3.
-//             global.get_uncaught_rejections().borrow_mut().clear();
-//
-//             let target = Trusted::new(global.upcast::<EventTarget>());
-//
-//             // Step 4.
-//             // global.task_manager().dom_manipulation_task_source().queue(
-//             //     task!(unhandled_rejection_event: move || {
-//             //         let target = target.root();
-//             //         let cx = GlobalScope::get_cx();
-//             //
-//             //         for promise in uncaught_rejections {
-//             //             let promise = promise.root();
-//             //
-//             //             // Step 4-1.
-//             //             let promise_is_handled = GetPromiseIsHandled(promise.reflector().get_jsobject());
-//             //             if promise_is_handled {
-//             //                 continue;
-//             //             }
-//             //
-//             //             // Step 4-2.
-//             //             rooted!(in(*cx) let mut reason = UndefinedValue());
-//             //             JS_GetPromiseResult(promise.reflector().get_jsobject(), reason.handle_mut());
-//             //
-//             //             let event = PromiseRejectionEvent::new(
-//             //                 &target.global(),
-//             //                 atom!("unhandledrejection"),
-//             //                 EventBubbles::DoesNotBubble,
-//             //                 EventCancelable::Cancelable,
-//             //                 promise.clone(),
-//             //                 reason.handle(),
-//             //                 CanGc::note()
-//             //             );
-//             //
-//             //             let not_canceled = event.upcast::<Event>().fire(&target, CanGc::note());
-//             //
-//             //             // Step 4-3. If notCanceled is true, then the user agent
-//             //             // may report p.[[PromiseResult]] to a developer console.
-//             //             if not_canceled {
-//             //                 // TODO: The promise rejection is not handled; we need to add it back to the list.
-//             //             }
-//             //
-//             //             // Step 4-4.
-//             //             if !promise_is_handled {
-//             //                 target.global().add_consumed_rejection(promise.reflector().get_jsobject().into_handle());
-//             //             }
-//             //         }
-//             //     })
-//             // );
-//         }
-//     }
-// }
+#[allow(unsafe_code)]
+#[cfg_attr(crown, allow(crown::unrooted_must_root))]
+/// <https://html.spec.whatwg.org/multipage/#notify-about-rejected-promises>
+pub(crate) fn notify_about_rejected_promises(global: &GlobalScope) {
+    let cx = GlobalScope::get_cx();
+    unsafe {
+        // Step 2.
+        // if global.get_uncaught_rejections().borrow().len() > 0 {
+        //     // Step 1.
+        //     let uncaught_rejections: Vec<TrustedPromise> = global
+        //         .get_uncaught_rejections()
+        //         .borrow()
+        //         .iter()
+        //         .map(|promise| {
+        //             let promise =
+        //                 Promise::new_with_js_promise(Handle::from_raw(promise.handle()), cx);
+        //
+        //             TrustedPromise::new(promise)
+        //         })
+        //         .collect();
+        //
+        //     // Step 3.
+        //     global.get_uncaught_rejections().borrow_mut().clear();
+        //
+        //     let target = Trusted::new(global.upcast::<EventTarget>());
+        //
+            // Step 4.
+            // global.task_manager().dom_manipulation_task_source().queue(
+            //     task!(unhandled_rejection_event: move || {
+            //         let target = target.root();
+            //         let cx = GlobalScope::get_cx();
+            //
+            //         for promise in uncaught_rejections {
+            //             let promise = promise.root();
+            //
+            //             // Step 4-1.
+            //             let promise_is_handled = GetPromiseIsHandled(promise.reflector().get_jsobject());
+            //             if promise_is_handled {
+            //                 continue;
+            //             }
+            //
+            //             // Step 4-2.
+            //             rooted!(in(*cx) let mut reason = UndefinedValue());
+            //             JS_GetPromiseResult(promise.reflector().get_jsobject(), reason.handle_mut());
+            //
+            //             let event = PromiseRejectionEvent::new(
+            //                 &target.global(),
+            //                 atom!("unhandledrejection"),
+            //                 EventBubbles::DoesNotBubble,
+            //                 EventCancelable::Cancelable,
+            //                 promise.clone(),
+            //                 reason.handle(),
+            //                 CanGc::note()
+            //             );
+            //
+            //             let not_canceled = event.upcast::<Event>().fire(&target, CanGc::note());
+            //
+            //             // Step 4-3. If notCanceled is true, then the user agent
+            //             // may report p.[[PromiseResult]] to a developer console.
+            //             if not_canceled {
+            //                 // TODO: The promise rejection is not handled; we need to add it back to the list.
+            //             }
+            //
+            //             // Step 4-4.
+            //             if !promise_is_handled {
+            //                 target.global().add_consumed_rejection(promise.reflector().get_jsobject().into_handle());
+            //             }
+            //         }
+            //     })
+            // );
+        // }
+    }
+}
 
 #[derive(JSTraceable)]
 pub struct Runtime {
     rt: RustRuntime,
-    // /// Our actual microtask queue, which is preserved and untouched by the debugger when running debugger scripts.
-    // pub(crate) microtask_queue: Rc<MicrotaskQueue>,
-    // job_queue: *mut JobQueue,
+    /// Our actual microtask queue, which is preserved and untouched by the debugger when running debugger scripts.
+    pub(crate) microtask_queue: Rc<MicrotaskQueue>,
+    job_queue: *mut JobQueue,
     // networking_task_src: Option<Box<SendableTaskSource>>,
     #[no_trace("Manually traced in trace_rust_roots")]
     roots: Box<RootCollection>,
@@ -700,20 +695,20 @@ impl Runtime {
 
         // InitConsumeStreamCallback(cx, Some(consume_stream), Some(report_stream_error));
 
-        // let microtask_queue = Rc::new(MicrotaskQueue::default());
+        let microtask_queue = Rc::new(MicrotaskQueue::default());
 
         // Extra queues for debugger scripts (“interrupts”) via AutoDebuggerJobQueueInterruption and saveJobQueue().
         // Moved indefinitely to mozjs via CreateJobQueue(), borrowed from mozjs via JobQueueTraps, and moved back from
         // mozjs for dropping via DeleteJobQueue().
-        // let interrupt_queues: Box<Vec<Rc<MicrotaskQueue>>> = Box::default();
-        //
-        // let job_queue = CreateJobQueue(
-        //     &JOB_QUEUE_TRAPS,
-        //     &*microtask_queue as *const _ as *const c_void,
-        //     Box::into_raw(interrupt_queues) as *mut c_void,
-        // );
-        // SetJobQueue(cx, job_queue);
-        // SetPromiseRejectionTrackerCallback(cx, Some(promise_rejection_tracker), ptr::null_mut());
+        let interrupt_queues: Box<Vec<Rc<MicrotaskQueue>>> = Box::default();
+        
+        let job_queue = CreateJobQueue(
+            &JOB_QUEUE_TRAPS,
+            &*microtask_queue as *const _ as *const c_void,
+            Box::into_raw(interrupt_queues) as *mut c_void,
+        );
+        SetJobQueue(cx, job_queue);
+        SetPromiseRejectionTrackerCallback(cx, Some(promise_rejection_tracker), ptr::null_mut());
 
         // EnsureModuleHooksInitialized(runtime.rt());
 
@@ -853,8 +848,8 @@ impl Runtime {
             rt: runtime,
             roots,
             stack_roots,
-            // microtask_queue,
-            // job_queue,
+            microtask_queue,
+            job_queue,
             // networking_task_src: (!networking_task_src_ptr.is_null())
             //     .then(|| Box::from_raw(networking_task_src_ptr)),
         }
@@ -869,12 +864,12 @@ impl Drop for Runtime {
     #[allow(unsafe_code)]
     fn drop(&mut self) {
         // Clear our main microtask_queue.
-        // self.microtask_queue.clear();
+        self.microtask_queue.clear();
 
         // Delete the RustJobQueue in mozjs, which will destroy our interrupt queues.
-        // unsafe {
-        //     DeleteJobQueue(self.job_queue);
-        // }
+        unsafe {
+            DeleteJobQueue(self.job_queue);
+        }
         // LiveDOMReferences::destruct();
         mark_runtime_dead();
     }
@@ -1264,7 +1259,11 @@ impl Runnable {
 
 pub use script_bindings::script_runtime::CanGc;
 use script_bindings::utils::AsVoidPtr;
+use crate::dom::bindings::codegen::Bindings::PromiseBinding::PromiseJobCallback;
 use crate::dom::bindings::settings_stack;
+use crate::dom::globalscope::GlobalScope;
+use crate::dom::promise::Promise;
+use crate::microtask::{EnqueuedPromiseCallback, Microtask, MicrotaskQueue};
 
 /// `introductionType` values in SpiderMonkey TransitiveCompileOptions.
 ///

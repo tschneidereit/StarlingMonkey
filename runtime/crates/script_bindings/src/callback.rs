@@ -54,11 +54,13 @@ pub enum ExceptionHandling {
 
 /// A common base class for representing IDL callback function and
 /// callback interface types.
-#[derive(JSTraceable)]
+#[derive(JSTraceable, MallocSizeOf)]
 #[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
 pub struct CallbackObject<D: DomTypes> {
     /// The underlying `JSObject`.
+    #[ignore_malloc_size_of = "measured by mozjs"]
     callback: Heap<*mut JSObject>,
+    #[ignore_malloc_size_of = "measured by mozjs"]
     permanent_js_root: Heap<JSVal>,
 
     /// The ["callback context"], that is, the global to use as incumbent
@@ -146,7 +148,7 @@ pub trait CallbackContainer<D: DomTypes> {
 }
 
 /// A common base class for representing IDL callback function types.
-#[derive(JSTraceable, PartialEq)]
+#[derive(JSTraceable, MallocSizeOf, PartialEq)]
 #[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
 pub struct CallbackFunction<D: DomTypes> {
     object: CallbackObject<D>,
@@ -179,7 +181,7 @@ impl<D: DomTypes> CallbackFunction<D> {
 }
 
 /// A common base class for representing IDL callback interface types.
-#[derive(JSTraceable, PartialEq)]
+#[derive(JSTraceable, MallocSizeOf, PartialEq)]
 #[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
 pub struct CallbackInterface<D: DomTypes> {
     object: CallbackObject<D>,

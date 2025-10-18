@@ -35,13 +35,13 @@ use script_bindings::conversions::SafeToJSValConvertible;
 use crate::dom::bindings::conversions::root_from_object;
 use crate::dom::bindings::error::{Error, ErrorToJsval};
 use crate::dom::bindings::reflector::{DomGlobal, DomObject, MutDomObject, Reflector};
-use crate::dom::bindings::root::AsHandleValue;
+use crate::dom::bindings::root::{AsHandleValue, DomRoot};
 use crate::dom::bindings::settings_stack::AutoEntryScript;
 use crate::dom::globalscope::GlobalScope;
 use crate::dom::promisenativehandler::{Callback, PromiseNativeHandler};
+use crate::microtask::{Microtask, MicrotaskRunnable};
 use crate::realms::{AlreadyInRealm, InRealm, enter_realm};
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
-use crate::script_thread::ScriptThread;
 
 #[dom_struct]
 #[cfg_attr(crown, crown::unrooted_must_root_lint::allow_unrooted_in_rc)]
@@ -144,11 +144,14 @@ impl Promise {
             assert!(!do_nothing_obj.is_null());
             obj.set(NewPromiseObject(*cx, do_nothing_obj.handle()));
             assert!(!obj.is_null());
-            let is_user_interacting = if ScriptThread::is_user_interacting() {
-                PromiseUserInputEventHandlingState::HadUserInteractionAtCreation
-            } else {
-                PromiseUserInputEventHandlingState::DidntHaveUserInteractionAtCreation
-            };
+            let is_user_interacting =
+                PromiseUserInputEventHandlingState::HadUserInteractionAtCreation;
+            // TODO(ts): Evaluate if we need to track user interaction state for real.
+            // if ScriptThread::is_user_interacting() {
+            //     PromiseUserInputEventHandlingState::HadUserInteractionAtCreation
+            // } else {
+            //     PromiseUserInputEventHandlingState::DidntHaveUserInteractionAtCreation
+            // };
             SetPromiseUserInputEventHandlingState(obj.handle(), is_user_interacting);
         }
     }
@@ -258,7 +261,7 @@ impl Promise {
     }
 
     #[allow(unsafe_code)]
-    pub(crate) fn promise_obj(&self) -> HandleObject {
+    pub(crate) fn promise_obj(&self) -> HandleObject<'_> {
         let obj = self.reflector().get_jsobject();
         unsafe {
             assert!(IsPromiseObject(obj));
@@ -490,6 +493,27 @@ impl Callback for WaitForAllRejectionHandler {
     }
 }
 
+/// The microtask for performing successSteps given « » in
+/// <https://webidl.spec.whatwg.org/#wait-for-all>.
+#[derive(JSTraceable, MallocSizeOf)]
+pub(crate) struct WaitForAllSuccessStepsMicrotask {
+    global: DomRoot<GlobalScope>,
+
+    #[ignore_malloc_size_of = "Closure is hard"]
+    #[no_trace]
+    success_steps: WaitForAllSuccessSteps,
+}
+
+impl MicrotaskRunnable for WaitForAllSuccessStepsMicrotask {
+    fn handler(&self, _can_gc: CanGc) {
+        (self.success_steps)(vec![]);
+    }
+
+    fn enter_realm(&self) -> JSAutoRealm {
+        enter_realm(&*self.global)
+    }
+}
+
 /// <https://webidl.spec.whatwg.org/#wait-for-all>
 #[cfg_attr(crown, allow(crown::unrooted_must_root))]
 pub(crate) fn wait_for_all(
@@ -521,8 +545,19 @@ pub(crate) fn wait_for_all(
     // Note: done using the len of result.
 
     // If total is 0, then:
-    // Queue a microtask to perform successSteps given « ».
-    // TODO: #37259
+    if promises.is_empty() {
+        // Queue a microtask to perform successSteps given « ».
+        global.microtask_queue().enqueue(
+            Microtask::WaitForAllSuccessSteps(WaitForAllSuccessStepsMicrotask {
+                global: DomRoot::from_ref(global),
+                success_steps,
+            }),
+            cx,
+        );
+
+        // Return.
+        return;
+    }
 
     // Let index be 0.
     // Note: done with `enumerate` below.
@@ -594,26 +629,16 @@ pub(crate) fn wait_for_all_promise(
         failure_promise.reject_native(&reason, can_gc);
     });
 
-    if promises.is_empty() {
-        // Note: part of `wait_for_all`.
-        // Done here by using `resolve_native`.
-        // TODO: #37259
-        // If total is 0, then:
-        // Queue a microtask to perform successSteps given « ».
-        let empty_list: Vec<HandleValue> = vec![];
-        promise.resolve_native(&empty_list, can_gc);
-    } else {
-        // Wait for all with promises, given successSteps and failureSteps.
-        wait_for_all(
-            cx,
-            global,
-            promises,
-            success_steps,
-            failure_steps,
-            realm,
-            can_gc,
-        );
-    }
+    // Wait for all with promises, given successSteps and failureSteps.
+    wait_for_all(
+        cx,
+        global,
+        promises,
+        success_steps,
+        failure_steps,
+        realm,
+        can_gc,
+    );
 
     // Return promise.
     promise

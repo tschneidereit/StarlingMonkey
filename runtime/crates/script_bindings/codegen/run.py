@@ -2,134 +2,25 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+# fmt: off
+
+from __future__ import annotations
+
 import os
 import sys
 import json
 import re
+from typing import TYPE_CHECKING
+from collections.abc import Iterator
 
 SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 SERVO_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", "..", "..", ".."))
 
 FILTER_PATTERN = re.compile("// skip-unless ([A-Z_]+)\n")
-NAME_PATTERN = re.compile("([A-Z_]+)\.webidl")
 
-BINDINGS = {
-    # "AbortController",
-    # "AbortSignal",
-    # "Blob",
-    # "Body",
-    # "BodyInit",
-    # # "Client",
-    # # "CloseEvent",
-    "Console",
-    # # "Crypto",
-    # # "CryptoKey",
-    # # "CustomEvent",
-    "DedicatedWorkerGlobalScope",
-    # # "DOMException",
-    # # "DOMStringList",
-    # # "DOMStringMap",
-    # # "DebuggerAddDebuggeeEvent",
-    # "DebuggerGlobalScope",
-    # # "DynamicModuleOwner",
-    # # "ErrorEvent",
-    # "Event",
-    # "EventHandler",
-    # "EventListener",
-    # "EventSource",
-    # "EventTarget",
-    # # "ExtendableEvent",
-    # # "ExtendableMessageEvent",
-    # # "Fetch",
-    # "File",
-    # "FileList",
-    # # "FileReader",
-    # # "FileReaderSync",
-    # "FormData",
-    # # "FormDataEvent",
-    # "Function",
-    # # "GenericTransformStream",
-    "GlobalScope",
-    # "Headers",
-    "IterableIterator",
-    # # "Location",
-    # "MessagePort",
-    # # "MimeType",
-    # # "MimeTypeArray",
-    # "Performance",
-    # "PerformanceEntry",
-    # "PerformanceMark",
-    # "PerformanceMeasure",
-    # "PerformanceNavigation",
-    # "PerformanceNavigationTiming",
-    # "PerformanceObserver",
-    # "PerformanceObserverEntryList",
-    # "PerformancePaintTiming",
-    # "PerformanceResourceTiming",
-    # # "Permissions",
-    # # "PermissionStatus",
-    # # "ProgressEvent",
-    "Promise",
-    # "PromiseNativeHandler",
-    # "PromiseRejectionEvent",
-    # "QueuingStrategy",
-    # # "ReadableByteStreamController",
-    # "ReadableStream",
-    # "ReadableStreamBYOBReader",
-    # "ReadableStreamBYOBRequest",
-    # "ReadableStreamDefaultController",
-    # "ReadableStreamDefaultReader",
-    # "Request",
-    # # "Response",
-    # # "SubtleCrypto",
-    # # # "TestBinding",
-    # # # "TestBindingIterable",
-    # # # "TestBindingMaplikeWithInterface",
-    # # # "TestBindingMaplikeWithPrimitive",
-    # # # "TestBindingPairIterable",
-    # # # "TestBindingProxy",
-    # # # "TestBindingSetlikeWithInterface",
-    # # # "TestBindingSetlikeWithPrimitive",
-    # # "TestRunner",
-    # # "TestUtils",
-    # # "TextDecoder",
-    # # "TextDecoderCommon",
-    # # "TextDecoderStream",
-    # # "TextEncoder",
-    # # "TextEncoderCommon",
-    # # "TransformStream",
-    # # "TransformStreamDefaultController",
-    # # "Transformer",
-    # "TrustedScriptURL",
-    # # "URL",
-    # # "URLPattern",
-    # # "URLSearchParams",
-    # # "UnderlyingSink",
-    # # "UnderlyingSource",
-    # # "UnderlyingSourceContainer",
-    # "VoidFunction",
-    # "WindowOrWorkerGlobalScope",
-    "Worker",
-    "WorkerGlobalScope",
-    # "WorkerLocation",
-    # "WritableStream",
-    # "WritableStreamDefaultController",
-    # "WritableStreamDefaultWriter",
-    # "XMLHttpRequest",
-    # "XMLHttpRequestEventTarget",
-    # "XMLHttpRequestUpload",
-    "DOMPoint",
-    "DOMPointReadOnly",
-    # "XMLDocument",
-    # "XMLSerializer",
-}
-
-def include_binding(name: str) -> bool:
-    if not name.endswith(".webidl"):
-        return False
-    return True
-    # name = os.path.basename(name).split(".")[0]
-    # return name in BINDINGS
+if TYPE_CHECKING:
+    from configuration import Configuration
+    from WebIDL import Parser
 
 def main() -> None:
     os.chdir(os.path.join(os.path.dirname(__file__)))
@@ -150,7 +41,7 @@ def main() -> None:
     from codegen import CGBindingRoot, CGConcreteBindingRoot
 
     parser = WebIDL.Parser(make_dir(os.path.join(out_dir, "cache")))
-    webidls = [name for name in os.listdir(webidls_dir) if include_binding(name)]
+    webidls = [name for name in os.listdir(webidls_dir) if name.endswith(".webidl")]
     for webidl in webidls:
         filename = os.path.join(webidls_dir, webidl)
         with open(filename, "r", encoding="utf-8") as f:
@@ -203,14 +94,13 @@ def main() -> None:
                 f.write(module.encode("utf-8"))
 
 
-def make_dir(path: str):
+def make_dir(path: str)-> str:
     if not os.path.exists(path):
         os.makedirs(path)
     return path
 
 
-def generate(config, name: str, filename: str) -> None:
-    print("Generating %s..." % filename)
+def generate(config: Configuration, name: str, filename: str) -> None:
     from codegen import GlobalGenRoots
     root = getattr(GlobalGenRoots, name)(config)
     code = root.define()
@@ -218,7 +108,7 @@ def generate(config, name: str, filename: str) -> None:
         f.write(code.encode("utf-8"))
 
 
-def add_css_properties_attributes(css_properties_json: str, parser) -> None:
+def add_css_properties_attributes(css_properties_json: str, parser: Parser) -> None:
     def map_preference_name(preference_name: str) -> str:
         """Map between Stylo preference names and Servo preference names as the
         `css-properties.json` file is generated by Stylo. This should be kept in sync with the
@@ -233,6 +123,7 @@ def add_css_properties_attributes(css_properties_json: str, parser) -> None:
             ["layout.css.transition-behavior.enabled", "layout_css_transition_behavior_enabled"],
             ["layout.writing-mode.enabled", "layout_writing_mode_enabled"],
             ["layout.container-queries.enabled", "layout_container_queries_enabled"],
+            ["layout.variable_fonts.enabled", "layout_variable_fonts_enabled"]
         ]
         for mapping in MAPPING:
             if mapping[0] == preference_name:
@@ -252,7 +143,7 @@ def add_css_properties_attributes(css_properties_json: str, parser) -> None:
     parser.parse(idl, "CSSStyleDeclaration_generated.webidl")
 
 
-def attribute_names(property_name: str):
+def attribute_names(property_name: str) -> Iterator[str]:
     # https://drafts.csswg.org/cssom/#dom-cssstyledeclaration-dashed-attribute
     if property_name != "float":
         yield property_name
@@ -269,7 +160,7 @@ def attribute_names(property_name: str):
 
 
 # https://drafts.csswg.org/cssom/#css-property-to-idl-attribute
-def camel_case(chars: str, webkit_prefixed: bool = False):
+def camel_case(chars: str, webkit_prefixed: bool = False) -> Iterator[str]:
     if webkit_prefixed:
         chars = chars[1:]
     next_is_uppercase = False

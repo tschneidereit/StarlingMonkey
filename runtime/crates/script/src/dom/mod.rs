@@ -510,8 +510,8 @@ pub(crate) mod globalscope;
 // pub(crate) mod processinginstruction;
 // pub(crate) mod progressevent;
 // #[allow(dead_code)]
-// pub(crate) mod promise;
-// pub(crate) mod promisenativehandler;
+pub(crate) mod promise;
+pub(crate) mod promisenativehandler;
 // pub(crate) mod promiserejectionevent;
 // pub(crate) mod radionodelist;
 // pub(crate) mod range;

@@ -30,8 +30,10 @@ use js::{JSCLASS_IS_DOMJSCLASS, JSCLASS_IS_GLOBAL};
 use script_bindings::interfaces::GlobalScopeHelpers;
 use script_bindings::reflector::Reflector;
 use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
+use crate::base::id::PipelineId;
 use super::bindings::trace::{HashMapTracedValues, RootedTraceableBox};
 use crate::dom::bindings::cell::{DomRefCell, RefMut};
+use crate::dom::bindings::codegen::Bindings::VoidFunctionBinding::VoidFunction;
 // use crate::dom::bindings::codegen::Bindings::EventSourceBinding::EventSource_Binding::EventSourceMethods;
 // use crate::dom::bindings::codegen::Bindings::FunctionBinding::Function;
 // use crate::dom::bindings::codegen::Bindings::VoidFunctionBinding::VoidFunction;
@@ -59,7 +61,7 @@ use crate::dom::types::StarlingGlobalScope;
 // use crate::dom::readablestream::{CrossRealmTransformReadable, ReadableStream};
 // use crate::dom::reportingobserver::ReportingObserver;
 // use crate::dom::types::{DebuggerGlobalScope, MessageEvent};
-// use crate::microtask::{Microtask, MicrotaskQueue, UserMicrotask};
+use crate::microtask::{Microtask, MicrotaskQueue, UserMicrotask};
 use crate::realms::{InRealm, enter_realm};
 // use crate::script_module::{
 //     DynamicModuleList, ImportMap, ModuleScript, ModuleTree, ResolvedModule, ScriptFetchOptions,
@@ -88,6 +90,10 @@ pub struct GlobalScope {
 
     // /// A [`TaskManager`] for this [`GlobalScope`].
     // task_manager: OnceCell<TaskManager>,
+
+    /// Pipeline id associated with this global.
+    #[no_trace]
+    pipeline_id: PipelineId,
     // 
     // /// Timers (milliseconds) used by the Console API.
     // console_timers: DomRefCell<HashMap<DOMString, Instant>>,
@@ -119,14 +125,14 @@ pub struct GlobalScope {
     #[no_trace]
     top_level_creation_url: Option<ServoUrl>,
 
-    // /// The microtask queue associated with this global.
-    // ///
-    // /// It is refcounted because windows in the same script thread share the
-    // /// same microtask queue.
-    // ///
-    // /// <https://html.spec.whatwg.org/multipage/#microtask-queue>
-    // #[ignore_malloc_size_of = "Rc<T> is hard"]
-    // microtask_queue: Rc<MicrotaskQueue>,
+    /// The microtask queue associated with this global.
+    ///
+    /// It is refcounted because windows in the same script thread share the
+    /// same microtask queue.
+    ///
+    /// <https://html.spec.whatwg.org/multipage/#microtask-queue>
+    #[ignore_malloc_size_of = "Rc<T> is hard"]
+    microtask_queue: Rc<MicrotaskQueue>,
     // 
     // /// Vector storing references of all eventsources.
     // event_source_tracker: DOMTracker<EventSource>,
@@ -219,10 +225,11 @@ impl GlobalScope {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_inherited(
+        pipeline_id: PipelineId,
         origin: MutableOrigin,
         creation_url: ServoUrl,
         top_level_creation_url: Option<ServoUrl>,
-        // microtask_queue: Rc<MicrotaskQueue>,
+        microtask_queue: Rc<MicrotaskQueue>,
         // inherited_secure_context: Option<bool>,
     ) -> Self {
         Self {
@@ -231,6 +238,7 @@ impl GlobalScope {
             // blob_state: Default::default(),
             // eventtarget: EventTarget::new_inherited(),
             // crypto: Default::default(),
+            pipeline_id,
             // console_timers: DomRefCell::new(Default::default()),
             // module_map: DomRefCell::new(Default::default()),
             // inline_module_map: DomRefCell::new(Default::default()),
@@ -240,7 +248,7 @@ impl GlobalScope {
             creation_url,
             top_level_creation_url,
             // permission_state_invocation_results: Default::default(),
-            // microtask_queue,
+            microtask_queue,
             // event_source_tracker: DOMTracker::new(),
             uncaught_rejections: Default::default(),
             consumed_rejections: Default::default(),
@@ -437,6 +445,11 @@ impl GlobalScope {
     //         .ok_or(())
     //         .map(|start| (Instant::now() - start).as_millis() as u64)
     // }
+
+    /// Get the `PipelineId` for this global scope.
+    pub(crate) fn pipeline_id(&self) -> PipelineId {
+        self.pipeline_id
+    }
 
     /// Get the origin for this global scope
     pub(crate) fn origin(&self) -> &MutableOrigin {
@@ -713,12 +726,12 @@ impl GlobalScope {
     //     self.timers().clear_timeout_or_interval(self, handle);
     // }
     //
-    // pub(crate) fn queue_function_as_microtask(&self, callback: Rc<VoidFunction>) {
-    //     self.enqueue_microtask(Microtask::User(UserMicrotask {
-    //         callback,
-    //         pipeline: self.pipeline_id(),
-    //     }))
-    // }
+    pub(crate) fn queue_function_as_microtask(&self, callback: Rc<VoidFunction>) {
+        self.enqueue_microtask(Microtask::User(UserMicrotask {
+            callback,
+            pipeline: self.pipeline_id(),
+        }))
+    }
     //
     // pub(crate) fn fire_timer(&self, handle: TimerEventId, can_gc: CanGc) {
     //     self.timers().fire_timer(handle, self, can_gc);
@@ -749,29 +762,43 @@ impl GlobalScope {
     //     }
     //     unreachable!();
     // }
-    //
-    // /// Perform a microtask checkpoint.
-    // pub(crate) fn perform_a_microtask_checkpoint(&self, can_gc: CanGc) {
-    //     // Only perform the checkpoint if we're not shutting down.
-    //     if self.can_continue_running() {
-    //         self.microtask_queue.checkpoint(
-    //             GlobalScope::get_cx(),
-    //             |_| Some(DomRoot::from_ref(self)),
-    //             vec![DomRoot::from_ref(self)],
-    //             can_gc,
-    //         );
-    //     }
-    // }
 
-    // /// Enqueue a microtask for subsequent execution.
-    // pub(crate) fn enqueue_microtask(&self, job: Microtask) {
-    //     self.microtask_queue.enqueue(job, GlobalScope::get_cx());
-    // }
+    /// Returns a boolean indicating whether the event-loop
+    /// where this global is running on can continue running JS.
+    pub(crate) fn can_continue_running(&self) -> bool {
+        // if self.is::<Window>() {
+        //     return ScriptThread::can_continue_running();
+        // }
+        // if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
+        //     return !worker.is_closing();
+        // }
+        //
+        // // TODO: plug worklets into this.
+        true
+    }
 
-    // /// Returns the microtask queue of this global.
-    // pub(crate) fn microtask_queue(&self) -> &Rc<MicrotaskQueue> {
-    //     &self.microtask_queue
-    // }
+    /// Perform a microtask checkpoint.
+    pub(crate) fn perform_a_microtask_checkpoint(&self, can_gc: CanGc) {
+        // Only perform the checkpoint if we're not shutting down.
+        if self.can_continue_running() {
+            self.microtask_queue.checkpoint(
+                GlobalScope::get_cx(),
+                |_| Some(DomRoot::from_ref(self)),
+                vec![DomRoot::from_ref(self)],
+                can_gc,
+            );
+        }
+    }
+
+    /// Enqueue a microtask for subsequent execution.
+    pub(crate) fn enqueue_microtask(&self, job: Microtask) {
+        self.microtask_queue.enqueue(job, GlobalScope::get_cx());
+    }
+
+    /// Returns the microtask queue of this global.
+    pub(crate) fn microtask_queue(&self) -> &Rc<MicrotaskQueue> {
+        &self.microtask_queue
+    }
     //
     // /// Process a single event as if it were the next event
     // /// in the queue for the event-loop where this global scope is running on.
@@ -1064,7 +1091,7 @@ impl GlobalScopeHelpers<crate::DomTypeHolder> for GlobalScope {
     }
 
     fn perform_a_microtask_checkpoint(&self, can_gc: CanGc) {
-        // GlobalScope::perform_a_microtask_checkpoint(self, can_gc)
+        GlobalScope::perform_a_microtask_checkpoint(self, can_gc)
     }
 
     fn get_url(&self) -> ServoUrl {

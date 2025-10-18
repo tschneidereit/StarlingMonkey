@@ -32,7 +32,7 @@ mod dom;
 mod init;
 // #[allow(unsafe_code)]
 // pub(crate) mod messaging;
-// mod microtask;
+mod microtask;
 // pub(crate) mod mime;
 // mod navigation;
 // mod network_listener;
@@ -60,3 +60,13 @@ pub(crate) use crate::dom::bindings::trace::{CustomTraceable, JSTraceable};
 
 pub use script_runtime::{Runtime, CanGc};
 pub use dom::starlingglobalscope::StarlingGlobalScope as GlobalScope;
+
+// Placeholder mod for the base crate. Will probably have to be replaced by the actual crate later.
+pub mod base {
+    pub mod id {
+        #[derive(
+            Clone, Copy, Debug, Eq, Hash, MallocSizeOf, Ord, PartialEq, PartialOrd,
+        )]
+        pub struct PipelineId;
+    }
+}

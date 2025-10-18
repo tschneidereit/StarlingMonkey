@@ -6,7 +6,7 @@ use dom_struct::dom_struct;
 use js::jsval::UndefinedValue;
 use js::rust::ParentRuntime;
 use servo_url::{MutableOrigin, ServoUrl};
-
+use crate::base::id::PipelineId;
 use crate::dom::bindings::cell::{DomRefCell, Ref};
 use crate::dom::bindings::codegen::Bindings::StarlingGlobalScopeBinding;
 use crate::dom::bindings::codegen::Bindings::StarlingGlobalScopeBinding::StarlingGlobalScopeMethods;
@@ -39,6 +39,7 @@ impl StarlingGlobalScope {
 
     #[allow(unsafe_code, clippy::too_many_arguments)]
     pub fn new(
+        pipeline_id: PipelineId,
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_name: DOMString,
@@ -47,6 +48,7 @@ impl StarlingGlobalScope {
     ) -> DomRoot<Self> {
         let cx = runtime.cx();
         let scope = Box::new(Self::new_inherited(
+            pipeline_id,
             origin,
             creation_url,
             worker_name,
@@ -63,6 +65,7 @@ impl StarlingGlobalScope {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_inherited(
+        pipeline_id: PipelineId,
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_name: DOMString,
@@ -71,10 +74,11 @@ impl StarlingGlobalScope {
     ) -> Self {
         Self {
             globalscope: GlobalScope::new_inherited(
+                pipeline_id,
                 origin,
                 creation_url,
                 None,
-                // runtime.microtask_queue.clone(),
+                runtime.microtask_queue.clone(),
                 // false,
             ),
             worker_name,
@@ -129,6 +133,7 @@ impl StarlingGlobalScope {
     /// <https://html.spec.whatwg.org/multipage/#run-a-worker>
     #[allow(unsafe_code, clippy::too_many_arguments)]
     pub fn run_worker_scope(
+        pipeline_id: PipelineId,
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_url: ServoUrl,
@@ -136,6 +141,7 @@ impl StarlingGlobalScope {
     ) -> DomRoot<Self> {
         let runtime = Runtime::new();
         let global = Self::new(
+            pipeline_id,
             origin,
             creation_url,
             DOMString::from_string(worker_name),
@@ -187,5 +193,7 @@ impl StarlingGlobalScope {
                 }
             },
         }
+        
+        self.globalscope.perform_a_microtask_checkpoint(can_gc);
     }
 }
