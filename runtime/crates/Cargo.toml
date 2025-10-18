@@ -35,7 +35,7 @@ mime = "0.3.13"
 num-traits = "0.2.19"
 smallvec = { version = "1.15", features = ["serde", "union"] }
 stylo_malloc_size_of = { git = "https://github.com/servo/stylo", branch = "2025-08-01" }
-js = { package = "mozjs", git = "https://github.com/tschneidereit/mozjs", branch = "wasi", default-features = false, features = ["libz-rs", "intl"] }
+js = { package = "mozjs", git = "https://github.com/servo/mozjs", rev = "bbbbf315e89cf91428f3b652ac68146687737259" }
 jstraceable_derive = { path = "jstraceable_derive" }
 script = { path = "script" }
 script_bindings = { path = "script_bindings" }

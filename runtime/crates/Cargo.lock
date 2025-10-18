@@ -237,9 +237,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.36"
+version = "1.2.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5252b3d2648e5eedbc1a6f501e3c795e07025c1e93bbf8bbdd6eef7f447a6d54"
+checksum = "ac9fe6cdbb24b6ade63616c0a0688e45bb56732262c158df3c0c4bea4ca47cb7"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -595,9 +595,9 @@ dependencies = [
 
 [[package]]
 name = "find-msvc-tools"
-version = "0.1.1"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fd99930f64d146689264c637b5af2f0233a933bef0d8570e2526bf9e083192d"
+checksum = "52051878f80a721bb68ebfbc930e07b65ba72f2da88968ea5c06fd6ca3d3a127"
 
 [[package]]
 name = "fixed_decimal"
@@ -1344,12 +1344,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "libz-rs-sys"
-version = "0.5.2"
+name = "libz-sys"
+version = "1.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "840db8cf39d9ec4dd794376f38acc40d0fc65eec2a8f484f7fd375b84602becd"
+checksum = "8b70e7a7df205e92a1a4cd9aaae7898dac0aa555503cc0a649494d0d60e7651d"
 dependencies = [
- "zlib-rs",
+ "cc",
+ "libc 0.2.174",
+ "pkg-config",
+ "vcpkg",
 ]
 
 [[package]]
@@ -1445,7 +1448,7 @@ dependencies = [
 [[package]]
 name = "mozjs"
 version = "0.14.1"
-source = "git+https://github.com/tschneidereit/mozjs?branch=wasi#4b16d118b47ebf3ac7f6fc4c1a7830f39b3029d7"
+source = "git+https://github.com/servo/mozjs?rev=bbbbf315e89cf91428f3b652ac68146687737259#bbbbf315e89cf91428f3b652ac68146687737259"
 dependencies = [
  "bindgen",
  "cc",
@@ -1458,7 +1461,7 @@ dependencies = [
 [[package]]
 name = "mozjs_sys"
 version = "0.140.0-6"
-source = "git+https://github.com/tschneidereit/mozjs?branch=wasi#4b16d118b47ebf3ac7f6fc4c1a7830f39b3029d7"
+source = "git+https://github.com/servo/mozjs?rev=bbbbf315e89cf91428f3b652ac68146687737259#bbbbf315e89cf91428f3b652ac68146687737259"
 dependencies = [
  "bindgen",
  "cargo_metadata",
@@ -1468,7 +1471,7 @@ dependencies = [
  "flate2",
  "icu_capi",
  "libc 0.2.174",
- "libz-rs-sys",
+ "libz-sys",
  "tar",
  "walkdir",
 ]
@@ -1659,6 +1662,12 @@ name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
+
+[[package]]
+name = "pkg-config"
+version = "0.3.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "portable-atomic"
@@ -2500,6 +2509,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "vcpkg"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
 name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2948,9 +2963,3 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "zlib-rs"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f06ae92f42f5e5c42443fd094f245eb656abf56dd7cce9b8b263236565e00f2"
