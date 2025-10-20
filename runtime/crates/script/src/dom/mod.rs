@@ -212,8 +212,8 @@ pub(crate) mod types {
 
 pub(crate) mod starlingglobalscope;
 
-// pub(crate) mod abortcontroller;
-// pub(crate) mod abortsignal;
+pub(crate) mod abortcontroller;
+pub(crate) mod abortsignal;
 // #[allow(dead_code)]
 // pub(crate) mod abstractrange;
 // pub(crate) mod abstractworker;
@@ -292,7 +292,7 @@ pub(crate) mod console;
 // pub(crate) mod datatransferitem;
 // pub(crate) mod datatransferitemlist;
 // pub(crate) mod debuggeradddebuggeeevent;
-// pub(crate) mod debuggerglobalscope;
+pub(crate) mod debuggerglobalscope;
 // pub(crate) mod dedicatedworkerglobalscope;
 // pub(crate) mod defaultteereadrequest;
 // pub(crate) mod defaultteeunderlyingsource;
@@ -321,10 +321,10 @@ pub(crate) mod console;
 // #[allow(dead_code)]
 // pub(crate) mod element;
 // pub(crate) mod elementinternals;
-// pub(crate) mod errorevent;
-// pub(crate) mod event;
+pub(crate) mod errorevent;
+pub(crate) mod event;
 // pub(crate) mod eventsource;
-// pub(crate) mod eventtarget;
+pub(crate) mod eventtarget;
 // pub(crate) mod extendableevent;
 // pub(crate) mod extendablemessageevent;
 // pub(crate) mod file;
@@ -668,13 +668,13 @@ pub(crate) mod promisenativehandler;
 // pub(crate) mod transformstream;
 // pub(crate) mod transformstreamdefaultcontroller;
 // pub(crate) mod wheelevent;
-// #[allow(dead_code)]
-// pub(crate) mod window;
+#[allow(dead_code)]
+pub(crate) mod window;
 // #[allow(dead_code)]
 // pub(crate) mod windowproxy;
 // pub(crate) mod worker;
-// #[allow(dead_code)]
-// pub(crate) mod workerglobalscope;
+#[allow(dead_code)]
+pub(crate) mod workerglobalscope;
 // pub(crate) mod workerlocation;
 // pub(crate) mod workernavigator;
 // pub(crate) mod worklet;

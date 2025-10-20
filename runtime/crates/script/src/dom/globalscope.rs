@@ -42,7 +42,7 @@ use crate::dom::bindings::error::{Error, ErrorInfo, report_pending_exception};
 use crate::dom::bindings::frozenarray::CachedFrozenArray;
 use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::refcounted::Trusted;
-// use crate::dom::bindings::refcounted::TrustedPromise;
+use crate::dom::bindings::refcounted::TrustedPromise;
 use crate::dom::bindings::reflector::{DomGlobal, DomObject};
 use crate::dom::bindings::root::{Dom, DomRoot, MutNullableDom};
 use crate::dom::bindings::settings_stack::{AutoEntryScript, entry_global, incumbent_global};
@@ -52,9 +52,9 @@ use crate::dom::bindings::trace::CustomTraceable;
 use crate::dom::bindings::weakref::{DOMTracker, WeakRef};
 use crate::dom::types::StarlingGlobalScope;
 // use crate::dom::errorevent::ErrorEvent;
-// use crate::dom::event::{Event, EventBubbles, EventCancelable};
+use crate::dom::event::{Event, EventBubbles, EventCancelable};
 // use crate::dom::eventsource::EventSource;
-// use crate::dom::eventtarget::EventTarget;
+use crate::dom::eventtarget::EventTarget;
 // use crate::dom::performance::Performance;
 // use crate::dom::performanceobserver::VALID_ENTRY_TYPES;
 // use crate::dom::promise::Promise;
@@ -84,8 +84,7 @@ pub(crate) enum SourceCode {
 
 #[dom_struct]
 pub struct GlobalScope {
-    reflector: Reflector,
-    // eventtarget: EventTarget,
+    eventtarget: EventTarget,
     // crypto: MutNullableDom<Crypto>,
 
     // /// A [`TaskManager`] for this [`GlobalScope`].
@@ -233,10 +232,9 @@ impl GlobalScope {
         // inherited_secure_context: Option<bool>,
     ) -> Self {
         Self {
-            reflector: Reflector::new(),
             // task_manager: Default::default(),
             // blob_state: Default::default(),
-            // eventtarget: EventTarget::new_inherited(),
+            eventtarget: EventTarget::new_inherited(),
             // crypto: Default::default(),
             pipeline_id,
             // console_timers: DomRefCell::new(Default::default()),
@@ -627,7 +625,7 @@ impl GlobalScope {
                     compiled_script.set(Compile1(
                         *cx,
                         options.ptr,
-                        &mut transform_str_to_source_text(text_code),
+                        &mut transform_str_to_source_text(text_code.str()),
                     ));
 
                     if compiled_script.is_null() {

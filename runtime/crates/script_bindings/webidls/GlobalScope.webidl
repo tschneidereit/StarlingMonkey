@@ -5,6 +5,6 @@
 // This interface is entirely internal to Servo, and should not be accessible to
 // web pages.
 
-[Exposed=(Worker),
+[Exposed=(Worker, DebuggerGlobalScope),
  Inline]
-interface GlobalScope {};
+interface GlobalScope : EventTarget {};

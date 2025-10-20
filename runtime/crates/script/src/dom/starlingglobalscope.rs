@@ -19,13 +19,14 @@ use crate::dom::bindings::settings_stack::AutoEntryScript;
 use crate::dom::bindings::str::DOMString;
 use crate::dom::bindings::utils::define_all_exposed_interfaces;
 use crate::dom::globalscope::GlobalScope;
+use crate::dom::workerglobalscope::WorkerGlobalScope;
 use crate::realms::{InRealm, enter_realm};
 use crate::script_runtime::{CanGc, IntroductionType, JSContext, JSContextHelper, Runtime};
 
 // https://html.spec.whatwg.org/multipage/#the-workerglobalscope-common-interface
 #[dom_struct]
 pub struct StarlingGlobalScope {
-    globalscope: GlobalScope,
+    globalscope: WorkerGlobalScope,
 
     worker_name: DOMString,
 
@@ -73,11 +74,10 @@ impl StarlingGlobalScope {
         runtime: Runtime,
     ) -> Self {
         Self {
-            globalscope: GlobalScope::new_inherited(
+            globalscope: WorkerGlobalScope::new_inherited(
                 pipeline_id,
                 origin,
                 creation_url,
-                None,
                 runtime.microtask_queue.clone(),
                 // false,
             ),
@@ -121,13 +121,6 @@ impl StarlingGlobalScope {
     }
 }
 
-impl StarlingGlobalScopeMethods<crate::DomTypeHolder> for StarlingGlobalScope {
-    // https://html.spec.whatwg.org/multipage/#dom-workerglobalscope-self
-    fn Self_(&self) -> DomRoot<StarlingGlobalScope> {
-        DomRoot::from_ref(self)
-    }
-}
-
 impl StarlingGlobalScope {
 
     /// <https://html.spec.whatwg.org/multipage/#run-a-worker>
@@ -162,7 +155,7 @@ impl StarlingGlobalScope {
     }
 
     #[allow(unsafe_code)]
-    pub fn execute_script(&self, source: DOMString, can_gc: CanGc) {
+    pub fn execute_script(&self, source: &str, can_gc: CanGc) {
         let _aes = AutoEntryScript::new(self.upcast());
         let cx = self.runtime.borrow().as_ref().unwrap().cx();
         rooted!(in(cx) let mut rval = UndefinedValue());
@@ -175,7 +168,7 @@ impl StarlingGlobalScope {
         options.set_introduction_type(IntroductionType::WORKER);
         match self.runtime.borrow().as_ref().unwrap().evaluate_script(
             self.reflector().get_jsobject(),
-            &source,
+            source,
             rval.handle_mut(),
             options,
         ) {
@@ -193,7 +186,7 @@ impl StarlingGlobalScope {
                 }
             },
         }
-        
-        self.globalscope.perform_a_microtask_checkpoint(can_gc);
+
+        self.globalscope.as_global_scope().perform_a_microtask_checkpoint(can_gc);
     }
 }

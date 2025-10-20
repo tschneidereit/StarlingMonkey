@@ -6,7 +6,6 @@
 // This pretends to be all the global scopes, because that way other WebIDLs don't have to be adjusted
 // to not mention any of these scopes.
 // https://html.spec.whatwg.org/multipage/#dedicatedworkerglobalscope
-[Global=(Window,Worker,DedicatedWorker, PaintWorklet), Exposed=DedicatedWorker]
-/*sealed*/ interface StarlingGlobalScope : GlobalScope {
-  [BinaryName="Self_"] readonly attribute StarlingGlobalScope self;
+[Global=(Worker, DedicatedWorker, Worklet, PaintWorklet, DebuggerGlobalScope), Exposed=DedicatedWorker]
+/*sealed*/ interface StarlingGlobalScope : WorkerGlobalScope {
 };

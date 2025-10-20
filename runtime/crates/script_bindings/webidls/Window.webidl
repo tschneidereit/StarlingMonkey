@@ -7,5 +7,5 @@
 // `StarlingGlobalScope`.
 // https://html.spec.whatwg.org/multipage/#dedicatedworkerglobalscope
 [Global=(Window, DissimilarOriginWindow), Exposed=DebuggerGlobalScope]
-/*sealed*/ interface WindowGlobalScope : GlobalScope {
+/*sealed*/ interface Window : GlobalScope {
 };

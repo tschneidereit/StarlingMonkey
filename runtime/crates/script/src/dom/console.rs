@@ -333,8 +333,8 @@ enum IncludeStackTrace {
 
 impl consoleMethods<crate::DomTypeHolder> for Console {
     // https://developer.mozilla.org/en-US/docs/Web/API/Console/log
-    fn Log(_cx: JSContext, global: &StarlingGlobalScope, messages: Vec<HandleValue>) {
-        Console::method(global.upcast(), LogLevel::Log, messages, IncludeStackTrace::No);
+    fn Log(_cx: JSContext, global: &GlobalScope, messages: Vec<HandleValue>) {
+        Console::method(global, LogLevel::Log, messages, IncludeStackTrace::No);
     }
 }
 

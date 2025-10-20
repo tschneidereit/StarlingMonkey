@@ -27,7 +27,7 @@ pub(crate) mod conversions;
 // mod devtools;
 #[macro_use]
 mod dom;
-// pub(crate) mod fetch;
+pub(crate) mod fetch;
 // pub(crate) mod indexed_db;
 mod init;
 // #[allow(unsafe_code)]
