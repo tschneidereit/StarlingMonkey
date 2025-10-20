@@ -30,6 +30,7 @@ servo_arc = { workspace = true }
 servo_config = { workspace = true }
 servo_url = { workspace = true }
 smallvec = { workspace = true }
+stylo_atoms = { workspace = true }
 tracing = { workspace = true, optional = true }
 
 [build-dependencies]

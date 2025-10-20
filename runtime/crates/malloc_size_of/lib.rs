@@ -682,11 +682,11 @@ impl MallocSizeOf for url::Url {
 //     }
 // }
 
-// impl<Static: string_cache::StaticAtomSet> MallocSizeOf for string_cache::Atom<Static> {
-//     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
-//         0
-//     }
-// }
+impl<Static: string_cache::StaticAtomSet> MallocSizeOf for string_cache::Atom<Static> {
+    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
+        0
+    }
+}
 
 // // Placeholder for unique case where internals of Sender cannot be measured.
 // // malloc size of is 0 macro complains about type supplied!

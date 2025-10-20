@@ -17,13 +17,13 @@ extern crate jstraceable_derive;
 extern crate log;
 #[macro_use]
 extern crate malloc_size_of_derive;
-// #[macro_use]
-// extern crate stylo_atoms;
+#[macro_use]
+extern crate stylo_atoms;
 
 // mod body;
 #[macro_use]
 mod task;
-// pub(crate) mod conversions;
+pub(crate) mod conversions;
 // mod devtools;
 #[macro_use]
 mod dom;

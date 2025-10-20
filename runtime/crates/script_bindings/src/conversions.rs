@@ -22,9 +22,11 @@ use js::rust::{
     HandleId, HandleValue, MutableHandleValue, ToString, get_object_class, is_dom_class,
     is_dom_object, maybe_wrap_value,
 };
+// use keyboard_types::Modifiers;
 use num_traits::Float;
 
 use crate::JSTraceable;
+// use crate::codegen::GenericBindings::EventModifierInitBinding::EventModifierInit;
 use crate::inheritance::Castable;
 use crate::num::Finite;
 use crate::reflector::{DomObject, Reflector};
@@ -73,7 +75,7 @@ pub enum StringificationBehavior {
 // https://heycam.github.io/webidl/#es-DOMString
 impl ToJSValConvertible for DOMString {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue) {
-        (**self).to_jsval(cx, rval);
+        self.str().to_jsval(cx, rval);
     }
 }
 
@@ -589,3 +591,72 @@ pub unsafe fn is_array_like<D: crate::DomTypes>(cx: *mut JSContext, value: Handl
 
     false
 }
+
+// /// Get a `DomRoot<T>` for a WindowProxy accessible from a `HandleValue`.
+// /// Caller is responsible for throwing a JS exception if needed in case of error.
+// pub(crate) unsafe fn windowproxy_from_handlevalue<D: crate::DomTypes>(
+//     v: HandleValue,
+//     _cx: SafeJSContext,
+// ) -> Result<DomRoot<D::WindowProxy>, ()> {
+//     if !v.get().is_object() {
+//         return Err(());
+//     }
+//     let object = v.get().to_object();
+//     if !IsWindowProxy(object) {
+//         return Err(());
+//     }
+//     let mut value = UndefinedValue();
+//     GetProxyReservedSlot(object, 0, &mut value);
+//     let ptr = value.to_private() as *const D::WindowProxy;
+//     Ok(DomRoot::from_ref(&*ptr))
+// }
+// 
+// #[allow(deprecated)]
+// impl<D: crate::DomTypes> EventModifierInit<D> {
+//     pub fn modifiers(&self) -> Modifiers {
+//         let mut modifiers = Modifiers::empty();
+//         if self.altKey {
+//             modifiers.insert(Modifiers::ALT);
+//         }
+//         if self.ctrlKey {
+//             modifiers.insert(Modifiers::CONTROL);
+//         }
+//         if self.shiftKey {
+//             modifiers.insert(Modifiers::SHIFT);
+//         }
+//         if self.metaKey {
+//             modifiers.insert(Modifiers::META);
+//         }
+//         if self.keyModifierStateAltGraph {
+//             modifiers.insert(Modifiers::ALT_GRAPH);
+//         }
+//         if self.keyModifierStateCapsLock {
+//             modifiers.insert(Modifiers::CAPS_LOCK);
+//         }
+//         if self.keyModifierStateFn {
+//             modifiers.insert(Modifiers::FN);
+//         }
+//         if self.keyModifierStateFnLock {
+//             modifiers.insert(Modifiers::FN_LOCK);
+//         }
+//         if self.keyModifierStateHyper {
+//             modifiers.insert(Modifiers::HYPER);
+//         }
+//         if self.keyModifierStateNumLock {
+//             modifiers.insert(Modifiers::NUM_LOCK);
+//         }
+//         if self.keyModifierStateScrollLock {
+//             modifiers.insert(Modifiers::SCROLL_LOCK);
+//         }
+//         if self.keyModifierStateSuper {
+//             modifiers.insert(Modifiers::SUPER);
+//         }
+//         if self.keyModifierStateSymbol {
+//             modifiers.insert(Modifiers::SYMBOL);
+//         }
+//         if self.keyModifierStateSymbolLock {
+//             modifiers.insert(Modifiers::SYMBOL_LOCK);
+//         }
+//         modifiers
+//     }
+// }

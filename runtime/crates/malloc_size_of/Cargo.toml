@@ -27,7 +27,7 @@ mime = { workspace = true }
 #servo_allocator = { path = "../allocator" }
 servo_arc = { workspace = true }
 smallvec = { workspace = true }
-#string_cache = { workspace = true }
+string_cache = { workspace = true }
 #stylo = { workspace = true }
 #stylo_dom = { workspace = true }
 stylo_malloc_size_of = { workspace = true }

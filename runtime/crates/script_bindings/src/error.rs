@@ -6,6 +6,7 @@ use js::error::throw_type_error;
 use js::jsapi::JS_IsExceptionPending;
 
 use crate::codegen::PrototypeList::proto_id_to_name;
+use crate::num::Finite;
 use crate::script_runtime::JSContext as SafeJSContext;
 
 /// DOM exceptions that can be thrown by a native DOM method.
@@ -15,7 +16,7 @@ pub enum Error {
     /// IndexSizeError DOMException
     IndexSize,
     /// NotFoundError DOMException
-    NotFound,
+    NotFound(Option<String>),
     /// HierarchyRequestError DOMException
     HierarchyRequest,
     /// WrongDocumentError DOMException
@@ -27,9 +28,9 @@ pub enum Error {
     /// InUseAttributeError DOMException
     InUseAttribute,
     /// InvalidStateError DOMException
-    InvalidState,
+    InvalidState(Option<String>),
     /// SyntaxError DOMException
-    Syntax,
+    Syntax(Option<String>),
     /// NamespaceError DOMException
     Namespace,
     /// InvalidAccessError DOMException
@@ -55,7 +56,10 @@ pub enum Error {
     /// NoModificationAllowedError DOMException
     NoModificationAllowed,
     /// QuotaExceededError DOMException
-    QuotaExceeded,
+    QuotaExceeded {
+        quota: Option<Finite<f64>>,
+        requested: Option<Finite<f64>>,
+    },
     /// TypeMismatchError DOMException
     TypeMismatch,
     /// InvalidModificationError DOMException

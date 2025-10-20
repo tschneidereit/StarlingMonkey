@@ -91,7 +91,7 @@ pub(crate) mod module {
         JS_CALLEE, JSCLASS_GLOBAL_SLOT_COUNT, JSCLASS_IS_DOMJSCLASS, JSCLASS_IS_GLOBAL,
         JSCLASS_RESERVED_SLOTS_MASK, typedarray,
     };
-    // pub(crate) use servo_config::pref;
+    pub(crate) use servo_config::pref;
 
     pub(crate) use super::base::*;
     pub(crate) use crate::codegen::Globals::Globals;

@@ -135,7 +135,7 @@
 #![deny(non_snake_case)]
 
 // pub(crate) mod buffer_source;
-// #[allow(dead_code)]
+#[allow(dead_code)]
 pub(crate) mod cell;
 // pub(crate) mod constructor;
 pub(crate) mod conversions;

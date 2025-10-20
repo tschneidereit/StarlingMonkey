@@ -19,9 +19,7 @@ use script_bindings::settings_stack::StackEntry;
 
 use crate::DomTypes;
 use crate::dom::bindings::codegen::{InterfaceObjectMap, PrototypeList};
-// use crate::dom::bindings::constructor::{
-//     call_html_constructor, pop_current_element_queue, push_new_element_queue,
-// };
+// use crate::dom::bindings::constructor::call_html_constructor;
 use crate::dom::bindings::conversions::DerivedFrom;
 use crate::dom::bindings::error::{Error, report_pending_exception, throw_dom_exception};
 use crate::dom::bindings::principals::PRINCIPALS_CALLBACKS;
@@ -33,6 +31,7 @@ use crate::dom::globalscope::GlobalScope;
 // use crate::dom::windowproxy::WindowProxyHandler;
 use crate::realms::InRealm;
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
+// use crate::script_thread::ScriptThread;
 
 // #[derive(JSTraceable, MallocSizeOf)]
 // /// Static data associated with a global object.
@@ -184,6 +183,13 @@ impl DomHelpers<crate::DomTypeHolder> for crate::DomTypeHolder {
     fn interface_map() -> &'static phf::Map<&'static [u8], Interface> {
         &InterfaceObjectMap::MAP
     }
+
+    // fn push_new_element_queue() {
+    //     ScriptThread::custom_element_reaction_stack().push_new_element_queue()
+    // }
+    // fn pop_current_element_queue(can_gc: CanGc) {
+    //     ScriptThread::custom_element_reaction_stack().pop_current_element_queue(can_gc)
+    // }
 
     fn reflect_dom_object<T, U>(obj: Box<T>, global: &U, can_gc: CanGc) -> DomRoot<T>
     where

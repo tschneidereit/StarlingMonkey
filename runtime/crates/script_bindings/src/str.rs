@@ -8,14 +8,18 @@ use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
+use std::str::{CharIndices, Chars, EncodeUtf16, FromStr};
 use std::sync::LazyLock;
 use std::{fmt, ops, slice, str};
 
+// use cssparser::CowRcStr;
+// use html5ever::{LocalName, Namespace};
 use js::rust::wrappers::ToJSON;
 use js::rust::{HandleObject, HandleValue};
 use num_traits::Zero;
-// use stylo_atoms::Atom;
+// use regex::Regex;
+// use style::str::HTML_SPACE_CHARACTERS;
+use stylo_atoms::Atom;
 
 use crate::error::Error;
 use crate::script_runtime::JSContext as SafeJSContext;
@@ -208,6 +212,10 @@ impl DOMString {
         &self.0
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Appends a given string slice onto the end of this String.
     pub fn push_str(&mut self, string: &str) {
         self.0.push_str(string)
@@ -293,6 +301,81 @@ impl DOMString {
             self.0 = parsed_value.to_string()
         }
     }
+
+    // What follows are the functions inherited from std::string
+    pub fn make_ascii_lowercase(&mut self) {
+        self.0.make_ascii_lowercase();
+    }
+
+    pub fn to_ascii_lowercase(&self) -> String {
+        self.0.to_ascii_lowercase()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn chars(&self) -> Chars<'_> {
+        self.0.chars()
+    }
+
+    pub fn parse<T: FromStr>(&self) -> Result<T, <T as FromStr>::Err> {
+        self.0.parse::<T>()
+    }
+
+    pub fn contains(&self, needle: &str) -> bool {
+        self.0.contains(needle)
+    }
+
+    pub fn to_lowercase(&self) -> String {
+        self.0.to_lowercase()
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+
+    pub fn to_uppercase(&self) -> String {
+        self.0.to_uppercase()
+    }
+
+    pub fn encode_utf16(&self) -> EncodeUtf16<'_> {
+        self.0.encode_utf16()
+    }
+
+    pub fn find(&self, c: char) -> Option<usize> {
+        self.0.find(c)
+    }
+
+    pub fn starts_with(&self, c: char) -> bool {
+        self.0.starts_with(c)
+    }
+
+    pub fn starts_with_str(&self, needle: &str) -> bool {
+        self.0.starts_with(needle)
+    }
+
+    // pub fn contains_html_space_characters(&self) -> bool {
+    //     self.0.contains(HTML_SPACE_CHARACTERS)
+    // }
+
+    // pub fn split_html_space_characters(&self) -> impl Iterator<Item = &str> {
+    //     self.0
+    //         .split(HTML_SPACE_CHARACTERS)
+    //         .filter(|s| !s.is_empty())
+    // }
+
+    pub fn char_indices(&self) -> CharIndices<'_> {
+        self.0.char_indices()
+    }
+
+    pub fn strip_prefix(&self, pattern: &str) -> Option<&str> {
+        self.0.strip_prefix(pattern)
+    }
+
+    pub fn split(&self, c: char) -> impl Iterator<Item = &str> {
+        self.0.split(c)
+    }
 }
 
 /// Because this converts to a DOMString it becomes UTF-8 encoded which is closer to
@@ -366,44 +449,40 @@ impl Default for DOMString {
     }
 }
 
-impl Deref for DOMString {
-    type Target = str;
-
-    #[inline]
-    fn deref(&self) -> &str {
-        &self.0
-    }
-}
-
-impl DerefMut for DOMString {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut str {
-        &mut self.0
-    }
-}
-
-impl AsRef<str> for DOMString {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
 impl fmt::Display for DOMString {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&**self, f)
+        fmt::Display::fmt(self.str(), f)
     }
 }
 
 impl PartialEq<str> for DOMString {
     fn eq(&self, other: &str) -> bool {
-        &**self == other
+        self.str() == other
+    }
+}
+
+impl PartialEq<DOMString> for str {
+    fn eq(&self, other: &DOMString) -> bool {
+        self == other.str()
     }
 }
 
 impl<'a> PartialEq<&'a str> for DOMString {
     fn eq(&self, other: &&'a str) -> bool {
-        &**self == *other
+        self.str() == *other
+    }
+}
+
+impl PartialEq<DOMString> for String {
+    fn eq(&self, other: &DOMString) -> bool {
+        *other.0 == *self
+    }
+}
+
+impl PartialEq<String> for DOMString {
+    fn eq(&self, other: &String) -> bool {
+        self.0 == *other
     }
 }
 
@@ -428,11 +507,23 @@ impl<'a> From<Cow<'a, str>> for DOMString {
     }
 }
 
-// impl From<DOMString> for Atom {
-//     fn from(contents: DOMString) -> Atom {
-//         Atom::from(contents.0)
+// impl From<DOMString> for LocalName {
+//     fn from(contents: DOMString) -> LocalName {
+//         LocalName::from(contents.0)
 //     }
 // }
+//
+// impl From<DOMString> for Namespace {
+//     fn from(contents: DOMString) -> Namespace {
+//         Namespace::from(contents.0)
+//     }
+// }
+
+impl From<DOMString> for Atom {
+    fn from(contents: DOMString) -> Atom {
+        Atom::from(contents.0)
+    }
+}
 
 impl From<DOMString> for String {
     fn from(contents: DOMString) -> String {
@@ -451,6 +542,12 @@ impl<'a> From<DOMString> for Cow<'a, str> {
         contents.0.into()
     }
 }
+
+// impl<'a> From<DOMString> for CowRcStr<'a> {
+//     fn from(contents: DOMString) -> CowRcStr<'a> {
+//         contents.0.into()
+//     }
+// }
 
 impl Extend<char> for DOMString {
     fn extend<I>(&mut self, iterable: I)
