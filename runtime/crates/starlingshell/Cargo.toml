@@ -13,6 +13,7 @@ js = { workspace = true }
 script.workspace = true
 servo_url = { workspace = true }
 env_logger = "0.11.8"
+clap = { version = "4.5", features = ["derive"] }
 
 [features]
 crown = ['script/crown']
