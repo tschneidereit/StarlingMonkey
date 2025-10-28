@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{mem, ptr};
 
+use base::id::PipelineId;
 use dom_struct::dom_struct;
 use js::glue::{IsWrapper, UnwrapObjectDynamic};
 use js::jsapi::{
@@ -28,9 +29,10 @@ use js::rust::{
 };
 use js::{JSCLASS_IS_DOMJSCLASS, JSCLASS_IS_GLOBAL};
 use script_bindings::interfaces::GlobalScopeHelpers;
-use script_bindings::reflector::Reflector;
+use script_bindings::error::Fallible;
+// use script_bindings::reflector::Reflector;
 use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
-use crate::base::id::PipelineId;
+use timers::{TimerEventRequest, TimerId};
 use super::bindings::trace::{HashMapTracedValues, RootedTraceableBox};
 use crate::dom::bindings::cell::{DomRefCell, RefMut};
 use crate::dom::bindings::codegen::Bindings::VoidFunctionBinding::VoidFunction;
@@ -61,18 +63,20 @@ use crate::dom::eventtarget::EventTarget;
 // use crate::dom::readablestream::{CrossRealmTransformReadable, ReadableStream};
 // use crate::dom::reportingobserver::ReportingObserver;
 // use crate::dom::types::{DebuggerGlobalScope, MessageEvent};
+use crate::dom::workerglobalscope::WorkerGlobalScope;
+use crate::messaging::ScriptEventLoopSender;
 use crate::microtask::{Microtask, MicrotaskQueue, UserMicrotask};
 use crate::realms::{InRealm, enter_realm};
 // use crate::script_module::{
 //     DynamicModuleList, ImportMap, ModuleScript, ModuleTree, ResolvedModule, ScriptFetchOptions,
 // };
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext, ThreadSafeJSContext};
-// use crate::task_manager::TaskManager;
+use crate::task_manager::TaskManager;
 // use crate::task_source::SendableTaskSource;
-// use crate::timers::{
-//     IsInterval, OneshotTimerCallback, OneshotTimerHandle, OneshotTimers, TimerCallback,
-//     TimerEventId, TimerSource,
-// };
+use crate::timers::{
+    IsInterval, OneshotTimerCallback, OneshotTimerHandle, OneshotTimers, TimerCallback,
+    TimerEventId, TimerSource,
+};
 
 
 
@@ -87,8 +91,8 @@ pub struct GlobalScope {
     eventtarget: EventTarget,
     // crypto: MutNullableDom<Crypto>,
 
-    // /// A [`TaskManager`] for this [`GlobalScope`].
-    // task_manager: OnceCell<TaskManager>,
+    /// A [`TaskManager`] for this [`GlobalScope`].
+    task_manager: OnceCell<TaskManager>,
 
     /// Pipeline id associated with this global.
     #[no_trace]
@@ -107,10 +111,10 @@ pub struct GlobalScope {
     // 
     // /// <https://html.spec.whatwg.org/multipage/#in-error-reporting-mode>
     // in_error_reporting_mode: Cell<bool>,
-    // 
-    // /// The mechanism by which time-outs and intervals are scheduled.
-    // /// <https://html.spec.whatwg.org/multipage/#timers>
-    // timers: OnceCell<OneshotTimers>,
+
+    /// The mechanism by which time-outs and intervals are scheduled.
+    /// <https://html.spec.whatwg.org/multipage/#timers>
+    timers: OnceCell<OneshotTimers>,
 
     /// The origin of the globalscope
     #[no_trace]
@@ -232,7 +236,7 @@ impl GlobalScope {
         // inherited_secure_context: Option<bool>,
     ) -> Self {
         Self {
-            // task_manager: Default::default(),
+            task_manager: Default::default(),
             // blob_state: Default::default(),
             eventtarget: EventTarget::new_inherited(),
             // crypto: Default::default(),
@@ -241,7 +245,7 @@ impl GlobalScope {
             // module_map: DomRefCell::new(Default::default()),
             // inline_module_map: DomRefCell::new(Default::default()),
             // in_error_reporting_mode: Default::default(),
-            // timers: OnceCell::default(),
+            timers: OnceCell::default(),
             origin,
             creation_url,
             top_level_creation_url,
@@ -263,6 +267,10 @@ impl GlobalScope {
     /// Clean-up DOM related resources
     pub(crate) fn perform_a_dom_garbage_collection_checkpoint(&self) {
         // self.perform_a_blob_garbage_collection_checkpoint();
+    }
+
+    fn timers(&self) -> &OneshotTimers {
+        self.timers.get_or_init(|| OneshotTimers::new(self))
     }
 
     // pub(crate) fn track_event_source(&self, event_source: &EventSource) {
@@ -464,15 +472,15 @@ impl GlobalScope {
         &self.top_level_creation_url
     }
 
-    // /// Schedule a [`TimerEventRequest`] on this [`GlobalScope`]'s [`timers::TimerScheduler`].
-    // /// Every Worker has its own scheduler, which handles events in the Worker event loop,
-    // /// but `Window`s use a shared scheduler associated with their [`ScriptThread`].
-    // pub(crate) fn schedule_timer(&self, request: TimerEventRequest) -> Option<TimerId> {
-    //     match self.downcast::<WorkerGlobalScope>() {
-    //         Some(worker_global) => Some(worker_global.timer_scheduler().schedule_timer(request)),
-    //         _ => unreachable!("There are only workers, and workers are all"),
-    //     }
-    // }
+    /// Schedule a [`TimerEventRequest`] on this [`GlobalScope`]'s [`timers::TimerScheduler`].
+    /// Every Worker has its own scheduler, which handles events in the Worker event loop,
+    /// but `Window`s use a shared scheduler associated with their [`ScriptThread`].
+    pub(crate) fn schedule_timer(&self, request: TimerEventRequest) -> Option<TimerId> {
+        match self.downcast::<WorkerGlobalScope>() {
+            Some(worker_global) => Some(worker_global.timer_scheduler().schedule_timer(request)),
+            _ => unreachable!("There are only workers, and workers are all"),
+        }
+    }
 
     /// Get the [base url](https://html.spec.whatwg.org/multipage/#api-base-url)
     /// for this global scope.
@@ -544,30 +552,38 @@ impl GlobalScope {
     //     }
     // }
 
-    // /// A sender to the event loop of this global scope. This either sends to the Worker event loop
-    // /// or the ScriptThread event loop in the case of a `Window`. This can be `None` for dedicated
-    // /// workers that are not currently handling a message.
-    // pub(crate) fn event_loop_sender(&self) -> Option<ScriptEventLoopSender> {
-    //     if let Some(dedicated) = self.downcast::<DedicatedWorkerGlobalScope>() {
-    //         dedicated.event_loop_sender()
-    //     } else {
-    //         unreachable!("There are only workers, and workers are all");
-    //     }
-    // }
+    /// A sender to the event loop of this global scope. This either sends to the Worker event loop
+    /// or the ScriptThread event loop in the case of a `Window`. This can be `None` for dedicated
+    /// workers that are not currently handling a message.
+    pub(crate) fn event_loop_sender(&self) -> Option<ScriptEventLoopSender> {
+        // if let Some(window) = self.downcast::<Window>() {
+        //     Some(window.event_loop_sender())
+        // } else
+        if let Some(starling) = self.downcast::<StarlingGlobalScope>() {
+            starling.event_loop_sender()
+        // } else if let Some(service_worker) = self.downcast::<ServiceWorkerGlobalScope>() {
+        //     Some(service_worker.event_loop_sender())
+        } else {
+            unreachable!(
+                "Tried to access event loop sender for incompatible \
+                 GlobalScope (PaintWorklet or DissimilarOriginWindow)"
+            );
+        }
+    }
 
-    // /// A reference to the [`TaskManager`] used to schedule tasks for this [`GlobalScope`].
-    // pub(crate) fn task_manager(&self) -> &TaskManager {
-    //     let shared_canceller = self
-    //         .downcast::<WorkerGlobalScope>()
-    //         .map(WorkerGlobalScope::shared_task_canceller);
-    //     self.task_manager.get_or_init(|| {
-    //         TaskManager::new(
-    //             self.event_loop_sender(),
-    //             self.pipeline_id(),
-    //             shared_canceller,
-    //         )
-    //     })
-    // }
+    /// A reference to the [`TaskManager`] used to schedule tasks for this [`GlobalScope`].
+    pub(crate) fn task_manager(&self) -> &TaskManager {
+        // let shared_canceller = self
+        //     .downcast::<WorkerGlobalScope>()
+        //     .map(WorkerGlobalScope::shared_task_canceller);
+        self.task_manager.get_or_init(|| {
+            TaskManager::new(
+                self.event_loop_sender(),
+                self.pipeline_id(),
+                None, // shared_canceller
+            )
+        })
+    }
 
     /// Evaluate JS code on this global scope.
     pub(crate) fn evaluate_js_on_global_with_result(
@@ -688,52 +704,54 @@ impl GlobalScope {
         }
     }
 
-    // /// <https://html.spec.whatwg.org/multipage/#timer-initialisation-steps>
-    // pub(crate) fn schedule_callback(
-    //     &self,
-    //     callback: OneshotTimerCallback,
-    //     duration: Duration,
-    // ) -> OneshotTimerHandle {
-    //     self.timers()
-    //         .schedule_callback(callback, duration, self.timer_source())
-    // }
-    //
-    // pub(crate) fn unschedule_callback(&self, handle: OneshotTimerHandle) {
-    //     self.timers().unschedule_callback(handle);
-    // }
-    //
-    // /// <https://html.spec.whatwg.org/multipage/#timer-initialisation-steps>
-    // pub(crate) fn set_timeout_or_interval(
-    //     &self,
-    //     callback: TimerCallback,
-    //     arguments: Vec<HandleValue>,
-    //     timeout: Duration,
-    //     is_interval: IsInterval,
-    // ) -> i32 {
-    //     self.timers().set_timeout_or_interval(
-    //         self,
-    //         callback,
-    //         arguments,
-    //         timeout,
-    //         is_interval,
-    //         self.timer_source(),
-    //     )
-    // }
-    //
-    // pub(crate) fn clear_timeout_or_interval(&self, handle: i32) {
-    //     self.timers().clear_timeout_or_interval(self, handle);
-    // }
-    //
+    /// <https://html.spec.whatwg.org/multipage/#timer-initialisation-steps>
+    pub(crate) fn schedule_callback(
+        &self,
+        callback: OneshotTimerCallback,
+        duration: Duration,
+    ) -> OneshotTimerHandle {
+        self.timers()
+            .schedule_callback(callback, duration, self.timer_source())
+    }
+
+    pub(crate) fn unschedule_callback(&self, handle: OneshotTimerHandle) {
+        self.timers().unschedule_callback(handle);
+    }
+
+    /// <https://html.spec.whatwg.org/multipage/#timer-initialisation-steps>
+    pub(crate) fn set_timeout_or_interval(
+        &self,
+        callback: TimerCallback,
+        arguments: Vec<HandleValue>,
+        timeout: Duration,
+        is_interval: IsInterval,
+        can_gc: CanGc,
+    ) -> Fallible<i32> {
+        self.timers().set_timeout_or_interval(
+            self,
+            callback,
+            arguments,
+            timeout,
+            is_interval,
+            self.timer_source(),
+            can_gc,
+        )
+    }
+
+    pub(crate) fn clear_timeout_or_interval(&self, handle: i32) {
+        self.timers().clear_timeout_or_interval(self, handle);
+    }
+
     pub(crate) fn queue_function_as_microtask(&self, callback: Rc<VoidFunction>) {
         self.enqueue_microtask(Microtask::User(UserMicrotask {
             callback,
             pipeline: self.pipeline_id(),
         }))
     }
-    //
-    // pub(crate) fn fire_timer(&self, handle: TimerEventId, can_gc: CanGc) {
-    //     self.timers().fire_timer(handle, self, can_gc);
-    // }
+
+    pub(crate) fn fire_timer(&self, handle: TimerEventId, can_gc: CanGc) {
+        self.timers().fire_timer(handle, self, can_gc);
+    }
     //
     // pub(crate) fn resume(&self) {
     //     self.timers().resume();
@@ -750,16 +768,16 @@ impl GlobalScope {
     // pub(crate) fn speed_up_timers(&self) {
     //     self.timers().speed_up();
     // }
-    //
-    // fn timer_source(&self) -> TimerSource {
-    //     if self.is::<Window>() {
-    //         return TimerSource::FromWindow(self.pipeline_id());
-    //     }
-    //     if self.is::<WorkerGlobalScope>() {
-    //         return TimerSource::FromWorker;
-    //     }
-    //     unreachable!();
-    // }
+
+    fn timer_source(&self) -> TimerSource {
+        // if self.is::<Window>() {
+        //     return TimerSource::FromWindow(self.pipeline_id());
+        // }
+        if self.is::<WorkerGlobalScope>() {
+            return TimerSource::FromWorker;
+        }
+        unreachable!();
+    }
 
     /// Returns a boolean indicating whether the event-loop
     /// where this global is running on can continue running JS.

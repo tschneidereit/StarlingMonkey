@@ -30,8 +30,8 @@ mod dom;
 pub(crate) mod fetch;
 // pub(crate) mod indexed_db;
 mod init;
-// #[allow(unsafe_code)]
-// pub(crate) mod messaging;
+#[allow(unsafe_code)]
+pub(crate) mod messaging;
 mod microtask;
 // pub(crate) mod mime;
 // mod navigation;
@@ -41,10 +41,10 @@ mod realms;
 // #[allow(dead_code)]
 // mod script_module;
 pub(crate) mod script_runtime;
-// mod task_manager;
-// mod task_queue;
-// mod task_source;
-// mod timers;
+mod task_manager;
+mod task_queue;
+mod task_source;
+mod timers;
 
 pub use init::init;
 pub(crate) use script_bindings::DomTypes;
@@ -58,15 +58,5 @@ pub(crate) use crate::dom::bindings::inheritance::HasParent;
 pub(crate) use crate::dom::bindings::reflector::{DomObject, MutDomObject, Reflector};
 pub(crate) use crate::dom::bindings::trace::{CustomTraceable, JSTraceable};
 
-pub use script_runtime::{Runtime, CanGc};
+pub use script_runtime::CanGc;
 pub use dom::starlingglobalscope::StarlingGlobalScope as GlobalScope;
-
-// Placeholder mod for the base crate. Will probably have to be replaced by the actual crate later.
-pub mod base {
-    pub mod id {
-        #[derive(
-            Clone, Copy, Debug, Eq, Hash, MallocSizeOf, Ord, PartialEq, PartialOrd,
-        )]
-        pub struct PipelineId;
-    }
-}

@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
+use crossbeam_channel::Sender;
 // use html5ever::interface::{Tracer as HtmlTracer, TreeSink};
 // use html5ever::tokenizer::{TokenSink, Tokenizer};
 // use html5ever::tree_builder::TreeBuilder;
@@ -25,6 +26,8 @@ use smallvec::SmallVec;
 // use tendril::TendrilSink;
 // use tendril::fmt::UTF8;
 // use tendril::stream::LossyDecoder;
+// #[cfg(feature = "webxr")]
+// use webxr_api::{Finger, Hand};
 // use xml5ever::interface::TreeSink as XmlTreeSink;
 // use xml5ever::tokenizer::XmlTokenizer;
 // use xml5ever::tree_builder::{Tracer as XmlTracer, XmlTreeBuilder};
@@ -115,6 +118,10 @@ unsafe impl<T: JSTraceable> CustomTraceable for OnceCell<T> {
     }
 }
 
+unsafe impl<T> CustomTraceable for Sender<T> {
+    unsafe fn trace(&self, _: *mut JSTracer) {}
+}
+
 unsafe impl<T: JSTraceable> CustomTraceable for ServoArc<T> {
     unsafe fn trace(&self, trc: *mut JSTracer) {
         unsafe { (**self).trace(trc) }
@@ -162,6 +169,37 @@ where
     }
 }
 
+// unsafe impl<S> CustomTraceable for DocumentStylesheetSet<S>
+// where
+//     S: JSTraceable + ::style::stylesheets::StylesheetInDocument + PartialEq + 'static,
+// {
+//     unsafe fn trace(&self, tracer: *mut JSTracer) {
+//         for (s, _origin) in self.iter() {
+//             unsafe { s.trace(tracer) };
+//         }
+//     }
+// }
+//
+// unsafe impl<S> CustomTraceable for AuthorStylesheetSet<S>
+// where
+//     S: JSTraceable + ::style::stylesheets::StylesheetInDocument + PartialEq + 'static,
+// {
+//     unsafe fn trace(&self, tracer: *mut JSTracer) {
+//         for s in self.iter() {
+//             unsafe { s.trace(tracer) };
+//         }
+//     }
+// }
+//
+// unsafe impl<S> CustomTraceable for AuthorStyles<S>
+// where
+//     S: JSTraceable + ::style::stylesheets::StylesheetInDocument + PartialEq + 'static,
+// {
+//     unsafe fn trace(&self, tracer: *mut JSTracer) {
+//         unsafe { self.stylesheets.trace(tracer) };
+//     }
+// }
+//
 // unsafe impl<Sink> CustomTraceable for LossyDecoder<Sink>
 // where
 //     Sink: JSTraceable + TendrilSink<UTF8>,
@@ -170,7 +208,65 @@ where
 //         unsafe { self.inner_sink().trace(tracer) };
 //     }
 // }
-// 
+
+#[cfg(feature = "webxr")]
+unsafe impl<J> CustomTraceable for Hand<J>
+where
+    J: JSTraceable,
+{
+    #[inline]
+    unsafe fn trace(&self, trc: *mut JSTracer) {
+        // exhaustive match so we don't miss new fields
+        let Hand {
+            ref wrist,
+            ref thumb_metacarpal,
+            ref thumb_phalanx_proximal,
+            ref thumb_phalanx_distal,
+            ref thumb_phalanx_tip,
+            ref index,
+            ref middle,
+            ref ring,
+            ref little,
+        } = *self;
+        unsafe {
+            wrist.trace(trc);
+            thumb_metacarpal.trace(trc);
+            thumb_phalanx_proximal.trace(trc);
+            thumb_phalanx_distal.trace(trc);
+            thumb_phalanx_tip.trace(trc);
+            index.trace(trc);
+            middle.trace(trc);
+            ring.trace(trc);
+            little.trace(trc);
+        }
+    }
+}
+
+#[cfg(feature = "webxr")]
+unsafe impl<J> CustomTraceable for Finger<J>
+where
+    J: JSTraceable,
+{
+    #[inline]
+    unsafe fn trace(&self, trc: *mut JSTracer) {
+        // exhaustive match so we don't miss new fields
+        let Finger {
+            ref metacarpal,
+            ref phalanx_proximal,
+            ref phalanx_intermediate,
+            ref phalanx_distal,
+            ref phalanx_tip,
+        } = *self;
+        unsafe {
+            metacarpal.trace(trc);
+            phalanx_proximal.trace(trc);
+            phalanx_intermediate.trace(trc);
+            phalanx_distal.trace(trc);
+            phalanx_tip.trace(trc);
+        }
+    }
+}
+
 // unsafe impl<Handle: JSTraceable + Clone, Sink: TreeSink<Handle = Handle> + JSTraceable>
 //     CustomTraceable for TreeBuilder<Handle, Sink>
 // {
@@ -258,7 +354,7 @@ where
     Heap<T>: JSTraceable + 'static,
     T: GCMethods + Copy,
 {
-    pub fn handle(&self) -> Handle<T> {
+    pub fn handle(&self) -> Handle<'_, T> {
         self.0.handle()
     }
 }

@@ -20,7 +20,7 @@ use std::{os, ptr, thread};
 
 // use background_hang_monitor_api::ScriptHangAnnotation;
 use js::conversions::jsstr_to_string;
-use js::glue::{CollectServoSizes, DeleteJobQueue, DispatchableRun, DispatchablePointer, JS_GetReservedSlot, JobQueueTraps, RUST_js_GetErrorMessage, SetBuildId, StreamConsumerConsumeChunk, StreamConsumerNoteResponseURLs, StreamConsumerStreamEnd, StreamConsumerStreamError, CreateJobQueue};
+use js::glue::{CollectServoSizes, DeleteJobQueue, DispatchableRun, DispatchablePointer, JS_GetReservedSlot, JobQueueTraps, RUST_js_GetErrorMessage, SetBuildId, StreamConsumerConsumeChunk, StreamConsumerNoteResponseURLs, StreamConsumerStreamEnd, StreamConsumerStreamError, CreateJobQueue, SetUpEventLoopDispatch};
 use js::jsapi::{
     AsmJSOption, BuildIdCharVector, CompilationType, ContextOptionsRef, Dispatchable as JSRunnable,
     Dispatchable_MaybeShuttingDown, GCDescription, GCOptions, GCProgress, GCReason,
@@ -82,7 +82,7 @@ use crate::dom::bindings::root::{trace_roots, ThreadLocalStackRoots};
 use crate::realms::{AlreadyInRealm, InRealm, enter_realm};
 // use crate::script_module::EnsureModuleHooksInitialized;
 // use crate::script_thread::trace_thread;
-// use crate::task_source::SendableTaskSource;
+use crate::task_source::SendableTaskSource;
 
 static JOB_QUEUE_TRAPS: JobQueueTraps = JobQueueTraps {
     getHostDefinedData: Some(get_host_defined_data),
@@ -575,7 +575,7 @@ pub(crate) fn notify_about_rejected_promises(global: &GlobalScope) {
 }
 
 #[derive(JSTraceable)]
-pub struct Runtime {
+pub(crate) struct Runtime {
     rt: RustRuntime,
     /// Our actual microtask queue, which is preserved and untouched by the debugger when running debugger scripts.
     pub(crate) microtask_queue: Rc<MicrotaskQueue>,
@@ -599,11 +599,9 @@ impl Runtime {
     /// This, like many calls to SpiderMoney API, is unsafe.
     #[allow(unsafe_code)]
     pub fn new(
-        // networking_task_source: Option<SendableTaskSource>
+        networking_task_source: Option<SendableTaskSource>
     ) -> Runtime {
-        unsafe { Self::new_with_parent(None,
-                                       // networking_task_source
-        ) }
+        unsafe { Self::new_with_parent(None, networking_task_source) }
     }
 
     /// Create a new runtime, optionally with the given [`ParentRuntime`] and [`SendableTaskSource`]
@@ -621,7 +619,7 @@ impl Runtime {
     #[allow(unsafe_code)]
     pub unsafe fn new_with_parent(
         parent: Option<ParentRuntime>,
-        // networking_task_source: Option<SendableTaskSource>,
+        networking_task_source: Option<SendableTaskSource>,
     ) -> Runtime {
         let (cx, runtime) = if let Some(parent) = parent {
             let runtime = RustRuntime::create_with_parent(parent);
@@ -667,31 +665,31 @@ impl Runtime {
         // Pre barriers aren't working correctly at the moment
         JS_SetGCParameter(cx, JSGCParamKey::JSGC_INCREMENTAL_GC_ENABLED, 0);
 
-        // unsafe extern "C" fn dispatch_to_event_loop(
-        //     closure: *mut c_void,
-        //     dispatchable: *mut JSRunnable,
-        // ) -> bool {
-        //     let networking_task_src: &SendableTaskSource = &*(closure as *mut SendableTaskSource);
-        //     let runnable = Runnable(dispatchable);
-        //     let task = task!(dispatch_to_event_loop_message: move || {
-        //         if let Some(cx) = RustRuntime::get() {
-        //             runnable.run(cx.as_ptr(), Dispatchable_MaybeShuttingDown::NotShuttingDown);
-        //         }
-        //     });
-        //
-        //     networking_task_src.queue_unconditionally(task);
-        //     true
-        // }
-        //
-        // let mut networking_task_src_ptr = std::ptr::null_mut();
-        // if let Some(source) = networking_task_source {
-        //     networking_task_src_ptr = Box::into_raw(Box::new(source));
-        //     InitDispatchToEventLoop(
-        //         cx,
-        //         Some(dispatch_to_event_loop),
-        //         networking_task_src_ptr as *mut c_void,
-        //     );
-        // }
+        unsafe extern "C" fn dispatch_to_event_loop(
+            closure: *mut c_void,
+            dispatchable: *mut DispatchablePointer,
+        ) -> bool {
+            let networking_task_src: &SendableTaskSource = &*(closure as *mut SendableTaskSource);
+            let runnable = Runnable(dispatchable);
+            let task = task!(dispatch_to_event_loop_message: move || {
+                if let Some(cx) = RustRuntime::get() {
+                    runnable.run(cx.as_ptr(), Dispatchable_MaybeShuttingDown::NotShuttingDown);
+                }
+            });
+
+            networking_task_src.queue_unconditionally(task);
+            true
+        }
+
+        let mut networking_task_src_ptr = std::ptr::null_mut();
+        if let Some(source) = networking_task_source {
+            networking_task_src_ptr = Box::into_raw(Box::new(source));
+            SetUpEventLoopDispatch(
+                cx,
+                Some(dispatch_to_event_loop),
+                networking_task_src_ptr as *mut c_void,
+            );
+        }
 
         // InitConsumeStreamCallback(cx, Some(consume_stream), Some(report_stream_error));
 

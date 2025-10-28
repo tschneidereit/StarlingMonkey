@@ -13,6 +13,7 @@ links = "script_bindings_crate"
 
 [dependencies]
 bitflags = { workspace = true }
+crossbeam-channel = { workspace = true }
 deny_public_fields = { workspace = true }
 dom_struct = { workspace = true }
 domobject_derive = { workspace = true }

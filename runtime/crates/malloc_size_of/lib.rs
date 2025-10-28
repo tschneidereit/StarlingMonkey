@@ -688,13 +688,13 @@ impl<Static: string_cache::StaticAtomSet> MallocSizeOf for string_cache::Atom<St
     }
 }
 
-// // Placeholder for unique case where internals of Sender cannot be measured.
-// // malloc size of is 0 macro complains about type supplied!
-// impl<T> MallocSizeOf for crossbeam_channel::Sender<T> {
-//     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
-//         0
-//     }
-// }
+// Placeholder for unique case where internals of Sender cannot be measured.
+// malloc size of is 0 macro complains about type supplied!
+impl<T> MallocSizeOf for crossbeam_channel::Sender<T> {
+    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
+        0
+    }
+}
 //
 // impl<T> MallocSizeOf for tokio::sync::mpsc::UnboundedSender<T> {
 //     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {

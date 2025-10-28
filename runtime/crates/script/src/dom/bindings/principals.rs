@@ -38,7 +38,7 @@ pub(crate) unsafe extern "C" fn write_jsprincipal(
     // let Ok(len) = bytes_of_origin.len().try_into() else {
     //     return false;
     // };
-    // 
+    //
     // unsafe {
     //     if !js::jsapi::JS_WriteUint32Pair(writer, StructuredCloneTags::Principals as u32, len) {
     //         return false;

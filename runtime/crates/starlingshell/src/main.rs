@@ -1,10 +1,12 @@
-use script::base::id::PipelineId;
-use std::process::exit;
+use base::id::{PipelineId, PipelineNamespace, PipelineNamespaceId};
+use clap::Parser;
 use script::{CanGc, GlobalScope};
 use servo_url::MutableOrigin;
-use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
+use std::process::exit;
+use std::thread::sleep;
+use std::time::Duration;
 
 #[derive(Parser, Debug)]
 #[command(name = "starlingshell")]
@@ -26,26 +28,34 @@ fn main() {
     builder.init();
 
     let _init = script::init();
+    PipelineNamespace::install(PipelineNamespaceId(0));
     let url = servo_url::ServoUrl::parse("http://evalcode").unwrap();
     let origin = MutableOrigin::new(url.origin());
-    let global = GlobalScope::run_worker_scope(PipelineId {}, origin, url.clone(), url, "content".to_string());
+    let global = GlobalScope::run_worker_scope(
+        PipelineId::new(),
+        origin,
+        url.clone(),
+        url,
+        "content".to_string(),
+    );
 
     // Determine the script to execute
     let script = match (args.file, args.eval) {
         (Some(file_path), None) => {
             // Load script from file
-            fs::read_to_string(&file_path)
-                .unwrap_or_else(|err| {
-                    eprintln!("Error reading file '{}': {}", file_path.display(), err);
-                    exit(1);
-                })
+            fs::read_to_string(&file_path).unwrap_or_else(|err| {
+                eprintln!("Error reading file '{}': {}", file_path.display(), err);
+                exit(1);
+            })
         }
         (None, Some(code)) => {
             // Execute inline code
             code
         }
         (None, None) => {
-            eprintln!("Error: Please provide either a file to execute or use -e/--eval for inline code");
+            eprintln!(
+                "Error: Please provide either a file to execute or use -e/--eval for inline code"
+            );
             exit(1);
         }
         (Some(_), Some(_)) => {
@@ -55,5 +65,8 @@ fn main() {
     };
 
     global.execute_script(&script, CanGc::note());
+    global.process_events(CanGc::note());
+    sleep(Duration::from_millis(50));
+    global.process_events(CanGc::note());
     exit(0);
 }

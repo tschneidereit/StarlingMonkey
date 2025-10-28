@@ -10,7 +10,7 @@ use std::cell::Cell;
 use std::mem;
 use std::rc::Rc;
 
-use crate::base::id::PipelineId;
+use base::id::PipelineId;
 use js::jsapi::{JSAutoRealm, JobQueueIsEmpty, JobQueueMayNotBeEmpty};
 
 use crate::dom::bindings::callback::ExceptionHandling;
