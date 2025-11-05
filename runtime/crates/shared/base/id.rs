@@ -296,76 +296,76 @@ impl fmt::Display for BrowsingContextGroupId {
     }
 }
 
-// thread_local!(pub static WEBVIEW_ID: Cell<Option<WebViewId>> =
-//     const { Cell::new(None) });
-// 
-// #[derive(
-//     Clone, Copy, Deserialize, Eq, Hash, MallocSizeOf, Ord, PartialEq, PartialOrd, Serialize,
-// )]
-// pub struct WebViewId(RenderingGroupId, BrowsingContextId);
-// 
-// size_of_test!(WebViewId, 12);
-// size_of_test!(Option<WebViewId>, 12);
-// 
-// impl fmt::Debug for WebViewId {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "TopLevel{:?}", self.0)
-//     }
-// }
-// 
-// impl fmt::Display for WebViewId {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "RenderingGroup {}, TopLevel{}", self.0, self.1)
-//     }
-// }
-// 
-// impl WebViewId {
-//     pub fn new() -> WebViewId {
-//         WebViewId(RenderingGroupId::default(), BrowsingContextId::new())
-//     }
-// 
-//     pub fn new_with_rendering_group(rendering_group_id: RenderingGroupId) -> WebViewId {
-//         WebViewId(rendering_group_id, BrowsingContextId::new())
-//     }
-// 
-//     /// Each script and layout thread should have the top-level browsing context id installed,
-//     /// since it is used by crash reporting.
-//     pub fn install(id: WebViewId) {
-//         WEBVIEW_ID.with(|tls| tls.set(Some(id)))
-//     }
-// 
-//     pub fn installed() -> Option<WebViewId> {
-//         WEBVIEW_ID.with(|tls| tls.get())
-//     }
-// 
-//     pub fn mock_for_testing(browsing_context_id: BrowsingContextId) -> WebViewId {
-//         WebViewId(RenderingGroupId::default(), browsing_context_id)
-//     }
-// }
-// 
-// impl From<WebViewId> for BrowsingContextId {
-//     fn from(id: WebViewId) -> BrowsingContextId {
-//         id.1
-//     }
-// }
-//
-// impl From<WebViewId> for RenderingGroupId {
-//     fn from(id: WebViewId) -> RenderingGroupId {
-//         id.0
-//     }
-// }
-// 
-// impl PartialEq<WebViewId> for BrowsingContextId {
-//     fn eq(&self, rhs: &WebViewId) -> bool {
-//         self.eq(&rhs.1)
-//     }
-// }
-// 
-// impl PartialEq<BrowsingContextId> for WebViewId {
-//     fn eq(&self, rhs: &BrowsingContextId) -> bool {
-//         self.1.eq(rhs)
-//     }
-// }
+thread_local!(pub static WEBVIEW_ID: Cell<Option<WebViewId>> =
+    const { Cell::new(None) });
+
+#[derive(
+    Clone, Copy, Deserialize, Eq, Hash, MallocSizeOf, Ord, PartialEq, PartialOrd, Serialize,
+)]
+pub struct WebViewId(RenderingGroupId, BrowsingContextId);
+
+size_of_test!(WebViewId, 12);
+size_of_test!(Option<WebViewId>, 12);
+
+impl fmt::Debug for WebViewId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TopLevel{:?}", self.0)
+    }
+}
+
+impl fmt::Display for WebViewId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RenderingGroup {}, TopLevel{}", self.0, self.1)
+    }
+}
+
+impl WebViewId {
+    pub fn new() -> WebViewId {
+        WebViewId(RenderingGroupId::default(), BrowsingContextId::new())
+    }
+
+    pub fn new_with_rendering_group(rendering_group_id: RenderingGroupId) -> WebViewId {
+        WebViewId(rendering_group_id, BrowsingContextId::new())
+    }
+
+    /// Each script and layout thread should have the top-level browsing context id installed,
+    /// since it is used by crash reporting.
+    pub fn install(id: WebViewId) {
+        WEBVIEW_ID.with(|tls| tls.set(Some(id)))
+    }
+
+    pub fn installed() -> Option<WebViewId> {
+        WEBVIEW_ID.with(|tls| tls.get())
+    }
+
+    pub fn mock_for_testing(browsing_context_id: BrowsingContextId) -> WebViewId {
+        WebViewId(RenderingGroupId::default(), browsing_context_id)
+    }
+}
+
+impl From<WebViewId> for BrowsingContextId {
+    fn from(id: WebViewId) -> BrowsingContextId {
+        id.1
+    }
+}
+
+impl From<WebViewId> for RenderingGroupId {
+    fn from(id: WebViewId) -> RenderingGroupId {
+        id.0
+    }
+}
+
+impl PartialEq<WebViewId> for BrowsingContextId {
+    fn eq(&self, rhs: &WebViewId) -> bool {
+        self.eq(&rhs.1)
+    }
+}
+
+impl PartialEq<BrowsingContextId> for WebViewId {
+    fn eq(&self, rhs: &BrowsingContextId) -> bool {
+        self.1.eq(rhs)
+    }
+}
 
 namespace_id! {MessagePortId, MessagePortIndex, "MessagePort"}
 
@@ -414,49 +414,49 @@ pub const TEST_BROWSING_CONTEXT_ID: BrowsingContextId = BrowsingContextId {
     index: TEST_BROWSING_CONTEXT_INDEX,
 };
 
-// pub const TEST_WEBVIEW_ID: WebViewId = WebViewId(
-//     RenderingGroupId::mock_rendering_id(),
-//     TEST_BROWSING_CONTEXT_ID,
-// );
+pub const TEST_WEBVIEW_ID: WebViewId = WebViewId(
+    RenderingGroupId::mock_rendering_id(),
+    TEST_BROWSING_CONTEXT_ID,
+);
 
-// /// An id for a ScrollTreeNode in the ScrollTree. This contains both the index
-// /// to the node in the tree's array of nodes as well as the corresponding SpatialId
-// /// for the SpatialNode in the WebRender display list.
-// #[derive(Clone, Copy, Debug, Default, Deserialize, MallocSizeOf, PartialEq, Serialize)]
-// pub struct ScrollTreeNodeId {
-//     /// The index of this scroll tree node in the tree's array of nodes.
-//     pub index: usize,
-// }
-// 
-// #[derive(
-//     Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Hash, Eq, Serialize, Deserialize, MallocSizeOf,
-// )]
-// pub struct RenderingGroupId(u32);
-// 
-// impl fmt::Display for RenderingGroupId {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "RenderingGroup: {}", self.0)
-//     }
-// }
-// 
-// static RENDER_GROUP_COUNTER: RwLock<RenderingGroupId> = RwLock::new(RenderingGroupId(1));
-// 
-// impl Default for RenderingGroupId {
-//     fn default() -> Self {
-//         Self(RENDER_GROUP_COUNTER.read().unwrap().0)
-//     }
-// }
-// 
-// impl RenderingGroupId {
-//     const fn mock_rendering_id() -> RenderingGroupId {
-//         RenderingGroupId(0)
-//     }
-// 
-//     /// the new rendering group id. The first returned id will be 1.
-//     pub fn new() -> RenderingGroupId {
-//         let mut cur = RENDER_GROUP_COUNTER.write().unwrap();
-//         let n = RenderingGroupId(cur.0 + 1);
-//         *cur = n;
-//         n
-//     }
-// }
+/// An id for a ScrollTreeNode in the ScrollTree. This contains both the index
+/// to the node in the tree's array of nodes as well as the corresponding SpatialId
+/// for the SpatialNode in the WebRender display list.
+#[derive(Clone, Copy, Debug, Default, Deserialize, MallocSizeOf, PartialEq, Serialize)]
+pub struct ScrollTreeNodeId {
+    /// The index of this scroll tree node in the tree's array of nodes.
+    pub index: usize,
+}
+
+#[derive(
+    Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Hash, Eq, Serialize, Deserialize, MallocSizeOf,
+)]
+pub struct RenderingGroupId(u32);
+
+impl fmt::Display for RenderingGroupId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RenderingGroup: {}", self.0)
+    }
+}
+
+static RENDER_GROUP_COUNTER: RwLock<RenderingGroupId> = RwLock::new(RenderingGroupId(1));
+
+impl Default for RenderingGroupId {
+    fn default() -> Self {
+        Self(RENDER_GROUP_COUNTER.read().unwrap().0)
+    }
+}
+
+impl RenderingGroupId {
+    const fn mock_rendering_id() -> RenderingGroupId {
+        RenderingGroupId(0)
+    }
+
+    /// the new rendering group id. The first returned id will be 1.
+    pub fn new() -> RenderingGroupId {
+        let mut cur = RENDER_GROUP_COUNTER.write().unwrap();
+        let n = RenderingGroupId(cur.0 + 1);
+        *cur = n;
+        n
+    }
+}

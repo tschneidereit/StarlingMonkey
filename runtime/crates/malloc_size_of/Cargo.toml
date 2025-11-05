@@ -17,9 +17,9 @@ atomic_refcell = { workspace = true }
 content-security-policy = { workspace = true }
 crossbeam-channel = { workspace = true }
 #euclid = { workspace = true }
-#http = { workspace = true }
+http = { workspace = true }
 indexmap = { workspace = true }
-#ipc-channel = { workspace = true }
+ipc-channel = { workspace = true }
 #keyboard-types = { workspace = true }
 #markup5ever = { workspace = true }
 mime = { workspace = true }

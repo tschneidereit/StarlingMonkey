@@ -47,21 +47,21 @@
 // use crate::network_listener::{self, PreInvoke, ResourceTimingListener, submit_timing_data};
 // use crate::realms::{InRealm, enter_realm};
 // use crate::script_runtime::CanGc;
-
-/// RAII fetch canceller object.
-/// By default initialized to having a
-/// request associated with it, which can be manually cancelled with `cancel`,
-/// or automatically cancelled on drop.
-/// Calling `ignore` will sever the relationship with the request,
-/// meaning it cannot be cancelled through this canceller from that point on.
-#[derive(Default, JSTraceable, MallocSizeOf)]
-pub(crate) struct FetchCanceller {
-    // #[no_trace]
-    // request_id: Option<RequestId>,
-    // #[no_trace]
-    // core_resource_thread: Option<CoreResourceThread>,
-}
-
+//
+// /// RAII fetch canceller object.
+// /// By default initialized to having a
+// /// request associated with it, which can be manually cancelled with `cancel`,
+// /// or automatically cancelled on drop.
+// /// Calling `ignore` will sever the relationship with the request,
+// /// meaning it cannot be cancelled through this canceller from that point on.
+// #[derive(Default, JSTraceable, MallocSizeOf)]
+// pub(crate) struct FetchCanceller {
+//     // #[no_trace]
+//     // request_id: Option<RequestId>,
+//     // #[no_trace]
+//     // core_resource_thread: Option<CoreResourceThread>,
+// }
+//
 // impl FetchCanceller {
 //     /// Create a FetchCanceller associated with a request,
 //     // and a particular(public vs private) resource thread.

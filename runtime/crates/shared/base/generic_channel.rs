@@ -8,8 +8,8 @@ use std::fmt;
 use std::fmt::Display;
 use std::marker::PhantomData;
 
-// use ipc_channel::ipc::IpcError;
-// use ipc_channel::router::ROUTER;
+use ipc_channel::ipc::IpcError;
+use ipc_channel::router::ROUTER;
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 use serde::de::VariantAccess;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -46,7 +46,7 @@ pub trait OpaqueSender<T> {
 /// This enum is private, so that outside code can't construct a GenericSender itself.
 /// This ensures that users can't construct a crossbeam variant in multiprocess mode.
 enum GenericSenderVariants<T: Serialize> {
-    // Ipc(ipc_channel::ipc::IpcSender<T>),
+    Ipc(ipc_channel::ipc::IpcSender<T>),
     /// A crossbeam-channel. To keep the API in sync with the Ipc variant when using a Router,
     /// which propagates the IPC error, the inner type is a Result.
     /// In the IPC case, the Router deserializes the message, which can fail, and sends
@@ -60,9 +60,9 @@ enum GenericSenderVariants<T: Serialize> {
 impl<T: Serialize> Serialize for GenericSender<T> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match &self.0 {
-            // GenericSenderVariants::Ipc(sender) => {
-            //     s.serialize_newtype_variant("GenericSender", 0, "Ipc", sender)
-            // },
+            GenericSenderVariants::Ipc(sender) => {
+                s.serialize_newtype_variant("GenericSender", 0, "Ipc", sender)
+            },
             // All GenericSenders will be IPC channels in multi-process mode, so sending a
             // GenericChannel over existing IPC channels is no problem and won't fail.
             // In single-process mode, we can also send GenericSenders over other GenericSenders
@@ -104,16 +104,16 @@ impl<'de, T: Serialize + Deserialize<'de>> serde::de::Visitor<'de> for GenericSe
     {
         #[derive(Deserialize)]
         enum GenericSenderVariantNames {
-            // Ipc,
+            Ipc,
             Crossbeam,
         }
 
         let (variant_name, variant_data): (GenericSenderVariantNames, _) = data.variant()?;
 
         match variant_name {
-            // GenericSenderVariantNames::Ipc => variant_data
-            //     .newtype_variant::<ipc_channel::ipc::IpcSender<T>>()
-            //     .map(|sender| GenericSender(GenericSenderVariants::Ipc(sender))),
+            GenericSenderVariantNames::Ipc => variant_data
+                .newtype_variant::<ipc_channel::ipc::IpcSender<T>>()
+                .map(|sender| GenericSender(GenericSenderVariants::Ipc(sender))),
             GenericSenderVariantNames::Crossbeam => {
                 if opts::get().multiprocess {
                     return Err(serde::de::Error::custom(
@@ -153,9 +153,9 @@ where
 {
     fn clone(&self) -> Self {
         match self.0 {
-            // GenericSenderVariants::Ipc(ref chan) => {
-            //     GenericSender(GenericSenderVariants::Ipc(chan.clone()))
-            // },
+            GenericSenderVariants::Ipc(ref chan) => {
+                GenericSender(GenericSenderVariants::Ipc(chan.clone()))
+            },
             GenericSenderVariants::Crossbeam(ref chan) => {
                 GenericSender(GenericSenderVariants::Crossbeam(chan.clone()))
             },
@@ -173,9 +173,9 @@ impl<T: Serialize> GenericSender<T> {
     #[inline]
     pub fn send(&self, msg: T) -> SendResult {
         match self.0 {
-            // GenericSenderVariants::Ipc(ref sender) => sender
-            //     .send(msg)
-            //     .map_err(|e| SendError::SerializationError(format!("{e}"))),
+            GenericSenderVariants::Ipc(ref sender) => sender
+                .send(msg)
+                .map_err(|e| SendError::SerializationError(format!("{e}"))),
             GenericSenderVariants::Crossbeam(ref sender) => {
                 sender.send(Ok(msg)).map_err(|_| SendError::Disconnected)
             },
@@ -212,15 +212,15 @@ pub enum ReceiveError {
     Disconnected,
 }
 
-// impl From<IpcError> for ReceiveError {
-//     fn from(e: IpcError) -> Self {
-//         match e {
-//             IpcError::Disconnected => ReceiveError::Disconnected,
-//             IpcError::Bincode(reason) => ReceiveError::DeserializationFailed(reason.to_string()),
-//             IpcError::Io(reason) => ReceiveError::Io(reason),
-//         }
-//     }
-// }
+impl From<IpcError> for ReceiveError {
+    fn from(e: IpcError) -> Self {
+        match e {
+            IpcError::Disconnected => ReceiveError::Disconnected,
+            IpcError::Bincode(reason) => ReceiveError::DeserializationFailed(reason.to_string()),
+            IpcError::Io(reason) => ReceiveError::Io(reason),
+        }
+    }
+}
 
 impl From<crossbeam_channel::RecvError> for ReceiveError {
     fn from(_: crossbeam_channel::RecvError) -> Self {
@@ -233,16 +233,16 @@ pub enum TryReceiveError {
     ReceiveError(ReceiveError),
 }
 
-// impl From<ipc_channel::ipc::TryRecvError> for TryReceiveError {
-//     fn from(e: ipc_channel::ipc::TryRecvError) -> Self {
-//         match e {
-//             ipc_channel::ipc::TryRecvError::Empty => TryReceiveError::Empty,
-//             ipc_channel::ipc::TryRecvError::IpcError(inner) => {
-//                 TryReceiveError::ReceiveError(inner.into())
-//             },
-//         }
-//     }
-// }
+impl From<ipc_channel::ipc::TryRecvError> for TryReceiveError {
+    fn from(e: ipc_channel::ipc::TryRecvError) -> Self {
+        match e {
+            ipc_channel::ipc::TryRecvError::Empty => TryReceiveError::Empty,
+            ipc_channel::ipc::TryRecvError::IpcError(inner) => {
+                TryReceiveError::ReceiveError(inner.into())
+            },
+        }
+    }
+}
 
 impl From<crossbeam_channel::TryRecvError> for TryReceiveError {
     fn from(e: crossbeam_channel::TryRecvError) -> Self {
@@ -277,7 +277,7 @@ enum GenericReceiverVariants<T>
 where
     T: for<'de> Deserialize<'de> + Serialize,
 {
-    // Ipc(ipc_channel::ipc::IpcReceiver<T>),
+    Ipc(ipc_channel::ipc::IpcReceiver<T>),
     Crossbeam(RoutedReceiver<T>),
 }
 
@@ -288,7 +288,7 @@ where
     #[inline]
     pub fn recv(&self) -> ReceiveResult<T> {
         match self.0 {
-            // GenericReceiverVariants::Ipc(ref receiver) => Ok(receiver.recv()?),
+            GenericReceiverVariants::Ipc(ref receiver) => Ok(receiver.recv()?),
             GenericReceiverVariants::Crossbeam(ref receiver) => {
                 // `recv()` returns an error if the channel is disconnected
                 let msg = receiver.recv()?;
@@ -302,7 +302,7 @@ where
     #[inline]
     pub fn try_recv(&self) -> TryReceiveResult<T> {
         match self.0 {
-            // GenericReceiverVariants::Ipc(ref receiver) => Ok(receiver.try_recv()?),
+            GenericReceiverVariants::Ipc(ref receiver) => Ok(receiver.try_recv()?),
             GenericReceiverVariants::Crossbeam(ref receiver) => {
                 let msg = receiver.try_recv()?;
                 Ok(msg.expect("Infallible"))
@@ -320,17 +320,17 @@ where
         T: Send + 'static,
     {
         match self.0 {
-            // GenericReceiverVariants::Ipc(ipc_receiver) => {
-            //     let (crossbeam_sender, crossbeam_receiver) = crossbeam_channel::unbounded();
-            //     let crossbeam_sender_clone = crossbeam_sender.clone();
-            //     ROUTER.add_typed_route(
-            //         ipc_receiver,
-            //         Box::new(move |message| {
-            //             let _ = crossbeam_sender_clone.send(message);
-            //         }),
-            //     );
-            //     crossbeam_receiver
-            // },
+            GenericReceiverVariants::Ipc(ipc_receiver) => {
+                let (crossbeam_sender, crossbeam_receiver) = crossbeam_channel::unbounded();
+                let crossbeam_sender_clone = crossbeam_sender.clone();
+                ROUTER.add_typed_route(
+                    ipc_receiver,
+                    Box::new(move |message| {
+                        let _ = crossbeam_sender_clone.send(message);
+                    }),
+                );
+                crossbeam_receiver
+            },
             GenericReceiverVariants::Crossbeam(receiver) => receiver,
         }
     }
@@ -342,9 +342,9 @@ where
 {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match &self.0 {
-            // GenericReceiverVariants::Ipc(receiver) => {
-            //     s.serialize_newtype_variant("GenericReceiver", 0, "Ipc", receiver)
-            // },
+            GenericReceiverVariants::Ipc(receiver) => {
+                s.serialize_newtype_variant("GenericReceiver", 0, "Ipc", receiver)
+            },
             GenericReceiverVariants::Crossbeam(receiver) => {
                 if opts::get().multiprocess {
                     return Err(serde::ser::Error::custom(
@@ -356,6 +356,15 @@ where
                 s.serialize_newtype_variant("GenericReceiver", 1, "Crossbeam", &receiver_clone_addr)
             },
         }
+    }
+}
+
+impl<T> fmt::Debug for GenericReceiver<T>
+where
+    T: for<'de> Deserialize<'de> + Serialize,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Sender(..)")
     }
 }
 
@@ -378,16 +387,16 @@ where
     {
         #[derive(Deserialize)]
         enum GenericReceiverVariantNames {
-            // Ipc,
+            Ipc,
             Crossbeam,
         }
 
         let (variant_name, variant_data): (GenericReceiverVariantNames, _) = data.variant()?;
 
         match variant_name {
-            // GenericReceiverVariantNames::Ipc => variant_data
-            //     .newtype_variant::<ipc_channel::ipc::IpcReceiver<T>>()
-            //     .map(|receiver| GenericReceiver(GenericReceiverVariants::Ipc(receiver))),
+            GenericReceiverVariantNames::Ipc => variant_data
+                .newtype_variant::<ipc_channel::ipc::IpcReceiver<T>>()
+                .map(|receiver| GenericReceiver(GenericReceiverVariants::Ipc(receiver))),
             GenericReceiverVariantNames::Crossbeam => {
                 if opts::get().multiprocess {
                     return Err(serde::de::Error::custom(
@@ -440,17 +449,17 @@ where
     )
 }
 
-// fn new_generic_channel_ipc<T>() -> Result<(GenericSender<T>, GenericReceiver<T>), std::io::Error>
-// where
-//     T: Serialize + for<'de> serde::Deserialize<'de>,
-// {
-//     ipc_channel::ipc::channel().map(|(tx, rx)| {
-//         (
-//             GenericSender(GenericSenderVariants::Ipc(tx)),
-//             GenericReceiver(GenericReceiverVariants::Ipc(rx)),
-//         )
-//     })
-// }
+fn new_generic_channel_ipc<T>() -> Result<(GenericSender<T>, GenericReceiver<T>), std::io::Error>
+where
+    T: Serialize + for<'de> serde::Deserialize<'de>,
+{
+    ipc_channel::ipc::channel().map(|(tx, rx)| {
+        (
+            GenericSender(GenericSenderVariants::Ipc(tx)),
+            GenericReceiver(GenericReceiverVariants::Ipc(rx)),
+        )
+    })
+}
 
 /// Creates a Servo channel that can select different channel implementations based on multiprocess
 /// mode or not. If the scenario doesn't require message to pass process boundary, a simple

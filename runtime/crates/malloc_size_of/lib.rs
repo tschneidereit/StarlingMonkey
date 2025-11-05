@@ -695,24 +695,24 @@ impl<T> MallocSizeOf for crossbeam_channel::Sender<T> {
         0
     }
 }
-//
+
 // impl<T> MallocSizeOf for tokio::sync::mpsc::UnboundedSender<T> {
 //     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
 //         0
 //     }
 // }
-//
-// impl<T> MallocSizeOf for ipc_channel::ipc::IpcSender<T> {
-//     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
-//         0
-//     }
-// }
-//
-// impl<T> MallocSizeOf for ipc_channel::ipc::IpcReceiver<T> {
-//     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
-//         0
-//     }
-// }
+
+impl<T> MallocSizeOf for ipc_channel::ipc::IpcSender<T> {
+    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
+        0
+    }
+}
+
+impl<T> MallocSizeOf for ipc_channel::ipc::IpcReceiver<T> {
+    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
+        0
+    }
+}
 //
 // impl MallocSizeOf for ipc_channel::ipc::IpcSharedMemory {
 //     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
@@ -745,8 +745,8 @@ malloc_size_of_is_0!(Range<i8>, Range<i16>, Range<i32>, Range<i64>, Range<isize>
 malloc_size_of_is_0!(Range<u8>, Range<u16>, Range<u32>, Range<u64>, Range<usize>);
 
 malloc_size_of_is_0!(Uuid);
-// malloc_size_of_is_0!(content_security_policy::Destination);
-// malloc_size_of_is_0!(http::StatusCode);
+malloc_size_of_is_0!(content_security_policy::Destination);
+malloc_size_of_is_0!(http::StatusCode);
 malloc_size_of_is_0!(app_units::Au);
 // malloc_size_of_is_0!(keyboard_types::Modifiers);
 malloc_size_of_is_0!(mime::Mime);

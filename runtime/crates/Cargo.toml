@@ -30,14 +30,22 @@ bindgen = { version = "0.72", default-features = false, features = [
 bincode = "1"
 bitflags = "2.9"
 content-security-policy = { git = "https://github.com/servo/rust-content-security-policy", branch = "servo-csp", features = ["serde"] }
+cookie = { package = "cookie", version = "0.18" }
 crossbeam-channel = "0.5"
+data-url = "0.3"
 deny_public_fields = { path = "deny_public_fields" }
 devtools_traits = { path = "shared/devtools" }
 dom_struct = { path = "dom_struct" }
 domobject_derive = { path = "domobject_derive" }
+embedder_traits = { path = "shared/embedder" }
 encoding_rs = "0.8"
 fnv = "1.0"
+headers = "0.4"
+http = "1.3"
+hyper-util = { version = "0.1", features = ["http2", "tokio"] }
+hyper_serde = { path = "hyper_serde" }
 indexmap = { version = "2.10.0", features = ["std"] }
+ipc-channel = "0.20.2"
 itertools = "0.14"
 js = { package = "mozjs", git = "https://github.com/servo/mozjs", rev = "bbbbf315e89cf91428f3b652ac68146687737259" }
 jstraceable_derive = { path = "jstraceable_derive" }
@@ -47,8 +55,10 @@ mach2 = "0.4"
 malloc_size_of = { path = "malloc_size_of" }
 malloc_size_of_derive = "0.1"
 mime = "0.3.13"
+net_traits = { path = "shared/net" }
 num-traits = "0.2.19"
 parking_lot = "0.12"
+percent-encoding = "2.3"
 phf = "0.11"
 proc-macro2 = "1.0.101"
 quote = "1.0.40"
@@ -57,9 +67,12 @@ rand_core = "0.6"
 rand_isaac = "0.3"
 regex = "1.11"
 rustc-hash = "2.1.1"
+rustls-pki-types = "1.12"
 script = { path = "script" }
 script_bindings = { path = "script_bindings" }
 serde = { version = "1.0.219", features = ["derive", "rc"] }
+serde_bytes = "0.11"
+serde_core = "1.0.226"
 serde_json = "1.0"
 servo_arc = { git = "https://github.com/servo/stylo", branch = "2025-08-01", features = ["servo"] }
 servo_config = { path = "config" }
