@@ -169,8 +169,7 @@ pub enum BodySource {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum BodyChunkResponse {
     /// A chunk of bytes.
-    Chunk(Vec<u8>), // TODO(ts): is passing this by value ok?
-    // Chunk(IpcSharedMemory),
+    Chunk(IpcSharedMemory),
     /// The body is done.
     Done,
     /// There was an error streaming the body,
@@ -941,8 +940,7 @@ pub fn convert_header_names_to_sorted_lowercase_set(
 }
 
 pub fn create_request_body_with_content(content: &str) -> RequestBody {
-    // TODO(ts): avoid this clone if possible. Servo clones here, too, but we might not need to.
-    let content_bytes = content.as_bytes().to_vec();
+    let content_bytes = IpcSharedMemory::from_bytes(content.as_bytes());
     let content_len = content_bytes.len();
 
     let (chunk_request_sender, chunk_request_receiver) = ipc::channel().unwrap();

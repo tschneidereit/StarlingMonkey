@@ -134,7 +134,7 @@
 #![deny(missing_docs)]
 #![deny(non_snake_case)]
 
-// pub(crate) mod buffer_source;
+pub(crate) mod buffer_source;
 #[allow(dead_code)]
 pub(crate) mod cell;
 // pub(crate) mod constructor;
@@ -151,12 +151,12 @@ pub(crate) mod proxyhandler;
 pub(crate) mod refcounted;
 pub(crate) mod reflector;
 pub(crate) mod root;
-// pub(crate) mod serializable;
+pub(crate) mod serializable;
 pub(crate) mod settings_stack;
 pub(crate) mod str;
-// pub(crate) mod structuredclone;
+pub(crate) mod structuredclone;
 pub(crate) mod trace;
-// pub(crate) mod transferable;
+pub(crate) mod transferable;
 pub(crate) mod utils;
 pub(crate) mod weakref;
 // pub(crate) mod xmlname;

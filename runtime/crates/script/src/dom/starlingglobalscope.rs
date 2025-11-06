@@ -4,11 +4,17 @@
 
 use base::id::PipelineId;
 use crossbeam_channel::{unbounded, Receiver, Sender};
+use ipc_channel::ipc;
 use dom_struct::dom_struct;
 use js::jsval::UndefinedValue;
 use js::rust::ParentRuntime;
 use rustc_hash::FxHashSet;
+use constellation_traits::ScriptToConstellationChan;
+use embedder_traits::{EmbedderMsg, EmbedderProxy, EventLoopWaker, ScriptToEmbedderChan};
+use net_traits::ResourceThreads;
+use profile_traits::{generic_channel, mem as profile_mem, time as profile_time};
 use servo_url::{MutableOrigin, ServoUrl};
+use storage_traits::StorageThreads;
 use crate::dom::abstractworker::WorkerScriptMsg;
 use crate::dom::abstractworkerglobalscope::{run_worker_event_loop, WorkerEventLoopMethods};
 use crate::dom::bindings::cell::{DomRefCell, Ref};
@@ -53,6 +59,13 @@ impl StarlingGlobalScope {
     #[allow(unsafe_code, clippy::too_many_arguments)]
     pub fn new(
         pipeline_id: PipelineId,
+        // devtools_chan: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
+        mem_profiler_chan: profile_mem::ProfilerChan,
+        time_profiler_chan: profile_time::ProfilerChan,
+        script_to_constellation_chan: ScriptToConstellationChan,
+        script_to_embedder_chan: ScriptToEmbedderChan,
+        resource_threads: ResourceThreads,
+        storage_threads: StorageThreads,
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_name: DOMString,
@@ -64,6 +77,13 @@ impl StarlingGlobalScope {
         let cx = runtime.cx();
         let scope = Box::new(Self::new_inherited(
             pipeline_id,
+            // devtools_chan,
+            mem_profiler_chan,
+            time_profiler_chan,
+            script_to_constellation_chan,
+            script_to_embedder_chan,
+            resource_threads,
+            storage_threads,
             origin,
             creation_url,
             worker_name,
@@ -83,6 +103,13 @@ impl StarlingGlobalScope {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_inherited(
         pipeline_id: PipelineId,
+        // devtools_chan: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
+        mem_profiler_chan: profile_mem::ProfilerChan,
+        time_profiler_chan: profile_time::ProfilerChan,
+        script_to_constellation_chan: ScriptToConstellationChan,
+        script_to_embedder_chan: ScriptToEmbedderChan,
+        resource_threads: ResourceThreads,
+        storage_threads: StorageThreads,
         origin: MutableOrigin,
         creation_url: ServoUrl,
         worker_name: DOMString,
@@ -94,6 +121,13 @@ impl StarlingGlobalScope {
         Self {
             globalscope: WorkerGlobalScope::new_inherited(
                 pipeline_id,
+                // devtools_chan,
+                mem_profiler_chan,
+                time_profiler_chan,
+                script_to_constellation_chan,
+                script_to_embedder_chan,
+                resource_threads,
+                storage_threads,
                 origin,
                 creation_url,
                 runtime.microtask_queue.clone(),
@@ -171,6 +205,26 @@ impl WorkerEventLoopMethods for StarlingGlobalScope {
     }
 }
 
+struct DefaultEventLoopWaker;
+
+impl EventLoopWaker for DefaultEventLoopWaker {
+    fn clone_box(&self) -> Box<dyn EventLoopWaker> {
+        Box::new(DefaultEventLoopWaker)
+    }
+}
+
+fn create_embedder_channel(
+    event_loop_waker: Box<dyn EventLoopWaker>,
+) -> (EmbedderProxy, Receiver<EmbedderMsg>) {
+    let (sender, receiver) = unbounded();
+    (
+        EmbedderProxy {
+            sender,
+            event_loop_waker,
+        },
+        receiver,
+    )
+}
 
 impl StarlingGlobalScope {
 
@@ -190,8 +244,39 @@ impl StarlingGlobalScope {
             name: TaskSourceName::Networking,
             canceller: Default::default(),
         }));
+        let time_profiler_chan = profile::time::Profiler::create(
+            &None, // &opts.time_profiling,
+            None, //opts.time_profiler_trace_path.clone(),
+        );
+        let mem_profiler_chan = profile::mem::Profiler::create();
+
+        let (constellation_sender, constellation_receiver) =
+            generic_channel::channel(time_profiler_chan.clone()).unwrap();
+        let script_to_constellation_chan = ScriptToConstellationChan {
+            sender: constellation_sender,
+            pipeline_id,
+        };
+
+        let event_loop_waker: Box<dyn EventLoopWaker> = Box::new(DefaultEventLoopWaker);
+        let (embedder_proxy, embedder_receiver) = create_embedder_channel(event_loop_waker.clone());
+        let embedder_chan = embedder_proxy.sender.clone();
+        let eventloop_waker = event_loop_waker.clone();
+        let script_to_embedder_chan = ScriptToEmbedderChan::new(embedder_chan, eventloop_waker);
+        let (storage_sender, storage_receiver) =
+            generic_channel::channel(time_profiler_chan.clone()).unwrap();
+        let storage_threads: StorageThreads = StorageThreads::new(storage_sender);
+        let (core_sender, _) = ipc::channel().unwrap();
+        let mock_resource_threads = ResourceThreads::new(core_sender);
+
         let global = Self::new(
             pipeline_id,
+            // None,
+            mem_profiler_chan,
+            time_profiler_chan,
+            script_to_constellation_chan,
+            script_to_embedder_chan,
+            mock_resource_threads,
+            storage_threads,
             origin,
             creation_url,
             DOMString::from_string(worker_name),

@@ -21,6 +21,7 @@ resolver = "2"
 accountable-refcell = "0.2.2"
 app_units = "0.7"
 atomic_refcell = "0.1.13"
+backtrace = "0.3"
 base = { path = "shared/base" }
 bindgen = { version = "0.72", default-features = false, features = [
     "runtime",
@@ -29,9 +30,11 @@ bindgen = { version = "0.72", default-features = false, features = [
 ] }
 bincode = "1"
 bitflags = "2.9"
+constellation_traits = { path = "shared/constellation" }
 content-security-policy = { git = "https://github.com/servo/rust-content-security-policy", branch = "servo-csp", features = ["serde"] }
 cookie = { package = "cookie", version = "0.18" }
 crossbeam-channel = "0.5"
+cssparser = { version = "0.35", features = ["serde"] }
 data-url = "0.3"
 deny_public_fields = { path = "deny_public_fields" }
 devtools_traits = { path = "shared/devtools" }
@@ -41,6 +44,7 @@ embedder_traits = { path = "shared/embedder" }
 encoding_rs = "0.8"
 fnv = "1.0"
 headers = "0.4"
+html5ever = "0.35"
 http = "1.3"
 hyper-util = { version = "0.1", features = ["http2", "tokio"] }
 hyper_serde = { path = "hyper_serde" }
@@ -61,6 +65,7 @@ parking_lot = "0.12"
 percent-encoding = "2.3"
 phf = "0.11"
 proc-macro2 = "1.0.101"
+profile_traits = { path = "shared/profile" }
 quote = "1.0.40"
 rand = "0.8"
 rand_core = "0.6"
@@ -78,14 +83,17 @@ servo_arc = { git = "https://github.com/servo/stylo", branch = "2025-08-01", fea
 servo_config = { path = "config" }
 servo_url = { path = "url" }
 smallvec = { version = "1.15", features = ["serde", "union"] }
+storage_traits = { path = "shared/storage" }
 string_cache = { version = "0.8.9" }
-strum = "0.26"
+strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 stylo_atoms = { git = "https://github.com/servo/stylo", branch = "2025-09-02" }
 stylo_config = "0.6.0"
 stylo_malloc_size_of = { git = "https://github.com/servo/stylo", branch = "2025-09-02" }
 syn = "2.0.106"
 synstructure = "0.13.2"
+tikv-jemalloc-sys = "0.6.0"
+tikv-jemallocator = "0.6.0"
 time = { package = "time", version = "0.3", features = ["large-dates", "local-offset", "serde"] }
 tracing = "0.1.41"
 url = { version = "2.5", features = ["serde"] }

@@ -18,7 +18,7 @@ use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::codegen::Bindings::PromiseBinding::PromiseJobCallback;
 use crate::dom::bindings::codegen::Bindings::VoidFunctionBinding::VoidFunction;
 use crate::dom::bindings::root::DomRoot;
-// use crate::dom::defaultteereadrequest::DefaultTeeReadRequestMicrotask;
+use crate::dom::defaultteereadrequest::DefaultTeeReadRequestMicrotask;
 use crate::dom::globalscope::GlobalScope;
 // use crate::dom::html::htmlimageelement::ImageElementMicrotask;
 // use crate::dom::html::htmlmediaelement::MediaElementMicrotask;
@@ -41,7 +41,7 @@ pub(crate) enum Microtask {
     User(UserMicrotask),
     // MediaElement(MediaElementMicrotask),
     // ImageElement(ImageElementMicrotask),
-    // ReadableStreamTeeReadRequest(DefaultTeeReadRequestMicrotask),
+    ReadableStreamTeeReadRequest(DefaultTeeReadRequestMicrotask),
     WaitForAllSuccessSteps(WaitForAllSuccessStepsMicrotask),
     // CustomElementReaction,
     // NotifyMutationObservers,
@@ -139,10 +139,10 @@ impl MicrotaskQueue {
                     //     let _realm = task.enter_realm();
                     //     task.handler(can_gc);
                     // },
-                    // Microtask::ReadableStreamTeeReadRequest(ref task) => {
-                    //     let _realm = task.enter_realm();
-                    //     task.handler(can_gc);
-                    // },
+                    Microtask::ReadableStreamTeeReadRequest(ref task) => {
+                        let _realm = task.enter_realm();
+                        task.handler(can_gc);
+                    },
                     Microtask::WaitForAllSuccessSteps(ref task) => {
                         let _realm = task.enter_realm();
                         task.handler(can_gc);

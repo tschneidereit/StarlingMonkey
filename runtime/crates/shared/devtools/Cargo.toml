@@ -12,15 +12,15 @@ name = "devtools_traits"
 path = "lib.rs"
 
 [dependencies]
-#base = { workspace = true }
+base = { workspace = true }
 bitflags = { workspace = true }
 log = { workspace = true }
-#http = { workspace = true }
-#ipc-channel = { workspace = true }
+http = { workspace = true }
+ipc-channel = { workspace = true }
 malloc_size_of = { workspace = true }
 malloc_size_of_derive = { workspace = true }
-#net_traits = { workspace = true }
+net_traits = { workspace = true }
 serde = { workspace = true }
 servo_url = { path = "../../url" }
 uuid = { workspace = true, features = ["serde"] }
-#embedder_traits = { workspace = true }
+embedder_traits = { workspace = true }

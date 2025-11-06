@@ -7,13 +7,18 @@ use std::time::Duration;
 use base::id::PipelineId;
 use js::gc::HandleValue;
 use js::rust::{HandleObject, MutableHandleObject};
+use constellation_traits::ScriptToConstellationChan;
 use dom_struct::dom_struct;
+use embedder_traits::ScriptToEmbedderChan;
+use net_traits::ResourceThreads;
+use profile_traits::{ipc as profile_ipc, mem as profile_mem, time as profile_time};
 use script_bindings::codegen::GenericBindings::VoidFunctionBinding::VoidFunction;
 use script_bindings::codegen::GenericBindings::WorkerGlobalScopeBinding::WorkerGlobalScopeMethods;
 use script_bindings::error::Fallible;
 use script_bindings::root::DomRoot;
 use script_bindings::script_runtime::CanGc;
 use servo_url::{MutableOrigin, ServoUrl};
+use storage_traits::StorageThreads;
 use timers::TimerScheduler;
 use crate::dom::bindings::codegen::DomTypeHolder::DomTypeHolder;
 use crate::dom::bindings::codegen::UnionTypes::{TrustedScriptOrString, TrustedScriptOrStringOrFunction};
@@ -39,6 +44,13 @@ impl WorkerGlobalScope {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_inherited(
         pipeline_id: PipelineId,
+        // devtools_chan: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
+        mem_profiler_chan: profile_mem::ProfilerChan,
+        time_profiler_chan: profile_time::ProfilerChan,
+        script_to_constellation_chan: ScriptToConstellationChan,
+        script_to_embedder_chan: ScriptToEmbedderChan,
+        resource_threads: ResourceThreads,
+        storage_threads: StorageThreads,
         origin: MutableOrigin,
         creation_url: ServoUrl,
         microtask_queue: Rc<MicrotaskQueue>,
@@ -46,10 +58,18 @@ impl WorkerGlobalScope {
         Self {
             global_scope: GlobalScope::new_inherited(
                 pipeline_id,
+                // devtools_chan,
+                mem_profiler_chan,
+                time_profiler_chan,
+                script_to_constellation_chan,
+                script_to_embedder_chan,
+                resource_threads,
+                storage_threads,
                 origin,
                 creation_url,
                 None,
                 microtask_queue,
+                None,
                 // false,
             ),
             timer_scheduler: RefCell::default(),

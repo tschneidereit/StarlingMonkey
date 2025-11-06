@@ -359,6 +359,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
+name = "constellation_traits"
+version = "0.0.1"
+dependencies = [
+ "base",
+ "devtools_traits",
+ "embedder_traits",
+ "http",
+ "hyper_serde",
+ "ipc-channel",
+ "log",
+ "malloc_size_of",
+ "malloc_size_of_derive",
+ "net_traits",
+ "profile_traits",
+ "rustc-hash",
+ "serde",
+ "servo_config",
+ "servo_url",
+ "storage_traits",
+ "strum",
+ "strum_macros",
+ "uuid",
+]
+
+[[package]]
 name = "content-security-policy"
 version = "0.5.4"
 source = "git+https://github.com/servo/rust-content-security-policy?branch=servo-csp#b437ae2001616161ce4729b49408e7785b2f6960"
@@ -445,6 +470,7 @@ dependencies = [
  "dtoa-short",
  "itoa",
  "phf",
+ "serde",
  "smallvec",
 ]
 
@@ -506,10 +532,15 @@ dependencies = [
 name = "devtools_traits"
 version = "0.0.1"
 dependencies = [
+ "base",
  "bitflags",
+ "embedder_traits",
+ "http",
+ "ipc-channel",
  "log",
  "malloc_size_of",
  "malloc_size_of_derive",
+ "net_traits",
  "serde",
  "servo_url",
  "uuid",
@@ -775,6 +806,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "futf"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df420e2e84819663797d1ec6544b13c5be84629e7bb00dc960d6917db2987843"
+dependencies = [
+ "mac",
+ "new_debug_unreachable",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -903,6 +944,17 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "html5ever"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55d958c2f74b664487a2035fe1dadb032c48718a03b63f3ab0b8537db8549ed4"
+dependencies = [
+ "log",
+ "markup5ever",
+ "match_token",
+]
 
 [[package]]
 name = "http"
@@ -1688,6 +1740,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
+name = "mac"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
+
+[[package]]
 name = "mach2"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1727,6 +1785,28 @@ dependencies = [
  "proc-macro2",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "markup5ever"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "311fe69c934650f8f19652b3946075f0fc41ad8757dbb68f1ca14e7900ecc1c3"
+dependencies = [
+ "log",
+ "tendril",
+ "web_atoms",
+]
+
+[[package]]
+name = "match_token"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac84fd3f360fcc43dc5f5d186f02a94192761a080e8bc58621ad4d12296a58cf"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2088,6 +2168,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "profile"
+version = "0.0.1"
+dependencies = [
+ "base",
+ "ipc-channel",
+ "libc 1.0.0-alpha.1",
+ "log",
+ "profile_traits",
+ "regex",
+ "serde",
+ "serde_json",
+ "servo_allocator",
+ "servo_config",
+ "task_info",
+ "tikv-jemalloc-sys",
+ "time",
+]
+
+[[package]]
+name = "profile_traits"
+version = "0.0.1"
+dependencies = [
+ "base",
+ "crossbeam-channel",
+ "ipc-channel",
+ "log",
+ "malloc_size_of",
+ "malloc_size_of_derive",
+ "serde",
+ "servo_allocator",
+ "servo_config",
+ "time",
+ "tracing",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2285,37 +2401,55 @@ dependencies = [
  "accountable-refcell",
  "base",
  "bincode",
+ "constellation_traits",
  "crossbeam-channel",
+ "cssparser",
+ "data-url",
  "deny_public_fields",
  "devtools_traits",
  "dom_struct",
  "domobject_derive",
+ "embedder_traits",
+ "encoding_rs",
  "fnv",
+ "headers",
+ "html5ever",
+ "http",
+ "hyper_serde",
  "indexmap",
+ "ipc-channel",
  "itertools 0.14.0",
  "jstraceable_derive",
  "libc 1.0.0-alpha.1",
  "log",
  "malloc_size_of",
  "malloc_size_of_derive",
+ "mime",
  "mozjs",
  "net_traits",
  "num-traits",
  "phf",
+ "profile",
+ "profile_traits",
  "regex",
  "rustc-hash",
  "script_bindings",
  "serde",
  "serde_json",
  "servo_config",
+ "servo_rand",
  "servo_url",
+ "storage_traits",
  "strum",
  "strum_macros",
  "stylo_atoms",
  "time",
  "timers",
  "tracing",
+ "url",
+ "urlpattern",
  "utf-8",
+ "uuid",
 ]
 
 [[package]]
@@ -2468,6 +2602,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "servo_allocator"
+version = "0.0.1"
+dependencies = [
+ "backtrace",
+ "libc 1.0.0-alpha.1",
+ "rustc-hash",
+ "tikv-jemalloc-sys",
+ "tikv-jemallocator",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "servo_arc"
 version = "0.4.1"
 source = "git+https://github.com/servo/stylo?branch=2025-08-01#35cd8025bb3d5c4cc50db80cb65f9b1840e5ac5a"
@@ -2605,6 +2751,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "storage_traits"
+version = "0.0.1"
+dependencies = [
+ "base",
+ "ipc-channel",
+ "malloc_size_of",
+ "malloc_size_of_derive",
+ "profile_traits",
+ "serde",
+ "servo_url",
+]
+
+[[package]]
 name = "strck"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2656,6 +2815,9 @@ name = "strum"
 version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
+dependencies = [
+ "strum_macros",
+]
 
 [[package]]
 name = "strum_macros"
@@ -2735,6 +2897,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "task_info"
+version = "0.0.1"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2745,6 +2914,17 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "tendril"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d24a120c5fc464a3458240ee02c299ebcb9d67b5249c8848b09d639dca8d7bb0"
+dependencies = [
+ "futf",
+ "mac",
+ "utf-8",
 ]
 
 [[package]]
@@ -2791,6 +2971,26 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tikv-jemalloc-sys"
+version = "0.6.1+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
+dependencies = [
+ "cc",
+ "libc 0.2.174",
+]
+
+[[package]]
+name = "tikv-jemallocator"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0359b4327f954e0567e69fb191cf1436617748813819c94b8cd4a431422d053a"
+dependencies = [
+ "libc 0.2.174",
+ "tikv-jemalloc-sys",
 ]
 
 [[package]]
@@ -3180,6 +3380,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f143854a3b13752c6950862c906306adb27c7e839f7414cec8fea35beab624c1"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "web_atoms"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57ffde1dc01240bdf9992e3205668b235e59421fd085e8a317ed98da0178d414"
+dependencies = [
+ "phf",
+ "phf_codegen",
+ "string_cache",
+ "string_cache_codegen",
 ]
 
 [[package]]

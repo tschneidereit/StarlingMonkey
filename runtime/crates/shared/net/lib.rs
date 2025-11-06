@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use servo_rand::RngCore;
 use servo_url::{ImmutableOrigin, ServoUrl};
 
-// use crate::filemanager_thread::FileManagerThreadMsg;
+use crate::filemanager_thread::FileManagerThreadMsg;
 use crate::http_status::HttpStatus;
 use crate::request::{Request, RequestBuilder};
 use crate::response::{HttpsState, Response, ResponseInit};
@@ -299,10 +299,10 @@ pub trait FetchResponseListener {
         request_id: RequestId,
         response: Result<ResourceFetchTiming, NetworkError>,
     );
-    fn resource_timing(&self) -> &ResourceFetchTiming;
-    fn resource_timing_mut(&mut self) -> &mut ResourceFetchTiming;
-    fn submit_resource_timing(&mut self);
-    fn process_csp_violations(&mut self, request_id: RequestId, violations: Vec<csp::Violation>);
+    // fn resource_timing(&self) -> &ResourceFetchTiming;
+    // fn resource_timing_mut(&mut self) -> &mut ResourceFetchTiming;
+    // fn submit_resource_timing(&mut self);
+    // fn process_csp_violations(&mut self, request_id: RequestId, violations: Vec<csp::Violation>);
 }
 
 impl FetchTaskTarget for IpcSender<FetchResponseMsg> {
@@ -380,12 +380,12 @@ impl<T: FetchResponseListener> Action<T> for FetchResponseMsg {
                 match data {
                     Ok(ref response_resource_timing) => {
                         // update listener with values from response
-                        *listener.resource_timing_mut() = response_resource_timing.clone();
-                        listener
-                            .process_response_eof(request_id, Ok(response_resource_timing.clone()));
-                        // TODO timing check https://w3c.github.io/resource-timing/#dfn-timing-allow-check
-
-                        listener.submit_resource_timing();
+                        // *listener.resource_timing_mut() = response_resource_timing.clone();
+                        // listener
+                        //     .process_response_eof(request_id, Ok(response_resource_timing.clone()));
+                        // // TODO timing check https://w3c.github.io/resource-timing/#dfn-timing-allow-check
+                        //
+                        // listener.submit_resource_timing();
                     },
                     // TODO Resources for which the fetch was initiated, but was later aborted
                     // (e.g. due to a network error) MAY be included as PerformanceResourceTiming
@@ -395,7 +395,7 @@ impl<T: FetchResponseListener> Action<T> for FetchResponseMsg {
                 }
             },
             FetchResponseMsg::ProcessCspViolations(request_id, violations) => {
-                listener.process_csp_violations(request_id, violations)
+                // listener.process_csp_violations(request_id, violations)
             },
         }
     }
@@ -524,8 +524,8 @@ pub enum CoreResourceMsg {
     // ClearCache,
     // /// Send the service worker network mediator for an origin to CoreResourceThread
     // NetworkMediator(IpcSender<CustomResponseMediator>, ImmutableOrigin),
-    // /// Message forwarded to file manager's handler
-    // ToFileManager(FileManagerThreadMsg),
+    /// Message forwarded to file manager's handler
+    ToFileManager(FileManagerThreadMsg),
     // /// Break the load handler loop, send a reply when done cleaning up local resources
     // /// and exit
     // Exit(IpcSender<()>),

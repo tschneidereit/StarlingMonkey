@@ -25,8 +25,8 @@ use crate::dom::bindings::root::{Dom, DomRoot};
 use crate::dom::bindings::str::DOMString;
 use crate::dom::eventtarget::EventTarget;
 use crate::dom::globalscope::GlobalScope;
-// use crate::dom::readablestream::PipeTo;
-// use crate::fetch::FetchContext;
+use crate::dom::readablestream::PipeTo;
+use crate::fetch::FetchContext;
 use crate::realms::InRealm;
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 
@@ -41,14 +41,14 @@ impl js::gc::Rootable for AbortAlgorithm {}
 pub(crate) enum AbortAlgorithm {
     /// <https://dom.spec.whatwg.org/#add-an-event-listener>
     DomEventListener(RemovableDomEventListener),
-    // /// <https://streams.spec.whatwg.org/#readable-stream-pipe-to>
-    // StreamPiping(PipeTo),
-    // /// <https://fetch.spec.whatwg.org/#dom-global-fetch>
-    // Fetch(
-    //     #[no_trace]
-    //     #[conditional_malloc_size_of]
-    //     Arc<Mutex<FetchContext>>,
-    // ),
+    /// <https://streams.spec.whatwg.org/#readable-stream-pipe-to>
+    StreamPiping(PipeTo),
+    /// <https://fetch.spec.whatwg.org/#dom-global-fetch>
+    Fetch(
+        #[no_trace]
+        #[conditional_malloc_size_of]
+        Arc<Mutex<FetchContext>>,
+    ),
 }
 
 #[derive(Clone, JSTraceable, MallocSizeOf)]
@@ -177,19 +177,19 @@ impl AbortSignal {
         can_gc: CanGc,
     ) {
         match algorithm {
-            // AbortAlgorithm::StreamPiping(pipe) => {
-            //     rooted!(in(*cx) let mut reason = UndefinedValue());
-            //     reason.set(self.abort_reason.get());
-            //     pipe.abort_with_reason(cx, global, reason.handle(), realm, can_gc);
-            // },
-            // AbortAlgorithm::Fetch(fetch_context) => {
-            //     rooted!(in(*cx) let mut reason = UndefinedValue());
-            //     reason.set(self.abort_reason.get());
-            //     fetch_context
-            //         .lock()
-            //         .unwrap()
-            //         .abort_fetch(reason.handle(), cx, can_gc);
-            // },
+            AbortAlgorithm::StreamPiping(pipe) => {
+                rooted!(in(*cx) let mut reason = UndefinedValue());
+                reason.set(self.abort_reason.get());
+                pipe.abort_with_reason(cx, global, reason.handle(), realm, can_gc);
+            },
+            AbortAlgorithm::Fetch(fetch_context) => {
+                rooted!(in(*cx) let mut reason = UndefinedValue());
+                reason.set(self.abort_reason.get());
+                fetch_context
+                    .lock()
+                    .unwrap()
+                    .abort_fetch(reason.handle(), cx, can_gc);
+            },
             AbortAlgorithm::DomEventListener(removable_listener) => {
                 removable_listener
                     .event_target
