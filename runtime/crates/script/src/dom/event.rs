@@ -235,7 +235,7 @@ impl Event {
         slot_in_closed_tree: bool,
     ) {
         // Step 1. Let invocationTargetInShadowTree be false.
-        let mut invocation_target_in_shadow_tree = false;
+        let /*mut*/ invocation_target_in_shadow_tree = false;
 
         // // Step 2. If invocationTarget is a node and its root is a shadow root,
         // // then set invocationTargetInShadowTree to true.
@@ -247,7 +247,7 @@ impl Event {
         // }
 
         // Step 3. Let root-of-closed-tree be false.
-        let mut root_of_closed_tree = false;
+        let /*mut*/ root_of_closed_tree = false;
 
         // // Step 4. If invocationTarget is a shadow root whose mode is "closed", then set root-of-closed-tree to true.
         // if invocation_target
@@ -276,11 +276,11 @@ impl Event {
     pub(crate) fn dispatch(
         &self,
         target: &EventTarget,
-        legacy_target_override: bool,
+        _legacy_target_override: bool,
         can_gc: CanGc,
         // TODO legacy_did_output_listeners_throw_flag for indexeddb
     ) -> bool {
-        let mut target = DomRoot::from_ref(target);
+        let /*mut*/ target = DomRoot::from_ref(target);
 
         // Step 1. Set event’s dispatch flag.
         self.dispatch.set(true);
@@ -312,7 +312,7 @@ impl Event {
         // Step 5. If target is not relatedTarget or target is event’s relatedTarget:
         // Variables declared by the spec inside Step 5 but used later:
         // TODO: https://github.com/whatwg/dom/issues/1344
-        let mut clear_targets = false;
+        let /*mut*/ clear_targets = false;
         // let mut pre_activation_result: Option<InputActivationState> = None;
         if related_target.as_ref() != Some(&target) ||
             self.related_target.get().as_ref() == Some(&target)
@@ -1227,7 +1227,7 @@ fn inner_invoke(
     event: &Event,
     listeners: &EventListeners,
     phase: ListenerPhase,
-    invocation_target_in_shadow_tree: bool,
+    _invocation_target_in_shadow_tree: bool,
     // timeline_window: Option<&Window>,
     can_gc: CanGc,
 ) -> bool {
@@ -1270,7 +1270,7 @@ fn inner_invoke(
         };
 
         // Step 2.6 Let global be listener callback’s associated realm’s global object.
-        let global = compiled_listener.associated_global();
+        // let global = compiled_listener.associated_global();
 
         // Step 2.7 Let currentEvent be undefined.
         // let mut current_event = None;

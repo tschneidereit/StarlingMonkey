@@ -14,9 +14,9 @@ use js::glue::{
     SetProxyPrivate,
 };
 use js::jsapi::{
-    DOMProxyShadowsResult, GetStaticPrototype, GetWellKnownSymbol, Handle as RawHandle,
+    DOMProxyShadowsResult, /*GetStaticPrototype,*/ GetWellKnownSymbol, /*Handle as RawHandle,*/
     HandleId as RawHandleId, HandleObject as RawHandleObject, HandleValue as RawHandleValue,
-    JS_AtomizeAndPinString, JS_DefinePropertyById, JS_GetOwnPropertyDescriptorById,
+    JS_AtomizeAndPinString, /*JS_DefinePropertyById,*/ JS_GetOwnPropertyDescriptorById,
     JS_IsExceptionPending, JSAutoRealm, JSContext, JSErrNum, JSFunctionSpec, JSObject,
     JSPropertySpec, MutableHandle as RawMutableHandle,
     MutableHandleIdVector as RawMutableHandleIdVector,
@@ -40,7 +40,7 @@ use crate::realms::{AlreadyInRealm, InRealm};
 use crate::reflector::DomObject;
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 use crate::str::DOMString;
-use crate::utils::delete_property_by_id;
+// use crate::utils::delete_property_by_id;
 
 /// Determine if this id shadows any existing properties for this proxy.
 ///
@@ -83,92 +83,92 @@ pub fn init() {
     }
 }
 
-/// Defines an expando on the given `proxy`.
-///
-/// # Safety
-/// `cx` must point to a valid, non-null JSContext.
-/// `result` must point to a valid, non-null ObjectOpResult.
-pub(crate) unsafe extern "C" fn define_property(
-    cx: *mut JSContext,
-    proxy: RawHandleObject,
-    id: RawHandleId,
-    desc: RawHandle<PropertyDescriptor>,
-    result: *mut ObjectOpResult,
-) -> bool {
-    rooted!(in(cx) let mut expando = ptr::null_mut::<JSObject>());
-    ensure_expando_object(cx, proxy, expando.handle_mut());
-    JS_DefinePropertyById(cx, expando.handle().into(), id, desc, result)
-}
-
-/// Deletes an expando off the given `proxy`.
-///
-/// # Safety
-/// `cx` must point to a valid, non-null JSContext.
-/// `bp` must point to a valid, non-null ObjectOpResult.
-pub(crate) unsafe extern "C" fn delete(
-    cx: *mut JSContext,
-    proxy: RawHandleObject,
-    id: RawHandleId,
-    bp: *mut ObjectOpResult,
-) -> bool {
-    rooted!(in(cx) let mut expando = ptr::null_mut::<JSObject>());
-    get_expando_object(proxy, expando.handle_mut());
-    if expando.is_null() {
-        (*bp).code_ = 0 /* OkCode */;
-        return true;
-    }
-
-    delete_property_by_id(cx, expando.handle(), Handle::from_raw(id), bp)
-}
-
-/// Controls whether the Extensible bit can be changed
-///
-/// # Safety
-/// `result` must point to a valid, non-null ObjectOpResult.
-pub(crate) unsafe extern "C" fn prevent_extensions(
-    _cx: *mut JSContext,
-    _proxy: RawHandleObject,
-    result: *mut ObjectOpResult,
-) -> bool {
-    (*result).code_ = JSErrNum::JSMSG_CANT_PREVENT_EXTENSIONS as ::libc::uintptr_t;
-    true
-}
-
-/// Reports whether the object is Extensible
-///
-/// # Safety
-/// `succeeded` must point to a valid, non-null bool.
-pub(crate) unsafe extern "C" fn is_extensible(
-    _cx: *mut JSContext,
-    _proxy: RawHandleObject,
-    succeeded: *mut bool,
-) -> bool {
-    *succeeded = true;
-    true
-}
-
-/// If `proxy` (underneath any functionally-transparent wrapper proxies) has as
-/// its `[[GetPrototypeOf]]` trap the ordinary `[[GetPrototypeOf]]` behavior
-/// defined for ordinary objects, set `*is_ordinary` to true and store `obj`'s
-/// prototype in `proto`.  Otherwise set `*isOrdinary` to false. In case of
-/// error, both outparams have unspecified value.
-///
-/// This implementation always handles the case of the ordinary
-/// `[[GetPrototypeOf]]` behavior. An alternative implementation will be
-/// necessary for maybe-cross-origin objects.
-///
-/// # Safety
-/// `is_ordinary` must point to a valid, non-null bool.
-pub(crate) unsafe extern "C" fn get_prototype_if_ordinary(
-    _: *mut JSContext,
-    proxy: RawHandleObject,
-    is_ordinary: *mut bool,
-    proto: RawMutableHandleObject,
-) -> bool {
-    *is_ordinary = true;
-    proto.set(GetStaticPrototype(proxy.get()));
-    true
-}
+// /// Defines an expando on the given `proxy`.
+// ///
+// /// # Safety
+// /// `cx` must point to a valid, non-null JSContext.
+// /// `result` must point to a valid, non-null ObjectOpResult.
+// pub(crate) unsafe extern "C" fn define_property(
+//     cx: *mut JSContext,
+//     proxy: RawHandleObject,
+//     id: RawHandleId,
+//     desc: RawHandle<PropertyDescriptor>,
+//     result: *mut ObjectOpResult,
+// ) -> bool {
+//     rooted!(in(cx) let mut expando = ptr::null_mut::<JSObject>());
+//     ensure_expando_object(cx, proxy, expando.handle_mut());
+//     JS_DefinePropertyById(cx, expando.handle().into(), id, desc, result)
+// }
+//
+// /// Deletes an expando off the given `proxy`.
+// ///
+// /// # Safety
+// /// `cx` must point to a valid, non-null JSContext.
+// /// `bp` must point to a valid, non-null ObjectOpResult.
+// pub(crate) unsafe extern "C" fn delete(
+//     cx: *mut JSContext,
+//     proxy: RawHandleObject,
+//     id: RawHandleId,
+//     bp: *mut ObjectOpResult,
+// ) -> bool {
+//     rooted!(in(cx) let mut expando = ptr::null_mut::<JSObject>());
+//     get_expando_object(proxy, expando.handle_mut());
+//     if expando.is_null() {
+//         (*bp).code_ = 0 /* OkCode */;
+//         return true;
+//     }
+//
+//     delete_property_by_id(cx, expando.handle(), Handle::from_raw(id), bp)
+// }
+//
+// /// Controls whether the Extensible bit can be changed
+// ///
+// /// # Safety
+// /// `result` must point to a valid, non-null ObjectOpResult.
+// pub(crate) unsafe extern "C" fn prevent_extensions(
+//     _cx: *mut JSContext,
+//     _proxy: RawHandleObject,
+//     result: *mut ObjectOpResult,
+// ) -> bool {
+//     (*result).code_ = JSErrNum::JSMSG_CANT_PREVENT_EXTENSIONS as ::libc::uintptr_t;
+//     true
+// }
+//
+// /// Reports whether the object is Extensible
+// ///
+// /// # Safety
+// /// `succeeded` must point to a valid, non-null bool.
+// pub(crate) unsafe extern "C" fn is_extensible(
+//     _cx: *mut JSContext,
+//     _proxy: RawHandleObject,
+//     succeeded: *mut bool,
+// ) -> bool {
+//     *succeeded = true;
+//     true
+// }
+//
+// /// If `proxy` (underneath any functionally-transparent wrapper proxies) has as
+// /// its `[[GetPrototypeOf]]` trap the ordinary `[[GetPrototypeOf]]` behavior
+// /// defined for ordinary objects, set `*is_ordinary` to true and store `obj`'s
+// /// prototype in `proto`.  Otherwise set `*isOrdinary` to false. In case of
+// /// error, both outparams have unspecified value.
+// ///
+// /// This implementation always handles the case of the ordinary
+// /// `[[GetPrototypeOf]]` behavior. An alternative implementation will be
+// /// necessary for maybe-cross-origin objects.
+// ///
+// /// # Safety
+// /// `is_ordinary` must point to a valid, non-null bool.
+// pub(crate) unsafe extern "C" fn get_prototype_if_ordinary(
+//     _: *mut JSContext,
+//     proxy: RawHandleObject,
+//     is_ordinary: *mut bool,
+//     proto: RawMutableHandleObject,
+// ) -> bool {
+//     *is_ordinary = true;
+//     proto.set(GetStaticPrototype(proxy.get()));
+//     true
+// }
 
 /// Get the expando object, or null if there is none.
 pub(crate) fn get_expando_object(obj: RawHandleObject, mut expando: MutableHandleObject) {

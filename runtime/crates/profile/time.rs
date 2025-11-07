@@ -4,12 +4,12 @@
 
 //! Timing functions.
 
-use std::borrow::ToOwned;
+// use std::borrow::ToOwned;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
-use std::thread;
+// use std::thread;
 
 use ipc_channel::ipc::{self, IpcReceiver};
 use profile_traits::time::{
@@ -82,72 +82,72 @@ pub struct Profiler {
 }
 
 impl Profiler {
-    pub fn create(output: &Option<OutputOptions>, file_path: Option<String>) -> ProfilerChan {
-        let (chan, port) = ipc::channel().unwrap();
-        match *output {
-            Some(ref option) => {
-                // Spawn the time profiler thread
-                let outputoption = option.clone();
-                thread::Builder::new()
-                    .name("TimeProfiler".to_owned())
-                    .spawn(move || {
-                        let trace = file_path.as_ref().and_then(|p| TraceDump::new(p).ok());
-                        let mut profiler = Profiler::new(port, trace, Some(outputoption));
-                        profiler.start();
-                    })
-                    .expect("Thread spawning failed");
-                // decide if we need to spawn the timer thread
-                match *option {
-                    OutputOptions::FileName(_) => { /* no timer thread needed */ },
-                    OutputOptions::Stdout(period) => {
-                        // Spawn a timer thread
-                        let chan = chan.clone();
-                        thread::Builder::new()
-                            .name("TimeProfTimer".to_owned())
-                            .spawn(move || {
-                                loop {
-                                    thread::sleep(std::time::Duration::from_secs_f64(period));
-                                    if chan.send(ProfilerMsg::Print).is_err() {
-                                        break;
-                                    }
-                                }
-                            })
-                            .expect("Thread spawning failed");
-                    },
-                }
-            },
-            None => {
-                // this is when the -p option hasn't been specified
-                if file_path.is_some() {
-                    // Spawn the time profiler
-                    thread::Builder::new()
-                        .name("TimeProfiler".to_owned())
-                        .spawn(move || {
-                            let trace = file_path.as_ref().and_then(|p| TraceDump::new(p).ok());
-                            let mut profiler = Profiler::new(port, trace, None);
-                            profiler.start();
-                        })
-                        .expect("Thread spawning failed");
-                } else {
-                    // No-op to handle messages when the time profiler is not printing:
-                    thread::Builder::new()
-                        .name("TimeProfiler".to_owned())
-                        .spawn(move || {
-                            loop {
-                                match port.recv() {
-                                    Err(_) => break,
-                                    Ok(ProfilerMsg::Exit(chan)) => {
-                                        let _ = chan.send(());
-                                        break;
-                                    },
-                                    _ => {},
-                                }
-                            }
-                        })
-                        .expect("Thread spawning failed");
-                }
-            },
-        }
+    pub fn create(_output: &Option<OutputOptions>, _file_path: Option<String>) -> ProfilerChan {
+        let (chan, _port) = ipc::channel().unwrap();
+        // match *output {
+        //     Some(ref option) => {
+        //         // Spawn the time profiler thread
+        //         let outputoption = option.clone();
+        //         thread::Builder::new()
+        //             .name("TimeProfiler".to_owned())
+        //             .spawn(move || {
+        //                 let trace = file_path.as_ref().and_then(|p| TraceDump::new(p).ok());
+        //                 let mut profiler = Profiler::new(port, trace, Some(outputoption));
+        //                 profiler.start();
+        //             })
+        //             .expect("Thread spawning failed");
+        //         // decide if we need to spawn the timer thread
+        //         match *option {
+        //             OutputOptions::FileName(_) => { /* no timer thread needed */ },
+        //             OutputOptions::Stdout(period) => {
+        //                 // Spawn a timer thread
+        //                 let chan = chan.clone();
+        //                 thread::Builder::new()
+        //                     .name("TimeProfTimer".to_owned())
+        //                     .spawn(move || {
+        //                         loop {
+        //                             thread::sleep(std::time::Duration::from_secs_f64(period));
+        //                             if chan.send(ProfilerMsg::Print).is_err() {
+        //                                 break;
+        //                             }
+        //                         }
+        //                     })
+        //                     .expect("Thread spawning failed");
+        //             },
+        //         }
+        //     },
+        //     None => {
+        //         // this is when the -p option hasn't been specified
+        //         if file_path.is_some() {
+        //             // Spawn the time profiler
+        //             thread::Builder::new()
+        //                 .name("TimeProfiler".to_owned())
+        //                 .spawn(move || {
+        //                     let trace = file_path.as_ref().and_then(|p| TraceDump::new(p).ok());
+        //                     let mut profiler = Profiler::new(port, trace, None);
+        //                     profiler.start();
+        //                 })
+        //                 .expect("Thread spawning failed");
+        //         } else {
+        //             // No-op to handle messages when the time profiler is not printing:
+        //             thread::Builder::new()
+        //                 .name("TimeProfiler".to_owned())
+        //                 .spawn(move || {
+        //                     loop {
+        //                         match port.recv() {
+        //                             Err(_) => break,
+        //                             Ok(ProfilerMsg::Exit(chan)) => {
+        //                                 let _ = chan.send(());
+        //                                 break;
+        //                             },
+        //                             _ => {},
+        //                         }
+        //                     }
+        //                 })
+        //                 .expect("Thread spawning failed");
+        //         }
+        //     },
+        // }
 
         ProfilerChan(chan)
     }

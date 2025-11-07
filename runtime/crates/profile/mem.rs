@@ -6,7 +6,7 @@
 
 use std::borrow::ToOwned;
 use std::collections::HashMap;
-use std::thread;
+// use std::thread;
 
 use ipc_channel::ipc::{self, IpcReceiver};
 use ipc_channel::router::ROUTER;
@@ -28,17 +28,17 @@ pub struct Profiler {
 
 impl Profiler {
     pub fn create() -> ProfilerChan {
-        let (chan, port) = ipc::channel().unwrap();
+        let (chan, _port) = ipc::channel().unwrap();
 
         // Always spawn the memory profiler. If there is no timer thread it won't receive regular
         // `Print` events, but it will still receive the other events.
-        thread::Builder::new()
-            .name("MemoryProfiler".to_owned())
-            .spawn(move || {
-                let mut mem_profiler = Profiler::new(port);
-                mem_profiler.start();
-            })
-            .expect("Thread spawning failed");
+        // thread::Builder::new()
+        //     .name("MemoryProfiler".to_owned())
+        //     .spawn(move || {
+        //         let mut mem_profiler = Profiler::new(port);
+        //         mem_profiler.start();
+        //     })
+        //     .expect("Thread spawning failed");
 
         let mem_profiler_chan = ProfilerChan(chan);
 

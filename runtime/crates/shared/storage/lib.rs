@@ -3,12 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use base::generic_channel::{GenericSend, GenericSender, SendResult};
-use base::{IpcSend, IpcSendResult};
-use ipc_channel::ipc::{IpcError, IpcSender};
+// use base::{IpcSend, IpcSendResult};
+// use ipc_channel::ipc::{IpcError, IpcSender};
 use malloc_size_of::malloc_size_of_is_0;
 use serde::{Deserialize, Serialize};
 
-use crate::indexeddb_thread::IndexedDBThreadMsg;
+// use crate::indexeddb_thread::IndexedDBThreadMsg;
 use crate::webstorage_thread::WebStorageThreadMsg;
 
 pub mod indexeddb_thread;

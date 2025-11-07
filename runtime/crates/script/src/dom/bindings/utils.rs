@@ -10,9 +10,9 @@ use std::thread::LocalKey;
 use js::conversions::ToJSValConvertible;
 use js::glue::{IsWrapper, JSPrincipalsCallbacks, UnwrapObjectDynamic, UnwrapObjectStatic};
 use js::jsapi::{
-    CallArgs, DOMCallbacks, HandleObject as RawHandleObject, JS_FreezeObject, JSContext, JSObject,
+    /*CallArgs,*/ DOMCallbacks, HandleObject as RawHandleObject, JS_FreezeObject, JSContext, JSObject,
 };
-use js::rust::{HandleObject, MutableHandleValue, get_object_class, is_dom_class};
+use js::rust::{/*HandleObject,*/ MutableHandleValue, get_object_class, is_dom_class};
 use script_bindings::conversions::SafeToJSValConvertible;
 use script_bindings::interfaces::{DomHelpers, Interface};
 use script_bindings::settings_stack::StackEntry;
@@ -122,8 +122,7 @@ unsafe extern "C" fn instance_class_is_error(clasp: *const js::jsapi::JSClass) -
     let domclass = &*domclass;
     let root_interface = domclass.dom_class.interface_chain[0] as u32;
     // TODO: support checking bare Exception prototype as well.
-    unimplemented!()
-    // root_interface == PrototypeList::ID::DOMException as u32
+    root_interface == PrototypeList::ID::DOMException as u32
 }
 
 #[allow(missing_docs)] // FIXME

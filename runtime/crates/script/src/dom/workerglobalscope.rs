@@ -192,7 +192,8 @@ impl WorkerGlobalScopeMethods<crate::DomTypeHolder> for WorkerGlobalScope {
     }
 
     fn QueueMicrotask(&self, r#callback: Rc<VoidFunction<DomTypeHolder>>) {
-        todo!()
+        self.upcast::<GlobalScope>()
+            .queue_function_as_microtask(callback);
     }
 }
 

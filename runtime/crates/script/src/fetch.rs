@@ -225,7 +225,7 @@ pub(crate) fn Fetch(
 
     // Step 5. Let globalObject be request’s client’s global object.
     // NOTE:   We already get the global object as an argument
-    let mut request_init = request_init_from_request(request);
+    let /*mut*/ request_init = request_init_from_request(request);
     // request_init.policy_container =
     //     RequestPolicyContainer::PolicyContainer(global.policy_container());
 
@@ -470,11 +470,11 @@ pub(crate) fn load_whole_resource(
     core_resource_thread: &CoreResourceThread,
     global: &GlobalScope,
     // csp_violations_processor: &dyn CspViolationsProcessor,
-    can_gc: CanGc,
+    _can_gc: CanGc,
 ) -> Result<(Metadata, Vec<u8>), NetworkError> {
     let request = request.https_state(global.get_https_state());
     let (action_sender, action_receiver) = ipc::channel().unwrap();
-    let url = request.url.clone();
+    // let url = request.url.clone();
     core_resource_thread
         .send(CoreResourceMsg::Fetch(
             request,
@@ -504,7 +504,7 @@ pub(crate) fn load_whole_resource(
             },
             FetchResponseMsg::ProcessResponse(_, Err(e)) |
             FetchResponseMsg::ProcessResponseEOF(_, Err(e)) => return Err(e),
-            FetchResponseMsg::ProcessCspViolations(_, violations) => {
+            FetchResponseMsg::ProcessCspViolations(_, _violations) => {
                 // csp_violations_processor.process_csp_violations(violations);
             },
         }

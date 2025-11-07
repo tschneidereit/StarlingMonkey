@@ -6,10 +6,10 @@
 
 use std::fmt;
 
-use base::Epoch;
-use base::generic_channel::{GenericCallback, GenericReceiver, GenericSender, SendResult};
+// use base::Epoch;
+use base::generic_channel::{GenericCallback, /*GenericReceiver,*/ GenericSender, SendResult};
 use base::id::{
-    BroadcastChannelRouterId, BrowsingContextId, HistoryStateId, MessagePortId,
+    BroadcastChannelRouterId, BrowsingContextId, /*HistoryStateId,*/ MessagePortId,
     MessagePortRouterId, PipelineId, ServiceWorkerId, ServiceWorkerRegistrationId, WebViewId,
 };
 // use canvas_traits::canvas::{CanvasId, CanvasMsg};
@@ -29,11 +29,11 @@ use net_traits::policy_container::PolicyContainer;
 use net_traits::request::{Destination, InsecureRequestsPolicy, Referrer, RequestBody};
 use net_traits::{ReferrerPolicy, ResourceThreads};
 use profile_traits::mem::MemoryReportResult;
-use profile_traits::{mem, time as profile_time};
+// use profile_traits::{mem, time as profile_time};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use servo_url::{ImmutableOrigin, ServoUrl};
-use storage_traits::StorageThreads;
+// use storage_traits::StorageThreads;
 use storage_traits::webstorage_thread::StorageType;
 use strum_macros::IntoStaticStr;
 #[cfg(feature = "webgpu")]

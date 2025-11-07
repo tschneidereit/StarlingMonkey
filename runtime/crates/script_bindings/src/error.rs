@@ -55,11 +55,11 @@ pub enum Error {
     Version,
     /// NoModificationAllowedError DOMException
     NoModificationAllowed,
-    /// QuotaExceededError DOMException
-    QuotaExceeded {
-        quota: Option<Finite<f64>>,
-        requested: Option<Finite<f64>>,
-    },
+    // /// QuotaExceededError DOMException
+    // QuotaExceeded {
+    //     quota: Option<Finite<f64>>,
+    //     requested: Option<Finite<f64>>,
+    // },
     /// TypeMismatchError DOMException
     TypeMismatch,
     /// InvalidModificationError DOMException

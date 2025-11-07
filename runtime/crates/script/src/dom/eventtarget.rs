@@ -239,9 +239,9 @@ enum InlineEventListener {
 /// <https://html.spec.whatwg.org/multipage/#getting-the-current-value-of-the-event-handler>
 fn get_compiled_handler(
     inline_listener: &RefCell<InlineEventListener>,
-    owner: &EventTarget,
-    ty: &Atom,
-    can_gc: CanGc,
+    _owner: &EventTarget,
+    _ty: &Atom,
+    _can_gc: CanGc,
 ) -> Option<CommonEventHandler> {
     let listener = mem::replace(
         &mut *inline_listener.borrow_mut(),
@@ -569,7 +569,7 @@ impl EventTarget {
     }
 
     /// <https://dom.spec.whatwg.org/#default-passive-value>
-    fn default_passive_value(&self, ty: &Atom) -> bool {
+    fn default_passive_value(&self, _ty: &Atom) -> bool {
         // // Return true if all of the following are true:
         // let event_type = ty.to_ascii_lowercase();
         //
@@ -1028,7 +1028,7 @@ impl EventTarget {
     }
 
     /// <https://dom.spec.whatwg.org/#get-the-parent>
-    pub(crate) fn get_the_parent(&self, event: &Event) -> Option<DomRoot<EventTarget>> {
+    pub(crate) fn get_the_parent(&self, _event: &Event) -> Option<DomRoot<EventTarget>> {
         // if let Some(document) = self.downcast::<Document>() {
         //     if event.type_() == atom!("load") || !document.has_browsing_context() {
         //         return None;
@@ -1061,16 +1061,17 @@ impl EventTarget {
     // FIXME: This algorithm operates on "objects", which may not be event targets.
     // All our current use-cases only work on event targets, but this might change in the future
     /// <https://dom.spec.whatwg.org/#retarget>
-    pub(crate) fn retarget(&self, b: &Self) -> DomRoot<EventTarget> {
+    pub(crate) fn retarget(&self, _b: &Self) -> DomRoot<EventTarget> {
+        DomRoot::from_ref(self)
     //     // To retarget an object A against an object B, repeat these steps until they return an object:
-        let mut a = DomRoot::from_ref(self);
-        loop {
-            // Step 1. If one of the following is true
-            // * A is not a node
-            // * A’s root is not a shadow root
-            // * B is a node and A’s root is a shadow-including inclusive ancestor of B
-            // Since we don't support Nodes, we can skip to returning A directly.
-            return a;
+    //     let mut a = DomRoot::from_ref(self);
+    //     loop {
+    //         // Step 1. If one of the following is true
+    //         // * A is not a node
+    //         // * A’s root is not a shadow root
+    //         // * B is a node and A’s root is a shadow-including inclusive ancestor of B
+    //         // Since we don't support Nodes, we can skip to returning A directly.
+    //         return a;
     //         let Some(a_node) = a.downcast::<Node>() else {
     //             return a;
     //         };
@@ -1092,7 +1093,7 @@ impl EventTarget {
     //                 .Host()
     //                 .upcast::<EventTarget>(),
     //         );
-        }
+    //     }
     }
 
     /// <https://html.spec.whatwg.org/multipage/#event-handler-content-attributes>

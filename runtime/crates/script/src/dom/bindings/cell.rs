@@ -12,7 +12,7 @@ pub(crate) use std::cell::{Ref, RefCell, RefMut};
 pub(crate) use accountable_refcell::{Ref, RefCell, RefMut};
 use malloc_size_of::{MallocConditionalSizeOf, MallocSizeOfOps};
 
-use crate::dom::bindings::root::{assert_in_layout, assert_in_script};
+use crate::dom::bindings::root::{/*assert_in_layout, */assert_in_script};
 
 /// A mutable field in the DOM.
 ///

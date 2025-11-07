@@ -35,32 +35,32 @@ impl Window {
 
 impl WindowHelpers for Window {
     fn create_named_properties_object(
-        cx: JSContext,
-        proto: HandleObject,
-        object: MutableHandleObject,
+        _cx: JSContext,
+        _proto: HandleObject,
+        _object: MutableHandleObject,
     ) {
         // Self::create_named_properties_object(cx, proto, object)
     }
 }
 
 impl WindowMethods<crate::DomTypeHolder> for Window {
-    fn SetTimeout(&self, r#cx: JSContext, r#handler: TrustedScriptOrStringOrFunction<DomTypeHolder>, r#timeout: i32, r#arguments: Vec<HandleValue>, r#_can_gc: CanGc) -> Fallible<i32> {
+    fn SetTimeout(&self, r#_cx: JSContext, r#_handler: TrustedScriptOrStringOrFunction<DomTypeHolder>, r#_timeout: i32, r#_arguments: Vec<HandleValue>, r#_can_gc: CanGc) -> Fallible<i32> {
         unreachable!("Window is never instantiated")
     }
 
-    fn ClearTimeout(&self, r#handle: i32) {
+    fn ClearTimeout(&self, r#_handle: i32) {
         unreachable!("Window is never instantiated")
     }
 
-    fn SetInterval(&self, r#cx: JSContext, r#handler: TrustedScriptOrStringOrFunction<DomTypeHolder>, r#timeout: i32, r#arguments: Vec<HandleValue>, r#_can_gc: CanGc) -> Fallible<i32> {
+    fn SetInterval(&self, r#_cx: JSContext, r#_handler: TrustedScriptOrStringOrFunction<DomTypeHolder>, r#_timeout: i32, r#_arguments: Vec<HandleValue>, r#_can_gc: CanGc) -> Fallible<i32> {
         unreachable!("Window is never instantiated")
     }
 
-    fn ClearInterval(&self, r#handle: i32) {
+    fn ClearInterval(&self, r#_handle: i32) {
         unreachable!("Window is never instantiated")
     }
 
-    fn QueueMicrotask(&self, r#callback: Rc<VoidFunction<DomTypeHolder>>) {
+    fn QueueMicrotask(&self, r#_callback: Rc<VoidFunction<DomTypeHolder>>) {
         unreachable!("Window is never instantiated")
     }
 }

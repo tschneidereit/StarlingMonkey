@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::{LazyLock, RwLock, RwLockReadGuard};
 
 use serde::{Deserialize, Serialize};
-use servo_url::ServoUrl;
+// use servo_url::ServoUrl;
 
 /// Global flags for Servo, currently set on the command line.
 #[derive(Clone, Debug, Deserialize, Serialize)]

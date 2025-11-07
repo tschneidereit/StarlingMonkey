@@ -9,7 +9,7 @@ use std::sync::{LazyLock, OnceLock};
 use std::thread::{self, JoinHandle};
 
 use base::cross_process_instant::CrossProcessInstant;
-use base::id::{CookieStoreId, HistoryStateId};
+// use base::id::{CookieStoreId, HistoryStateId};
 use base::{IpcSend, IpcSendResult};
 use content_security_policy::{self as csp};
 use cookie::Cookie;
@@ -25,10 +25,10 @@ use malloc_size_of_derive::MallocSizeOf;
 use mime::Mime;
 use request::RequestId;
 use rustc_hash::FxHashMap;
-use rustls_pki_types::CertificateDer;
+// use rustls_pki_types::CertificateDer;
 use serde::{Deserialize, Serialize};
 use servo_rand::RngCore;
-use servo_url::{ImmutableOrigin, ServoUrl};
+use servo_url::{/*ImmutableOrigin,*/ ServoUrl};
 
 use crate::filemanager_thread::FileManagerThreadMsg;
 use crate::http_status::HttpStatus;
@@ -378,7 +378,7 @@ impl<T: FetchResponseListener> Action<T> for FetchResponseMsg {
             },
             FetchResponseMsg::ProcessResponseEOF(request_id, data) => {
                 match data {
-                    Ok(ref response_resource_timing) => {
+                    Ok(ref _response_resource_timing) => {
                         // update listener with values from response
                         // *listener.resource_timing_mut() = response_resource_timing.clone();
                         // listener
@@ -394,7 +394,7 @@ impl<T: FetchResponseListener> Action<T> for FetchResponseMsg {
                     Err(e) => listener.process_response_eof(request_id, Err(e)),
                 }
             },
-            FetchResponseMsg::ProcessCspViolations(request_id, violations) => {
+            FetchResponseMsg::ProcessCspViolations(_request_id, _violations) => {
                 // listener.process_csp_violations(request_id, violations)
             },
         }

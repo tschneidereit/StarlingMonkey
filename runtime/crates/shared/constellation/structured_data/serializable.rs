@@ -11,8 +11,8 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 
 use base::id::{
-    BlobId, DomExceptionId, DomMatrixId, DomPointId, DomQuadId, DomRectId, ImageBitmapId,
-    QuotaExceededErrorId,
+    BlobId, DomExceptionId, // DomMatrixId, DomPointId, DomQuadId, DomRectId, ImageBitmapId,
+    // QuotaExceededErrorId,
 };
 // use euclid::default::Transform3D;
 use malloc_size_of_derive::MallocSizeOf;

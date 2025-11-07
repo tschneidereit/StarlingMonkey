@@ -2,7 +2,7 @@
 // console.log('Hello from within a global created in Rust with Servo\'s WebIDL bindings, using a WebIDL based Console!');
 
 async function more() {
-  await 1;
+  await Promise.resolve();
   console.log('after await');
   Promise.resolve().then(() => { console.log('in promise.then'); });
   let { readable, writable } = new TransformStream();

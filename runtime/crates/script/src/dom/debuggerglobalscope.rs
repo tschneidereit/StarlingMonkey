@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use std::cell::RefCell;
+// use std::cell::RefCell;
 
 // use base::id::{Index, PipelineId, PipelineNamespaceId};
 // use constellation_traits::ScriptToConstellationChan;
@@ -19,24 +19,24 @@ use dom_struct::dom_struct;
 // use script_bindings::codegen::GenericBindings::DebuggerGlobalScopeBinding::{
 //     DebuggerGlobalScopeMethods, NotifyNewSource,
 // };
-use script_bindings::realms::InRealm;
-use script_bindings::reflector::DomObject;
-use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
+// use script_bindings::realms::InRealm;
+// use script_bindings::reflector::DomObject;
+// use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
 // use storage_traits::StorageThreads;
 
-use crate::dom::bindings::codegen::Bindings::DebuggerGlobalScopeBinding;
-use crate::dom::bindings::error::report_pending_exception;
+// use crate::dom::bindings::codegen::Bindings::DebuggerGlobalScopeBinding;
+// use crate::dom::bindings::error::report_pending_exception;
 use crate::dom::bindings::inheritance::Castable;
-use crate::dom::bindings::root::DomRoot;
-use crate::dom::bindings::utils::define_all_exposed_interfaces;
+// use crate::dom::bindings::root::DomRoot;
+// use crate::dom::bindings::utils::define_all_exposed_interfaces;
 use crate::dom::globalscope::GlobalScope;
 // use crate::dom::types::{DebuggerAddDebuggeeEvent, DebuggerGetPossibleBreakpointsEvent, Event};
 #[cfg(feature = "testbinding")]
 #[cfg(feature = "webgpu")]
 use crate::dom::webgpu::identityhub::IdentityHub;
-use crate::realms::enter_realm;
+// use crate::realms::enter_realm;
 // use crate::script_module::ScriptFetchOptions;
-use crate::script_runtime::{CanGc, IntroductionType, JSContext};
+use crate::script_runtime::{/*CanGc, IntroductionType,*/ JSContext};
 
 #[dom_struct]
 /// Global scope for interacting with the devtools Debugger API.
@@ -115,9 +115,9 @@ impl DebuggerGlobalScope {
     // }
 
     /// Get the JS context.
-    pub(crate) fn get_cx() -> JSContext {
-        GlobalScope::get_cx()
-    }
+    // pub(crate) fn get_cx() -> JSContext {
+    //     GlobalScope::get_cx()
+    // }
 
     pub(crate) fn as_global_scope(&self) -> &GlobalScope {
         self.upcast::<GlobalScope>()

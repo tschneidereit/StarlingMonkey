@@ -63,7 +63,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 
-use bincode::ErrorKind;
+// use bincode::ErrorKind;
 // use ipc_channel::ipc::IpcSender;
 // use ipc_channel::router::ROUTER;
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
@@ -71,7 +71,7 @@ use serde::de::VariantAccess;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use servo_config::opts;
 
-use crate::generic_channel::{SendError, SendResult};
+use crate::generic_channel::{/*SendError,*/ SendResult};
 
 /// The callback type of our messages.
 ///

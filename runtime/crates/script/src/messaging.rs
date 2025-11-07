@@ -285,7 +285,7 @@ impl QueuedTaskConversion for WorkerScriptMsg {
             CommonScriptMsg::Task(_category, _boxed, _pipeline_id, task_source) => {
                 Some(task_source)
             },
-            _ => None,
+            // _ => None,
         }
     }
 
@@ -296,7 +296,7 @@ impl QueuedTaskConversion for WorkerScriptMsg {
         };
         match script_msg {
             CommonScriptMsg::Task(_category, _boxed, pipeline_id, _task_source) => *pipeline_id,
-            _ => None,
+            // _ => None,
         }
     }
 
@@ -309,7 +309,7 @@ impl QueuedTaskConversion for WorkerScriptMsg {
             CommonScriptMsg::Task(category, boxed, pipeline_id, task_source) => {
                 (category, boxed, pipeline_id, task_source)
             },
-            _ => return None,
+            // _ => return None,
         };
         Some((/*None,*/ category, boxed, pipeline_id, task_source))
     }

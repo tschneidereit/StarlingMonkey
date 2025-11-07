@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 // use constellation_traits::StructuredSerializedData;
-use servo_url::ImmutableOrigin;
+// use servo_url::ImmutableOrigin;
 
 use crate::dom::bindings::refcounted::Trusted;
 use crate::dom::bindings::reflector::DomObject;
@@ -21,12 +21,12 @@ pub(crate) enum WorkerScriptMsg {
     // },
 }
 
-pub(crate) struct SimpleWorkerErrorHandler<T: DomObject> {
-    pub(crate) addr: Trusted<T>,
-}
-
-impl<T: DomObject> SimpleWorkerErrorHandler<T> {
-    pub(crate) fn new(addr: Trusted<T>) -> SimpleWorkerErrorHandler<T> {
-        SimpleWorkerErrorHandler { addr }
-    }
-}
+// pub(crate) struct SimpleWorkerErrorHandler<T: DomObject> {
+//     pub(crate) addr: Trusted<T>,
+// }
+// 
+// impl<T: DomObject> SimpleWorkerErrorHandler<T> {
+//     pub(crate) fn new(addr: Trusted<T>) -> SimpleWorkerErrorHandler<T> {
+//         SimpleWorkerErrorHandler { addr }
+//     }
+// }

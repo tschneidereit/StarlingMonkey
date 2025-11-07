@@ -5,7 +5,7 @@
 use std::sync::{Arc, Mutex};
 
 use base::id::{PipelineId, WebViewId};
-use base::generic_channel::{GenericReceiver, GenericSender};
+// use base::generic_channel::{GenericReceiver, GenericSender};
 use content_security_policy::{self as csp};
 use http::header::{AUTHORIZATION, HeaderName};
 use http::{HeaderMap, Method};

@@ -305,7 +305,7 @@ pub(crate) fn create_noncallback_interface_object<D: DomTypes>(
     interface_prototype_object: HandleObject,
     name: &CStr,
     length: u32,
-    legacy_window_alias_names: &[&CStr],
+    _legacy_window_alias_names: &[&CStr],
     mut rval: MutableHandleObject,
 ) {
     create_object::<D>(

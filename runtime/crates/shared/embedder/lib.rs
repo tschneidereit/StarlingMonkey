@@ -15,11 +15,11 @@ pub mod resources;
 
 use std::collections::HashMap;
 use std::ffi::c_void;
-use std::fmt::{Debug, Display, Error, Formatter};
+use std::fmt::{Debug, /*Display,*/ Error, Formatter};
 use std::hash::Hash;
-use std::ops::Range;
+// use std::ops::Range;
 use std::path::PathBuf;
-use std::sync::Arc;
+// use std::sync::Arc;
 
 use base::generic_channel::{GenericCallback, GenericSender, SendResult};
 use base::id::{PipelineId, WebViewId};
@@ -38,7 +38,7 @@ use strum_macros::IntoStaticStr;
 // use style::queries::values::PrefersColorScheme;
 // use style_traits::CSSPixel;
 use url::Url;
-use uuid::Uuid;
+// use uuid::Uuid;
 // use webrender_api::ExternalScrollId;
 // use webrender_api::units::{DeviceIntPoint, DeviceIntRect, DeviceIntSize, DevicePixel, LayoutSize};
 

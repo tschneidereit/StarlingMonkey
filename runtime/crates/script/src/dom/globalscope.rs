@@ -1467,9 +1467,9 @@ impl GlobalScope {
         // Note: we are in the task, and running the relevant steps.
 
         // Let finalTargetPort be the MessagePort in whose port message queue the task now finds itself.
-        if let Some((dom_port, PortMessageTask { origin, data })) = should_dispatch {
+        if let Some((dom_port, PortMessageTask { origin: _, data })) = should_dispatch {
             // Let messageEventTarget be finalTargetPort's message event target.
-            let message_event_target = dom_port.upcast();
+            // let message_event_target = dom_port.upcast();
 
             // Let targetRealm be finalTargetPort's relevant realm.
             // Done via the routing logic here and in the constellation: `self` is the target realm.
@@ -1491,7 +1491,7 @@ impl GlobalScope {
             // consisting of all MessagePort objects in deserializeRecord.[[TransferredValues]],
             // if any, maintaining their relative order.
             // Note: both done in `structuredclone::read`.
-            if let Ok(ports) = structuredclone::read(self, data, message_clone.handle_mut()) {
+            if let Ok(_ports) = structuredclone::read(self, data, message_clone.handle_mut()) {
                 // Note: if this port is used to transfer a stream, we handle the events in Rust.
                 if let Some(transform) = cross_realm_transform.as_ref() {
                     match transform {
@@ -2727,7 +2727,7 @@ impl GlobalScope {
             can_gc,
         );
 
-        let not_handled = event
+        let _not_handled = event
             .upcast::<Event>()
             .fire(self.upcast::<EventTarget>(), can_gc);
 

@@ -449,17 +449,17 @@ where
     )
 }
 
-fn new_generic_channel_ipc<T>() -> Result<(GenericSender<T>, GenericReceiver<T>), std::io::Error>
-where
-    T: Serialize + for<'de> serde::Deserialize<'de>,
-{
-    ipc_channel::ipc::channel().map(|(tx, rx)| {
-        (
-            GenericSender(GenericSenderVariants::Ipc(tx)),
-            GenericReceiver(GenericReceiverVariants::Ipc(rx)),
-        )
-    })
-}
+// fn new_generic_channel_ipc<T>() -> Result<(GenericSender<T>, GenericReceiver<T>), std::io::Error>
+// where
+//     T: Serialize + for<'de> serde::Deserialize<'de>,
+// {
+//     ipc_channel::ipc::channel().map(|(tx, rx)| {
+//         (
+//             GenericSender(GenericSenderVariants::Ipc(tx)),
+//             GenericReceiver(GenericReceiverVariants::Ipc(rx)),
+//         )
+//     })
+// }
 
 /// Creates a Servo channel that can select different channel implementations based on multiprocess
 /// mode or not. If the scenario doesn't require message to pass process boundary, a simple

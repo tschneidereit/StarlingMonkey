@@ -75,8 +75,8 @@ impl TrustedTypePolicyFactory {
         {
             // Step 1: Let allowedByCSP be the result of executing Should Trusted Type policy creation be blocked by
             // Content Security Policy? algorithm with global, policyName and factory’s created policy names value.
-            let policy_names = self.policy_names.borrow();
-            let policy_names: Vec<&str> = policy_names.iter().map(String::as_ref).collect();
+            // let policy_names = self.policy_names.borrow();
+            // let policy_names: Vec<&str> = policy_names.iter().map(String::as_ref).collect();
             let allowed_by_csp = true; 
                 // global
                 // .get_csp_list()
@@ -236,11 +236,11 @@ impl TrustedTypePolicyFactory {
 
     /// <https://w3c.github.io/trusted-types/dist/spec/#process-value-with-a-default-policy-algorithm>
     pub(crate) fn process_value_with_default_policy(
-        expected_type: TrustedType,
-        global: &GlobalScope,
-        input: DOMString,
-        sink: &str,
-        can_gc: CanGc,
+        _expected_type: TrustedType,
+        _global: &GlobalScope,
+        _input: DOMString,
+        _sink: &str,
+        _can_gc: CanGc,
     ) -> Fallible<Option<DOMString>> {
         Ok(None)
         // // Step 1: Let defaultPolicy be the value of global’s trusted type policy factory's default policy.
@@ -284,14 +284,14 @@ impl TrustedTypePolicyFactory {
     /// Step 1 is implemented by the caller
     /// <https://w3c.github.io/trusted-types/dist/spec/#get-trusted-type-compliant-string-algorithm>
     pub(crate) fn get_trusted_type_compliant_string(
-        expected_type: TrustedType,
-        global: &GlobalScope,
+        _expected_type: TrustedType,
+        _global: &GlobalScope,
         input: DOMString,
-        sink: &str,
-        sink_group: &str,
-        can_gc: CanGc,
+        _sink: &str,
+        _sink_group: &str,
+        _can_gc: CanGc,
     ) -> Fallible<DOMString> {
-        return Ok(input);
+        Ok(input)
         // Step 2: Let requireTrustedTypes be the result of executing Does sink type require trusted types?
         // algorithm, passing global, sinkGroup, and true.
         // let require_trusted_types = global

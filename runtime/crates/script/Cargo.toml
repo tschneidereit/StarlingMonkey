@@ -70,6 +70,10 @@ profilemozjs = ['js/profilemozjs']
 tracing = ["dep:tracing", "script_bindings/tracing"]
 js_backtrace = []
 refcell_backtrace = ["accountable-refcell"]
+webgpu = []
+testbinding = []
+bluetooth = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(crown)'] }
+unsafe_op_in_unsafe_fn = { level = "allow" }

@@ -26,9 +26,9 @@
 
 use std::cell::{OnceCell, UnsafeCell};
 use std::default::Default;
-use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
-use std::{mem, ptr};
+// use std::hash::{Hash, Hasher};
+// use std::marker::PhantomData;
+use std::{/*mem,*/ ptr};
 
 use js::jsapi::{Heap, JSObject, JSTracer, Value};
 use js::rust::HandleValue;
@@ -37,8 +37,8 @@ use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 pub(crate) use script_bindings::root::*;
 // use style::thread_state;
 
-use crate::dom::bindings::conversions::DerivedFrom;
-use crate::dom::bindings::inheritance::Castable;
+// use crate::dom::bindings::conversions::DerivedFrom;
+// use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::reflector::DomObject;
 use crate::dom::bindings::trace::JSTraceable;
 // use crate::dom::node::Node;
@@ -167,63 +167,63 @@ impl Drop for ThreadLocalStackRoots {
 //     }
 // }
 
-/// A holder that provides interior mutability for GC-managed values such as
-/// `Dom<T>`.  Essentially a `Cell<Dom<T>>`, but safer.
-///
-/// This should only be used as a field in other DOM objects; see warning
-/// on `Dom<T>`.
-#[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
-#[derive(JSTraceable)]
-pub(crate) struct MutDom<T: DomObject> {
-    val: UnsafeCell<Dom<T>>,
-}
-
-impl<T: DomObject> MutDom<T> {
-    /// Create a new `MutDom`.
-    pub(crate) fn new(initial: &T) -> MutDom<T> {
-        assert_in_script();
-        MutDom {
-            val: UnsafeCell::new(Dom::from_ref(initial)),
-        }
-    }
-
-    /// Set this `MutDom` to the given value.
-    pub(crate) fn set(&self, val: &T) {
-        assert_in_script();
-        unsafe {
-            *self.val.get() = Dom::from_ref(val);
-        }
-    }
-
-    /// Get the value in this `MutDom`.
-    pub(crate) fn get(&self) -> DomRoot<T> {
-        assert_in_script();
-        unsafe { DomRoot::from_ref(&*ptr::read(self.val.get())) }
-    }
-}
-
-impl<T: DomObject> MallocSizeOf for MutDom<T> {
-    fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
-        // See comment on MallocSizeOf for Dom<T>.
-        0
-    }
-}
-
-impl<T: DomObject> PartialEq for MutDom<T> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { *self.val.get() == *other.val.get() }
-    }
-}
-
-impl<T: DomObject + PartialEq> PartialEq<T> for MutDom<T> {
-    fn eq(&self, other: &T) -> bool {
-        unsafe { **self.val.get() == *other }
-    }
-}
-
-pub(crate) fn assert_in_layout() {
-    // debug_assert!(thread_state::get().is_layout());
-}
+// /// A holder that provides interior mutability for GC-managed values such as
+// /// `Dom<T>`.  Essentially a `Cell<Dom<T>>`, but safer.
+// ///
+// /// This should only be used as a field in other DOM objects; see warning
+// /// on `Dom<T>`.
+// #[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
+// #[derive(JSTraceable)]
+// pub(crate) struct MutDom<T: DomObject> {
+//     val: UnsafeCell<Dom<T>>,
+// }
+// 
+// impl<T: DomObject> MutDom<T> {
+//     /// Create a new `MutDom`.
+//     pub(crate) fn new(initial: &T) -> MutDom<T> {
+//         assert_in_script();
+//         MutDom {
+//             val: UnsafeCell::new(Dom::from_ref(initial)),
+//         }
+//     }
+// 
+//     /// Set this `MutDom` to the given value.
+//     pub(crate) fn set(&self, val: &T) {
+//         assert_in_script();
+//         unsafe {
+//             *self.val.get() = Dom::from_ref(val);
+//         }
+//     }
+// 
+//     /// Get the value in this `MutDom`.
+//     pub(crate) fn get(&self) -> DomRoot<T> {
+//         assert_in_script();
+//         unsafe { DomRoot::from_ref(&*ptr::read(self.val.get())) }
+//     }
+// }
+// 
+// impl<T: DomObject> MallocSizeOf for MutDom<T> {
+//     fn size_of(&self, _ops: &mut MallocSizeOfOps) -> usize {
+//         // See comment on MallocSizeOf for Dom<T>.
+//         0
+//     }
+// }
+// 
+// impl<T: DomObject> PartialEq for MutDom<T> {
+//     fn eq(&self, other: &Self) -> bool {
+//         unsafe { *self.val.get() == *other.val.get() }
+//     }
+// }
+// 
+// impl<T: DomObject + PartialEq> PartialEq<T> for MutDom<T> {
+//     fn eq(&self, other: &T) -> bool {
+//         unsafe { **self.val.get() == *other }
+//     }
+// }
+// 
+// pub(crate) fn assert_in_layout() {
+//     // debug_assert!(thread_state::get().is_layout());
+// }
 
 /// A holder that provides interior mutability for GC-managed values such as
 /// `Dom<T>`, with nullability represented by an enclosing Option wrapper.

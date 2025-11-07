@@ -2,40 +2,38 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use base::id::PipelineId;
-use crossbeam_channel::{unbounded, Receiver, Sender};
-use ipc_channel::ipc;
-use dom_struct::dom_struct;
-use js::jsval::UndefinedValue;
-use js::rust::ParentRuntime;
-use rustc_hash::FxHashSet;
-use constellation_traits::ScriptToConstellationChan;
-use embedder_traits::{EmbedderMsg, EmbedderProxy, EventLoopWaker, ScriptToEmbedderChan};
-use net_traits::ResourceThreads;
-use profile_traits::{generic_channel, mem as profile_mem, time as profile_time};
-use servo_url::{MutableOrigin, ServoUrl};
-use storage_traits::StorageThreads;
 use crate::dom::abstractworker::WorkerScriptMsg;
 use crate::dom::abstractworkerglobalscope::{run_worker_event_loop, WorkerEventLoopMethods};
 use crate::dom::bindings::cell::{DomRefCell, Ref};
 use crate::dom::bindings::codegen::Bindings::StarlingGlobalScopeBinding;
-use crate::dom::bindings::codegen::Bindings::StarlingGlobalScopeBinding::StarlingGlobalScopeMethods;
-use crate::dom::bindings::error::{ErrorResult, Fallible, report_pending_exception};
+use crate::dom::bindings::error::report_pending_exception;
 use crate::dom::bindings::import::base::SafeJSContext;
 use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::reflector::DomObject;
 use crate::dom::bindings::root::DomRoot;
 use crate::dom::bindings::settings_stack::AutoEntryScript;
 use crate::dom::bindings::str::DOMString;
-use crate::dom::bindings::trace::{CustomTraceable, RootedTraceableBox};
+use crate::dom::bindings::trace::CustomTraceable;
 use crate::dom::bindings::utils::define_all_exposed_interfaces;
 use crate::dom::globalscope::GlobalScope;
 use crate::dom::workerglobalscope::WorkerGlobalScope;
-use crate::messaging::{MainThreadScriptMsg, ScriptEventLoopSender};
-use crate::realms::{InRealm, enter_realm};
-use crate::script_runtime::{CanGc, IntroductionType, JSContext, JSContextHelper, Runtime};
+use crate::messaging::ScriptEventLoopSender;
+use crate::realms::{enter_realm, InRealm};
+use crate::script_runtime::{CanGc, IntroductionType, JSContext, Runtime};
 use crate::task_queue::TaskQueue;
 use crate::task_source::{SendableTaskSource, TaskSourceName};
+use base::id::PipelineId;
+use constellation_traits::ScriptToConstellationChan;
+use crossbeam_channel::{unbounded, Receiver, Sender};
+use dom_struct::dom_struct;
+use embedder_traits::{EmbedderMsg, EmbedderProxy, EventLoopWaker, ScriptToEmbedderChan};
+use ipc_channel::ipc;
+use js::jsval::UndefinedValue;
+use js::rust::ParentRuntime;
+use net_traits::ResourceThreads;
+use profile_traits::{generic_channel, mem as profile_mem, time as profile_time};
+use servo_url::{MutableOrigin, ServoUrl};
+use storage_traits::StorageThreads;
 
 unsafe_no_jsmanaged_fields!(TaskQueue<WorkerScriptMsg>);
 
@@ -57,7 +55,7 @@ pub struct StarlingGlobalScope {
 impl StarlingGlobalScope {
 
     #[allow(unsafe_code, clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         pipeline_id: PipelineId,
         // devtools_chan: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
         mem_profiler_chan: profile_mem::ProfilerChan,
@@ -146,12 +144,12 @@ impl StarlingGlobalScope {
         }
     }
 
-    /// Clear various items when the worker event-loop shuts-down.
-    pub(crate) fn clear_js_runtime(&self) {
-        // Drop the runtime.
-        let runtime = self.runtime.borrow_mut().take();
-        drop(runtime);
-    }
+    // /// Clear various items when the worker event-loop shuts-down.
+    // pub(crate) fn clear_js_runtime(&self) {
+    //     // Drop the runtime.
+    //     let runtime = self.runtime.borrow_mut().take();
+    //     drop(runtime);
+    // }
 
     pub(crate) fn runtime_handle(&self) -> ParentRuntime {
         self.runtime
@@ -166,7 +164,7 @@ impl StarlingGlobalScope {
         unsafe { JSContext::from_ptr(self.runtime.borrow().as_ref().unwrap().cx()) }
     }
 
-    pub(crate) fn get_url(&self) -> Ref<ServoUrl> {
+    pub(crate) fn get_url(&'_ self) -> Ref<ServoUrl> {
         self.worker_url.borrow()
     }
 
@@ -334,7 +332,7 @@ impl StarlingGlobalScope {
         self.globalscope.as_global_scope().perform_a_microtask_checkpoint(can_gc);
     }
 
-    fn handle_mixed_message(&self, msg: MixedMessage, can_gc: CanGc) -> bool {
+    fn handle_mixed_message(&self, msg: MixedMessage, _can_gc: CanGc) -> bool {
         if self.upcast::<WorkerGlobalScope>().is_closing() {
             return false;
         }

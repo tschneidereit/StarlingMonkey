@@ -9,13 +9,13 @@ use std::os::raw;
 use std::ptr;
 
 use base::id::{
-    BlobId, DomExceptionId, DomMatrixId, DomPointId, DomQuadId, DomRectId, ImageBitmapId, Index,
-    MessagePortId, NamespaceIndex, OffscreenCanvasId, PipelineNamespaceId, QuotaExceededErrorId,
+    BlobId, DomExceptionId, /*DomMatrixId, DomPointId, DomQuadId, DomRectId, ImageBitmapId,*/ Index,
+    MessagePortId, NamespaceIndex, /*OffscreenCanvasId,*/ PipelineNamespaceId, QuotaExceededErrorId,
 };
 use constellation_traits::{
     BlobImpl, DomException, /*DomMatrix, DomPoint, DomQuad, DomRect, */MessagePortImpl,
     Serializable as SerializableInterface, // SerializableImageBitmap, SerializableQuotaExceededError,
-    StructuredSerializedData, TransferableOffscreenCanvas, Transferrable as TransferrableInterface,
+    StructuredSerializedData, /*TransferableOffscreenCanvas,*/ Transferrable as TransferrableInterface,
     TransformStreamData,
 };
 use js::gc::RootedVec;

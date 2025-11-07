@@ -88,7 +88,6 @@ impl Condition {
     ) -> bool {
         match *self {
             Condition::Pref(name) => get().get_value(name).try_into().unwrap_or(false),
-            Condition::Pref(name) => true,
             Condition::Func(f) => f(cx, obj),
             Condition::Exposed(globals) => is_exposed_in(global, globals),
             Condition::SecureContext() => is_secure_context::<D>(cx),

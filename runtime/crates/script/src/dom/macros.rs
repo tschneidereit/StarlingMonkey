@@ -159,87 +159,87 @@ macro_rules! make_labels_getter(
     );
 );
 
-/// Implements the `To determine the state of an attribute` steps from
-/// <https://html.spec.whatwg.org/multipage/#keywords-and-enumerated-attributes>
-macro_rules! make_enumerated_getter(
-    ($attr:ident,
-        $htmlname:tt,
-        $($choices:literal)|+,
-        missing => $missing:literal,
-        invalid => $invalid:literal
-    ) => (
-        fn $attr(&self) -> DOMString {
-            use $crate::dom::bindings::inheritance::Castable;
-            use $crate::dom::element::Element;
-            use $crate::dom::bindings::codegen::Bindings::AttrBinding::Attr_Binding::AttrMethods;
-
-            let attr_or_none = self.upcast::<Element>()
-                .get_attribute(&html5ever::ns!(), &html5ever::local_name!($htmlname));
-            match attr_or_none  {
-                // Step 1. If the attribute is not specified:
-                None => {
-                    // Step 1.1. If the attribute has a missing value default state defined, then return that
-                    // missing value default state.
-                    // Step 1.2 Otherwise, return no state.
-                    return DOMString::from($missing);
-                },
-                Some(attr) => {
-                    // Step 2. If the attribute's value is an ASCII case-insensitive match for one of the keywords
-                    // defined for the attribute, then return the state represented by that keyword.
-                    let value: DOMString = attr.Value().to_ascii_lowercase().into();
-                    $(
-                        if value.str() == $choices {
-                            return value;
-                        }
-                    )+
-
-                    // Step 3. If the attribute has an invalid value default state defined, then return that invalid
-                    // value default state.
-                    // Step 4. Return no state.
-                    return DOMString::from($invalid);
-                }
-            }
-        }
-    );
-    ($attr:ident,
-        $htmlname:tt,
-        $($choices:literal)|+,
-    ) => (
-        make_enumerated_getter!(
-            $attr,
-            $htmlname,
-            $($choices)|+,
-            missing => "",
-            invalid => ""
-        );
-    );
-    ($attr:ident,
-        $htmlname:tt,
-        $($choices:literal)|+,
-        invalid => $invalid:literal
-    ) => (
-        make_enumerated_getter!(
-            $attr,
-            $htmlname,
-            $($choices)|+,
-            missing => "",
-            invalid => $invalid
-        );
-    );
-    ($attr:ident,
-        $htmlname:tt,
-        $($choices:literal)|+,
-        missing => $missing:literal,
-    ) => (
-        make_enumerated_getter!(
-            $attr,
-            $htmlname,
-            $($choices)|+,
-            missing => $missing,
-            invalid => ""
-        );
-    );
-);
+// /// Implements the `To determine the state of an attribute` steps from
+// /// <https://html.spec.whatwg.org/multipage/#keywords-and-enumerated-attributes>
+// macro_rules! make_enumerated_getter(
+//     ($attr:ident,
+//         $htmlname:tt,
+//         $($choices:literal)|+,
+//         missing => $missing:literal,
+//         invalid => $invalid:literal
+//     ) => (
+//         fn $attr(&self) -> DOMString {
+//             use $crate::dom::bindings::inheritance::Castable;
+//             use $crate::dom::element::Element;
+//             use $crate::dom::bindings::codegen::Bindings::AttrBinding::Attr_Binding::AttrMethods;
+//
+//             let attr_or_none = self.upcast::<Element>()
+//                 .get_attribute(&html5ever::ns!(), &html5ever::local_name!($htmlname));
+//             match attr_or_none  {
+//                 // Step 1. If the attribute is not specified:
+//                 None => {
+//                     // Step 1.1. If the attribute has a missing value default state defined, then return that
+//                     // missing value default state.
+//                     // Step 1.2 Otherwise, return no state.
+//                     return DOMString::from($missing);
+//                 },
+//                 Some(attr) => {
+//                     // Step 2. If the attribute's value is an ASCII case-insensitive match for one of the keywords
+//                     // defined for the attribute, then return the state represented by that keyword.
+//                     let value: DOMString = attr.Value().to_ascii_lowercase().into();
+//                     $(
+//                         if value.str() == $choices {
+//                             return value;
+//                         }
+//                     )+
+//
+//                     // Step 3. If the attribute has an invalid value default state defined, then return that invalid
+//                     // value default state.
+//                     // Step 4. Return no state.
+//                     return DOMString::from($invalid);
+//                 }
+//             }
+//         }
+//     );
+//     ($attr:ident,
+//         $htmlname:tt,
+//         $($choices:literal)|+,
+//     ) => (
+//         make_enumerated_getter!(
+//             $attr,
+//             $htmlname,
+//             $($choices)|+,
+//             missing => "",
+//             invalid => ""
+//         );
+//     );
+//     ($attr:ident,
+//         $htmlname:tt,
+//         $($choices:literal)|+,
+//         invalid => $invalid:literal
+//     ) => (
+//         make_enumerated_getter!(
+//             $attr,
+//             $htmlname,
+//             $($choices)|+,
+//             missing => "",
+//             invalid => $invalid
+//         );
+//     );
+//     ($attr:ident,
+//         $htmlname:tt,
+//         $($choices:literal)|+,
+//         missing => $missing:literal,
+//     ) => (
+//         make_enumerated_getter!(
+//             $attr,
+//             $htmlname,
+//             $($choices)|+,
+//             missing => $missing,
+//             invalid => ""
+//         );
+//     );
+// );
 
 // concat_idents! doesn't work for function name positions, so
 // we have to specify both the content name and the HTML name here
@@ -428,25 +428,25 @@ macro_rules! define_event_handler(
     )
 );
 
-macro_rules! define_window_owned_event_handler(
-    ($handler: ty, $event_type: ident, $getter: ident, $setter: ident) => (
-        fn $getter(&self) -> Option<::std::rc::Rc<$handler>> {
-            let document = self.owner_document();
-            if document.has_browsing_context() {
-                document.window().$getter()
-            } else {
-                None
-            }
-        }
-
-        fn $setter(&self, listener: Option<::std::rc::Rc<$handler>>) {
-            let document = self.owner_document();
-            if document.has_browsing_context() {
-                document.window().$setter(listener)
-            }
-        }
-    )
-);
+// macro_rules! define_window_owned_event_handler(
+//     ($handler: ty, $event_type: ident, $getter: ident, $setter: ident) => (
+//         fn $getter(&self) -> Option<::std::rc::Rc<$handler>> {
+//             let document = self.owner_document();
+//             if document.has_browsing_context() {
+//                 document.window().$getter()
+//             } else {
+//                 None
+//             }
+//         }
+// 
+//         fn $setter(&self, listener: Option<::std::rc::Rc<$handler>>) {
+//             let document = self.owner_document();
+//             if document.has_browsing_context() {
+//                 document.window().$setter(listener)
+//             }
+//         }
+//     )
+// );
 
 macro_rules! event_handler(
     ($event_type: ident, $getter: ident, $setter: ident) => (
@@ -460,263 +460,263 @@ macro_rules! event_handler(
     )
 );
 
-macro_rules! error_event_handler(
-    ($event_type: ident, $getter: ident, $setter: ident) => (
-        define_event_handler!(
-            crate::dom::bindings::codegen::Bindings::EventHandlerBinding::OnErrorEventHandlerNonNull,
-            $event_type,
-            $getter,
-            $setter,
-            set_error_event_handler
-        );
-    )
-);
+// macro_rules! error_event_handler(
+//     ($event_type: ident, $getter: ident, $setter: ident) => (
+//         define_event_handler!(
+//             crate::dom::bindings::codegen::Bindings::EventHandlerBinding::OnErrorEventHandlerNonNull,
+//             $event_type,
+//             $getter,
+//             $setter,
+//             set_error_event_handler
+//         );
+//     )
+// );
 
-macro_rules! beforeunload_event_handler(
-    ($event_type: ident, $getter: ident, $setter: ident) => (
-        define_event_handler!(
-            crate::dom::bindings::codegen::Bindings::EventHandlerBinding::OnBeforeUnloadEventHandlerNonNull,
-            $event_type,
-            $getter,
-            $setter,
-            set_beforeunload_event_handler
-        );
-    )
-);
+// macro_rules! beforeunload_event_handler(
+//     ($event_type: ident, $getter: ident, $setter: ident) => (
+//         define_event_handler!(
+//             crate::dom::bindings::codegen::Bindings::EventHandlerBinding::OnBeforeUnloadEventHandlerNonNull,
+//             $event_type,
+//             $getter,
+//             $setter,
+//             set_beforeunload_event_handler
+//         );
+//     )
+// );
+//
+// macro_rules! window_owned_event_handler(
+//     ($event_type: ident, $getter: ident, $setter: ident) => (
+//         define_window_owned_event_handler!(
+//             crate::dom::bindings::codegen::Bindings::EventHandlerBinding::EventHandlerNonNull,
+//             $event_type,
+//             $getter,
+//             $setter
+//         );
+//     )
+// );
+//
+// macro_rules! window_owned_beforeunload_event_handler(
+//     ($event_type: ident, $getter: ident, $setter: ident) => (
+//         define_window_owned_event_handler!(
+//             crate::dom::bindings::codegen::Bindings::EventHandlerBinding::OnBeforeUnloadEventHandlerNonNull,
+//             $event_type,
+//             $getter,
+//             $setter
+//         );
+//     )
+// );
 
-macro_rules! window_owned_event_handler(
-    ($event_type: ident, $getter: ident, $setter: ident) => (
-        define_window_owned_event_handler!(
-            crate::dom::bindings::codegen::Bindings::EventHandlerBinding::EventHandlerNonNull,
-            $event_type,
-            $getter,
-            $setter
-        );
-    )
-);
+// // https://html.spec.whatwg.org/multipage/#globaleventhandlers
+// // see webidls/EventHandler.webidl
+// // As more methods get added, just update them here.
+// macro_rules! global_event_handlers(
+//     () => (
+//         // These are special when on body/frameset elements
+//         event_handler!(blur, GetOnblur, SetOnblur);
+//         error_event_handler!(error, GetOnerror, SetOnerror);
+//         event_handler!(focus, GetOnfocus, SetOnfocus);
+//         event_handler!(load, GetOnload, SetOnload);
+//         event_handler!(resize, GetOnresize, SetOnresize);
+//         event_handler!(scroll, GetOnscroll, SetOnscroll);
+//         global_event_handlers!(NoOnload);
+// 
+//     );
+//     (NoOnload) => (
+//         event_handler!(abort, GetOnabort, SetOnabort);
+//         event_handler!(auxclick, GetOnauxclick, SetOnauxclick);
+//         event_handler!(animationend, GetOnanimationend, SetOnanimationend);
+//         event_handler!(animationiteration, GetOnanimationiteration, SetOnanimationiteration);
+//         event_handler!(beforeinput, GetOnbeforeinput, SetOnbeforeinput);
+//         event_handler!(beforematch, GetOnbeforematch, SetOnbeforematch);
+//         event_handler!(beforetoggle, GetOnbeforetoggle, SetOnbeforetoggle);
+//         event_handler!(cancel, GetOncancel, SetOncancel);
+//         event_handler!(canplay, GetOncanplay, SetOncanplay);
+//         event_handler!(canplaythrough, GetOncanplaythrough, SetOncanplaythrough);
+//         event_handler!(change, GetOnchange, SetOnchange);
+//         event_handler!(click, GetOnclick, SetOnclick);
+//         event_handler!(close, GetOnclose, SetOnclose);
+//         event_handler!(command, GetOncommand, SetOncommand);
+//         event_handler!(contextlost, GetOncontextlost, SetOncontextlost);
+//         event_handler!(contextmenu, GetOncontextmenu, SetOncontextmenu);
+//         event_handler!(contextrestored, GetOncontextrestored, SetOncontextrestored);
+//         event_handler!(copy, GetOncopy, SetOncopy);
+//         event_handler!(cuechange, GetOncuechange, SetOncuechange);
+//         event_handler!(cut, GetOncut, SetOncut);
+//         event_handler!(dblclick, GetOndblclick, SetOndblclick);
+//         event_handler!(drag, GetOndrag, SetOndrag);
+//         event_handler!(dragend, GetOndragend, SetOndragend);
+//         event_handler!(dragenter, GetOndragenter, SetOndragenter);
+//         event_handler!(dragleave, GetOndragleave, SetOndragleave);
+//         event_handler!(dragover, GetOndragover, SetOndragover);
+//         event_handler!(dragstart, GetOndragstart, SetOndragstart);
+//         event_handler!(drop, GetOndrop, SetOndrop);
+//         event_handler!(durationchange, GetOndurationchange, SetOndurationchange);
+//         event_handler!(emptied, GetOnemptied, SetOnemptied);
+//         event_handler!(ended, GetOnended, SetOnended);
+//         event_handler!(formdata, GetOnformdata, SetOnformdata);
+//         event_handler!(input, GetOninput, SetOninput);
+//         event_handler!(invalid, GetOninvalid, SetOninvalid);
+//         event_handler!(keydown, GetOnkeydown, SetOnkeydown);
+//         event_handler!(keypress, GetOnkeypress, SetOnkeypress);
+//         event_handler!(keyup, GetOnkeyup, SetOnkeyup);
+//         event_handler!(loadeddata, GetOnloadeddata, SetOnloadeddata);
+//         event_handler!(loadedmetadata, GetOnloadedmetadata, SetOnloadedmetadata);
+//         event_handler!(loadstart, GetOnloadstart, SetOnloadstart);
+//         event_handler!(mousedown, GetOnmousedown, SetOnmousedown);
+//         event_handler!(mouseenter, GetOnmouseenter, SetOnmouseenter);
+//         event_handler!(mouseleave, GetOnmouseleave, SetOnmouseleave);
+//         event_handler!(mousemove, GetOnmousemove, SetOnmousemove);
+//         event_handler!(mouseout, GetOnmouseout, SetOnmouseout);
+//         event_handler!(mouseover, GetOnmouseover, SetOnmouseover);
+//         event_handler!(mouseup, GetOnmouseup, SetOnmouseup);
+//         event_handler!(paste, GetOnpaste, SetOnpaste);
+//         event_handler!(pause, GetOnpause, SetOnpause);
+//         event_handler!(play, GetOnplay, SetOnplay);
+//         event_handler!(playing, GetOnplaying, SetOnplaying);
+//         event_handler!(progress, GetOnprogress, SetOnprogress);
+//         event_handler!(ratechange, GetOnratechange, SetOnratechange);
+//         event_handler!(reset, GetOnreset, SetOnreset);
+//         event_handler!(scrollend, GetOnscrollend, SetOnscrollend);
+//         event_handler!(securitypolicyviolation, GetOnsecuritypolicyviolation, SetOnsecuritypolicyviolation);
+//         event_handler!(seeked, GetOnseeked, SetOnseeked);
+//         event_handler!(seeking, GetOnseeking, SetOnseeking);
+//         event_handler!(select, GetOnselect, SetOnselect);
+//         event_handler!(selectionchange, GetOnselectionchange, SetOnselectionchange);
+//         event_handler!(selectstart, GetOnselectstart, SetOnselectstart);
+//         event_handler!(slotchange, GetOnslotchange, SetOnslotchange);
+//         event_handler!(stalled, GetOnstalled, SetOnstalled);
+//         event_handler!(submit, GetOnsubmit, SetOnsubmit);
+//         event_handler!(suspend, GetOnsuspend, SetOnsuspend);
+//         event_handler!(timeupdate, GetOntimeupdate, SetOntimeupdate);
+//         event_handler!(toggle, GetOntoggle, SetOntoggle);
+//         event_handler!(transitioncancel, GetOntransitioncancel, SetOntransitioncancel);
+//         event_handler!(transitionend, GetOntransitionend, SetOntransitionend);
+//         event_handler!(transitionrun, GetOntransitionrun, SetOntransitionrun);
+//         event_handler!(volumechange, GetOnvolumechange, SetOnvolumechange);
+//         event_handler!(waiting, GetOnwaiting, SetOnwaiting);
+//         event_handler!(webkitanimationend, GetOnwebkitanimationend, SetOnwebkitanimationend);
+//         event_handler!(webkitanimationiteration, GetOnwebkitanimationiteration, SetOnwebkitanimationiteration);
+//         event_handler!(webkitanimationstart, GetOnwebkitanimationstart, SetOnwebkitanimationstart);
+//         event_handler!(webkittransitionend, GetOnwebkittransitionend, SetOnwebkittransitionend);
+//         event_handler!(wheel, GetOnwheel, SetOnwheel);
+//     )
+// );
 
-macro_rules! window_owned_beforeunload_event_handler(
-    ($event_type: ident, $getter: ident, $setter: ident) => (
-        define_window_owned_event_handler!(
-            crate::dom::bindings::codegen::Bindings::EventHandlerBinding::OnBeforeUnloadEventHandlerNonNull,
-            $event_type,
-            $getter,
-            $setter
-        );
-    )
-);
+// // https://html.spec.whatwg.org/multipage/#windoweventhandlers
+// // see webidls/EventHandler.webidl
+// // As more methods get added, just update them here.
+// macro_rules! window_event_handlers(
+//     () => (
+//         event_handler!(afterprint, GetOnafterprint, SetOnafterprint);
+//         event_handler!(beforeprint, GetOnbeforeprint, SetOnbeforeprint);
+//         beforeunload_event_handler!(beforeunload, GetOnbeforeunload,
+//                                     SetOnbeforeunload);
+//         event_handler!(hashchange, GetOnhashchange, SetOnhashchange);
+//         event_handler!(languagechange, GetOnlanguagechange,
+//                        SetOnlanguagechange);
+//         event_handler!(message, GetOnmessage, SetOnmessage);
+//         event_handler!(messageerror, GetOnmessageerror, SetOnmessageerror);
+//         event_handler!(offline, GetOnoffline, SetOnoffline);
+//         event_handler!(online, GetOnonline, SetOnonline);
+//         event_handler!(pagehide, GetOnpagehide, SetOnpagehide);
+//         event_handler!(pagereveal, GetOnpagereveal, SetOnpagereveal);
+//         event_handler!(pageshow, GetOnpageshow, SetOnpageshow);
+//         event_handler!(pageswap, GetOnpageswap, SetOnpageswap);
+//         event_handler!(popstate, GetOnpopstate, SetOnpopstate);
+//         event_handler!(rejectionhandled, GetOnrejectionhandled,
+//                        SetOnrejectionhandled);
+//         event_handler!(storage, GetOnstorage, SetOnstorage);
+//         event_handler!(unhandledrejection, GetOnunhandledrejection,
+//                        SetOnunhandledrejection);
+//         event_handler!(unload, GetOnunload, SetOnunload);
+//         event_handler!(gamepadconnected, GetOngamepadconnected, SetOngamepadconnected);
+//         event_handler!(gamepaddisconnected, GetOngamepaddisconnected, SetOngamepaddisconnected);
+//     );
+//     (ForwardToWindow) => (
+//         window_owned_event_handler!(afterprint, GetOnafterprint,
+//                                     SetOnafterprint);
+//         window_owned_event_handler!(beforeprint, GetOnbeforeprint,
+//                                     SetOnbeforeprint);
+//         window_owned_beforeunload_event_handler!(beforeunload,
+//                                                  GetOnbeforeunload,
+//                                                  SetOnbeforeunload);
+//         window_owned_event_handler!(hashchange, GetOnhashchange,
+//                                     SetOnhashchange);
+//         window_owned_event_handler!(languagechange, GetOnlanguagechange,
+//                                     SetOnlanguagechange);
+//         window_owned_event_handler!(message, GetOnmessage, SetOnmessage);
+//         window_owned_event_handler!(messageerror, GetOnmessageerror, SetOnmessageerror);
+//         window_owned_event_handler!(offline, GetOnoffline, SetOnoffline);
+//         window_owned_event_handler!(online, GetOnonline, SetOnonline);
+//         window_owned_event_handler!(pagehide, GetOnpagehide, SetOnpagehide);
+//         window_owned_event_handler!(pagereveal, GetOnpagereveal, SetOnpagereveal);
+//         window_owned_event_handler!(pageshow, GetOnpageshow, SetOnpageshow);
+//         window_owned_event_handler!(pageswap, GetOnpageswap, SetOnpageswap);
+//         window_owned_event_handler!(popstate, GetOnpopstate, SetOnpopstate);
+//         window_owned_event_handler!(rejectionhandled, GetOnrejectionhandled,
+//                                     SetOnrejectionhandled);
+//         window_owned_event_handler!(storage, GetOnstorage, SetOnstorage);
+//         window_owned_event_handler!(unhandledrejection, GetOnunhandledrejection,
+//                                     SetOnunhandledrejection);
+//         window_owned_event_handler!(unload, GetOnunload, SetOnunload);
+//         window_owned_event_handler!(gamepadconnected, GetOngamepadconnected, SetOngamepadconnected);
+//         window_owned_event_handler!(gamepaddisconnected, GetOngamepaddisconnected, SetOngamepaddisconnected);
+//     );
+// );
 
-// https://html.spec.whatwg.org/multipage/#globaleventhandlers
-// see webidls/EventHandler.webidl
-// As more methods get added, just update them here.
-macro_rules! global_event_handlers(
-    () => (
-        // These are special when on body/frameset elements
-        event_handler!(blur, GetOnblur, SetOnblur);
-        error_event_handler!(error, GetOnerror, SetOnerror);
-        event_handler!(focus, GetOnfocus, SetOnfocus);
-        event_handler!(load, GetOnload, SetOnload);
-        event_handler!(resize, GetOnresize, SetOnresize);
-        event_handler!(scroll, GetOnscroll, SetOnscroll);
-        global_event_handlers!(NoOnload);
+// /// DOM struct implementation for simple interfaces inheriting from PerformanceEntry.
+// macro_rules! impl_performance_entry_struct(
+//     ($binding:ident, $struct:ident, $type:expr) => (
+//         use base::cross_process_instant::CrossProcessInstant;
+//         use time::Duration;
+//
+//         use crate::dom::bindings::reflector::reflect_dom_object;
+//         use crate::dom::bindings::root::DomRoot;
+//         use crate::dom::bindings::str::DOMString;
+//         use crate::dom::globalscope::GlobalScope;
+//         use crate::dom::performanceentry::PerformanceEntry;
+//         use crate::script_runtime::CanGc;
+//         use dom_struct::dom_struct;
+//
+//         #[dom_struct]
+//         pub(crate) struct $struct {
+//             entry: PerformanceEntry,
+//         }
+//
+//         impl $struct {
+//             fn new_inherited(name: DOMString, start_time: CrossProcessInstant, duration: Duration)
+//                 -> $struct {
+//                 $struct {
+//                     entry: PerformanceEntry::new_inherited(name,
+//                                                            DOMString::from($type),
+//                                                            Some(start_time),
+//                                                            duration)
+//                 }
+//             }
+//
+//             #[cfg_attr(crown, allow(crown::unrooted_must_root))]
+//             pub(crate) fn new(global: &GlobalScope,
+//                        name: DOMString,
+//                        start_time: CrossProcessInstant,
+//                        duration: Duration) -> DomRoot<$struct> {
+//                 let entry = $struct::new_inherited(name, start_time, duration);
+//                 reflect_dom_object(Box::new(entry), global, CanGc::note())
+//             }
+//         }
+//     );
+// );
 
-    );
-    (NoOnload) => (
-        event_handler!(abort, GetOnabort, SetOnabort);
-        event_handler!(auxclick, GetOnauxclick, SetOnauxclick);
-        event_handler!(animationend, GetOnanimationend, SetOnanimationend);
-        event_handler!(animationiteration, GetOnanimationiteration, SetOnanimationiteration);
-        event_handler!(beforeinput, GetOnbeforeinput, SetOnbeforeinput);
-        event_handler!(beforematch, GetOnbeforematch, SetOnbeforematch);
-        event_handler!(beforetoggle, GetOnbeforetoggle, SetOnbeforetoggle);
-        event_handler!(cancel, GetOncancel, SetOncancel);
-        event_handler!(canplay, GetOncanplay, SetOncanplay);
-        event_handler!(canplaythrough, GetOncanplaythrough, SetOncanplaythrough);
-        event_handler!(change, GetOnchange, SetOnchange);
-        event_handler!(click, GetOnclick, SetOnclick);
-        event_handler!(close, GetOnclose, SetOnclose);
-        event_handler!(command, GetOncommand, SetOncommand);
-        event_handler!(contextlost, GetOncontextlost, SetOncontextlost);
-        event_handler!(contextmenu, GetOncontextmenu, SetOncontextmenu);
-        event_handler!(contextrestored, GetOncontextrestored, SetOncontextrestored);
-        event_handler!(copy, GetOncopy, SetOncopy);
-        event_handler!(cuechange, GetOncuechange, SetOncuechange);
-        event_handler!(cut, GetOncut, SetOncut);
-        event_handler!(dblclick, GetOndblclick, SetOndblclick);
-        event_handler!(drag, GetOndrag, SetOndrag);
-        event_handler!(dragend, GetOndragend, SetOndragend);
-        event_handler!(dragenter, GetOndragenter, SetOndragenter);
-        event_handler!(dragleave, GetOndragleave, SetOndragleave);
-        event_handler!(dragover, GetOndragover, SetOndragover);
-        event_handler!(dragstart, GetOndragstart, SetOndragstart);
-        event_handler!(drop, GetOndrop, SetOndrop);
-        event_handler!(durationchange, GetOndurationchange, SetOndurationchange);
-        event_handler!(emptied, GetOnemptied, SetOnemptied);
-        event_handler!(ended, GetOnended, SetOnended);
-        event_handler!(formdata, GetOnformdata, SetOnformdata);
-        event_handler!(input, GetOninput, SetOninput);
-        event_handler!(invalid, GetOninvalid, SetOninvalid);
-        event_handler!(keydown, GetOnkeydown, SetOnkeydown);
-        event_handler!(keypress, GetOnkeypress, SetOnkeypress);
-        event_handler!(keyup, GetOnkeyup, SetOnkeyup);
-        event_handler!(loadeddata, GetOnloadeddata, SetOnloadeddata);
-        event_handler!(loadedmetadata, GetOnloadedmetadata, SetOnloadedmetadata);
-        event_handler!(loadstart, GetOnloadstart, SetOnloadstart);
-        event_handler!(mousedown, GetOnmousedown, SetOnmousedown);
-        event_handler!(mouseenter, GetOnmouseenter, SetOnmouseenter);
-        event_handler!(mouseleave, GetOnmouseleave, SetOnmouseleave);
-        event_handler!(mousemove, GetOnmousemove, SetOnmousemove);
-        event_handler!(mouseout, GetOnmouseout, SetOnmouseout);
-        event_handler!(mouseover, GetOnmouseover, SetOnmouseover);
-        event_handler!(mouseup, GetOnmouseup, SetOnmouseup);
-        event_handler!(paste, GetOnpaste, SetOnpaste);
-        event_handler!(pause, GetOnpause, SetOnpause);
-        event_handler!(play, GetOnplay, SetOnplay);
-        event_handler!(playing, GetOnplaying, SetOnplaying);
-        event_handler!(progress, GetOnprogress, SetOnprogress);
-        event_handler!(ratechange, GetOnratechange, SetOnratechange);
-        event_handler!(reset, GetOnreset, SetOnreset);
-        event_handler!(scrollend, GetOnscrollend, SetOnscrollend);
-        event_handler!(securitypolicyviolation, GetOnsecuritypolicyviolation, SetOnsecuritypolicyviolation);
-        event_handler!(seeked, GetOnseeked, SetOnseeked);
-        event_handler!(seeking, GetOnseeking, SetOnseeking);
-        event_handler!(select, GetOnselect, SetOnselect);
-        event_handler!(selectionchange, GetOnselectionchange, SetOnselectionchange);
-        event_handler!(selectstart, GetOnselectstart, SetOnselectstart);
-        event_handler!(slotchange, GetOnslotchange, SetOnslotchange);
-        event_handler!(stalled, GetOnstalled, SetOnstalled);
-        event_handler!(submit, GetOnsubmit, SetOnsubmit);
-        event_handler!(suspend, GetOnsuspend, SetOnsuspend);
-        event_handler!(timeupdate, GetOntimeupdate, SetOntimeupdate);
-        event_handler!(toggle, GetOntoggle, SetOntoggle);
-        event_handler!(transitioncancel, GetOntransitioncancel, SetOntransitioncancel);
-        event_handler!(transitionend, GetOntransitionend, SetOntransitionend);
-        event_handler!(transitionrun, GetOntransitionrun, SetOntransitionrun);
-        event_handler!(volumechange, GetOnvolumechange, SetOnvolumechange);
-        event_handler!(waiting, GetOnwaiting, SetOnwaiting);
-        event_handler!(webkitanimationend, GetOnwebkitanimationend, SetOnwebkitanimationend);
-        event_handler!(webkitanimationiteration, GetOnwebkitanimationiteration, SetOnwebkitanimationiteration);
-        event_handler!(webkitanimationstart, GetOnwebkitanimationstart, SetOnwebkitanimationstart);
-        event_handler!(webkittransitionend, GetOnwebkittransitionend, SetOnwebkittransitionend);
-        event_handler!(wheel, GetOnwheel, SetOnwheel);
-    )
-);
-
-// https://html.spec.whatwg.org/multipage/#windoweventhandlers
-// see webidls/EventHandler.webidl
-// As more methods get added, just update them here.
-macro_rules! window_event_handlers(
-    () => (
-        event_handler!(afterprint, GetOnafterprint, SetOnafterprint);
-        event_handler!(beforeprint, GetOnbeforeprint, SetOnbeforeprint);
-        beforeunload_event_handler!(beforeunload, GetOnbeforeunload,
-                                    SetOnbeforeunload);
-        event_handler!(hashchange, GetOnhashchange, SetOnhashchange);
-        event_handler!(languagechange, GetOnlanguagechange,
-                       SetOnlanguagechange);
-        event_handler!(message, GetOnmessage, SetOnmessage);
-        event_handler!(messageerror, GetOnmessageerror, SetOnmessageerror);
-        event_handler!(offline, GetOnoffline, SetOnoffline);
-        event_handler!(online, GetOnonline, SetOnonline);
-        event_handler!(pagehide, GetOnpagehide, SetOnpagehide);
-        event_handler!(pagereveal, GetOnpagereveal, SetOnpagereveal);
-        event_handler!(pageshow, GetOnpageshow, SetOnpageshow);
-        event_handler!(pageswap, GetOnpageswap, SetOnpageswap);
-        event_handler!(popstate, GetOnpopstate, SetOnpopstate);
-        event_handler!(rejectionhandled, GetOnrejectionhandled,
-                       SetOnrejectionhandled);
-        event_handler!(storage, GetOnstorage, SetOnstorage);
-        event_handler!(unhandledrejection, GetOnunhandledrejection,
-                       SetOnunhandledrejection);
-        event_handler!(unload, GetOnunload, SetOnunload);
-        event_handler!(gamepadconnected, GetOngamepadconnected, SetOngamepadconnected);
-        event_handler!(gamepaddisconnected, GetOngamepaddisconnected, SetOngamepaddisconnected);
-    );
-    (ForwardToWindow) => (
-        window_owned_event_handler!(afterprint, GetOnafterprint,
-                                    SetOnafterprint);
-        window_owned_event_handler!(beforeprint, GetOnbeforeprint,
-                                    SetOnbeforeprint);
-        window_owned_beforeunload_event_handler!(beforeunload,
-                                                 GetOnbeforeunload,
-                                                 SetOnbeforeunload);
-        window_owned_event_handler!(hashchange, GetOnhashchange,
-                                    SetOnhashchange);
-        window_owned_event_handler!(languagechange, GetOnlanguagechange,
-                                    SetOnlanguagechange);
-        window_owned_event_handler!(message, GetOnmessage, SetOnmessage);
-        window_owned_event_handler!(messageerror, GetOnmessageerror, SetOnmessageerror);
-        window_owned_event_handler!(offline, GetOnoffline, SetOnoffline);
-        window_owned_event_handler!(online, GetOnonline, SetOnonline);
-        window_owned_event_handler!(pagehide, GetOnpagehide, SetOnpagehide);
-        window_owned_event_handler!(pagereveal, GetOnpagereveal, SetOnpagereveal);
-        window_owned_event_handler!(pageshow, GetOnpageshow, SetOnpageshow);
-        window_owned_event_handler!(pageswap, GetOnpageswap, SetOnpageswap);
-        window_owned_event_handler!(popstate, GetOnpopstate, SetOnpopstate);
-        window_owned_event_handler!(rejectionhandled, GetOnrejectionhandled,
-                                    SetOnrejectionhandled);
-        window_owned_event_handler!(storage, GetOnstorage, SetOnstorage);
-        window_owned_event_handler!(unhandledrejection, GetOnunhandledrejection,
-                                    SetOnunhandledrejection);
-        window_owned_event_handler!(unload, GetOnunload, SetOnunload);
-        window_owned_event_handler!(gamepadconnected, GetOngamepadconnected, SetOngamepadconnected);
-        window_owned_event_handler!(gamepaddisconnected, GetOngamepaddisconnected, SetOngamepaddisconnected);
-    );
-);
-
-/// DOM struct implementation for simple interfaces inheriting from PerformanceEntry.
-macro_rules! impl_performance_entry_struct(
-    ($binding:ident, $struct:ident, $type:expr) => (
-        use base::cross_process_instant::CrossProcessInstant;
-        use time::Duration;
-
-        use crate::dom::bindings::reflector::reflect_dom_object;
-        use crate::dom::bindings::root::DomRoot;
-        use crate::dom::bindings::str::DOMString;
-        use crate::dom::globalscope::GlobalScope;
-        use crate::dom::performanceentry::PerformanceEntry;
-        use crate::script_runtime::CanGc;
-        use dom_struct::dom_struct;
-
-        #[dom_struct]
-        pub(crate) struct $struct {
-            entry: PerformanceEntry,
-        }
-
-        impl $struct {
-            fn new_inherited(name: DOMString, start_time: CrossProcessInstant, duration: Duration)
-                -> $struct {
-                $struct {
-                    entry: PerformanceEntry::new_inherited(name,
-                                                           DOMString::from($type),
-                                                           Some(start_time),
-                                                           duration)
-                }
-            }
-
-            #[cfg_attr(crown, allow(crown::unrooted_must_root))]
-            pub(crate) fn new(global: &GlobalScope,
-                       name: DOMString,
-                       start_time: CrossProcessInstant,
-                       duration: Duration) -> DomRoot<$struct> {
-                let entry = $struct::new_inherited(name, start_time, duration);
-                reflect_dom_object(Box::new(entry), global, CanGc::note())
-            }
-        }
-    );
-);
-
-macro_rules! handle_potential_webgl_error {
-    ($context:expr, $call:expr, $return_on_error:expr) => {
-        match $call {
-            Ok(ret) => ret,
-            Err(error) => {
-                $context.webgl_error(error);
-                $return_on_error
-            },
-        }
-    };
-    ($context:expr, $call:expr) => {
-        handle_potential_webgl_error!($context, $call, ())
-    };
-}
+// macro_rules! handle_potential_webgl_error {
+//     ($context:expr, $call:expr, $return_on_error:expr) => {
+//         match $call {
+//             Ok(ret) => ret,
+//             Err(error) => {
+//                 $context.webgl_error(error);
+//                 $return_on_error
+//             },
+//         }
+//     };
+//     ($context:expr, $call:expr) => {
+//         handle_potential_webgl_error!($context, $call, ())
+//     };
+// }

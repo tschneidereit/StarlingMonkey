@@ -59,9 +59,9 @@ use servo_config::{opts, pref};
 // use crate::dom::bindings::codegen::Bindings::PromiseBinding::PromiseJobCallback;
 // use crate::dom::bindings::codegen::Bindings::ResponseBinding::Response_Binding::ResponseMethods;
 // use crate::dom::bindings::codegen::Bindings::ResponseBinding::ResponseType as DOMResponseType;
-// use crate::dom::bindings::conversions::{
-//     get_dom_class, private_from_object, root_from_handleobject,
-// };
+use crate::dom::bindings::conversions::{
+    get_dom_class, private_from_object, root_from_handleobject,
+};
 // use crate::dom::bindings::error::{Error, throw_dom_exception};
 // use crate::dom::bindings::inheritance::Castable;
 // use crate::dom::bindings::refcounted::{
@@ -503,9 +503,9 @@ unsafe extern "C" fn promise_rejection_tracker(
 #[allow(unsafe_code)]
 #[cfg_attr(crown, allow(crown::unrooted_must_root))]
 /// <https://html.spec.whatwg.org/multipage/#notify-about-rejected-promises>
-pub(crate) fn notify_about_rejected_promises(global: &GlobalScope) {
-    let cx = GlobalScope::get_cx();
-    unsafe {
+pub(crate) fn notify_about_rejected_promises(_global: &GlobalScope) {
+    // let cx = GlobalScope::get_cx();
+    // unsafe {
         // Step 2.
         // if global.get_uncaught_rejections().borrow().len() > 0 {
         //     // Step 1.
@@ -571,7 +571,7 @@ pub(crate) fn notify_about_rejected_promises(global: &GlobalScope) {
             //     })
             // );
         // }
-    }
+    // }
 }
 
 #[derive(JSTraceable)]
@@ -619,7 +619,7 @@ impl Runtime {
     #[allow(unsafe_code)]
     pub unsafe fn new_with_parent(
         parent: Option<ParentRuntime>,
-        networking_task_source: Option<SendableTaskSource>,
+        _networking_task_source: Option<SendableTaskSource>,
     ) -> Runtime {
         let (cx, runtime) = if let Some(parent) = parent {
             let runtime = RustRuntime::create_with_parent(parent);
@@ -681,15 +681,15 @@ impl Runtime {
             true
         }
 
-        let mut networking_task_src_ptr = std::ptr::null_mut();
-        if let Some(source) = networking_task_source {
-            networking_task_src_ptr = Box::into_raw(Box::new(source));
-            SetUpEventLoopDispatch(
-                cx,
-                Some(dispatch_to_event_loop),
-                networking_task_src_ptr as *mut c_void,
-            );
-        }
+        // let mut networking_task_src_ptr = std::ptr::null_mut();
+        // if let Some(source) = networking_task_source {
+        //     networking_task_src_ptr = Box::into_raw(Box::new(source));
+        //     SetUpEventLoopDispatch(
+        //         cx,
+        //         Some(dispatch_to_event_loop),
+        //         networking_task_src_ptr as *mut c_void,
+        //     );
+        // }
 
         // InitConsumeStreamCallback(cx, Some(consume_stream), Some(report_stream_error));
 
@@ -914,19 +914,18 @@ thread_local!(static MALLOC_SIZE_OF_OPS: Cell<*mut MallocSizeOfOps> = const { Ce
 
 #[allow(unsafe_code)]
 unsafe extern "C" fn get_size(obj: *mut JSObject) -> usize {
-    // match get_dom_class(obj) {
-    //     Ok(v) => {
-    //         let dom_object = private_from_object(obj) as *const c_void;
-    //
-    //         if dom_object.is_null() {
-    //             return 0;
-    //         }
-    //         let ops = MALLOC_SIZE_OF_OPS.get();
-    //         (v.malloc_size_of)(&mut *ops, dom_object)
-    //     },
-    //     Err(_e) => 0,
-    // }
-    0
+    match get_dom_class(obj) {
+        Ok(v) => {
+            let dom_object = private_from_object(obj) as *const c_void;
+
+            if dom_object.is_null() {
+                return 0;
+            }
+            let ops = MALLOC_SIZE_OF_OPS.get();
+            (v.malloc_size_of)(&mut *ops, dom_object)
+        },
+        Err(_e) => 0,
+    }
 }
 
 thread_local!(static GC_CYCLE_START: Cell<Option<Instant>> = const { Cell::new(None) });
@@ -973,7 +972,7 @@ unsafe extern "C" fn gc_slice_callback(
 #[allow(unsafe_code)]
 unsafe extern "C" fn debug_gc_callback(
     _cx: *mut RawJSContext,
-    status: JSGCStatus,
+    _status: JSGCStatus,
     _reason: GCReason,
     _data: *mut os::raw::c_void,
 ) {

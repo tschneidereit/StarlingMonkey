@@ -12,25 +12,25 @@ mod from_script_message;
 mod structured_data;
 
 use std::collections::VecDeque;
-use std::fmt;
-use std::time::Duration;
+// use std::fmt;
+// use std::time::Duration;
 
-use base::cross_process_instant::CrossProcessInstant;
-use base::id::{MessagePortId, PipelineId, WebViewId};
-use embedder_traits::{
-    /*CompositorHitTestResult, InputEvent, */JavaScriptEvaluationId, // MediaSessionActionType, Theme,
-    // TraversalId, ViewportDetails, WebDriverCommandMsg, WebDriverCommandResponse,
-};
+// use base::cross_process_instant::CrossProcessInstant;
+use base::id::{MessagePortId, /*PipelineId, WebViewId*/};
+// use embedder_traits::{
+//     /*CompositorHitTestResult, InputEvent, */JavaScriptEvaluationId, // MediaSessionActionType, Theme,
+//     // TraversalId, ViewportDetails, WebDriverCommandMsg, WebDriverCommandResponse,
+// };
 pub use from_script_message::*;
-use ipc_channel::ipc::IpcSender;
+// use ipc_channel::ipc::IpcSender;
 use malloc_size_of_derive::MallocSizeOf;
-use profile_traits::mem::MemoryReportResult;
+// use profile_traits::mem::MemoryReportResult;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use servo_config::prefs::PrefValue;
-use servo_url::{ImmutableOrigin, ServoUrl};
+// use servo_config::prefs::PrefValue;
+use servo_url::{ImmutableOrigin, /*ServoUrl*/};
 pub use structured_data::*;
-use strum_macros::IntoStaticStr;
+// use strum_macros::IntoStaticStr;
 // use webrender_api::units::LayoutVector2D;
 // use webrender_api::{ExternalScrollId, ImageKey};
 
