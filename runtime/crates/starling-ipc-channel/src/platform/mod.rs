@@ -8,7 +8,7 @@
 // except according to those terms.
 
 #[cfg(all(
-    not(feature = "force-inprocess"),
+    not(any(feature = "force-inprocess", feature = "single-thread")),
     any(
         target_os = "linux",
         target_os = "openbsd",
@@ -18,7 +18,7 @@
 ))]
 mod unix;
 #[cfg(all(
-    not(feature = "force-inprocess"),
+    not(any(feature = "force-inprocess", feature = "single-thread")),
     any(
         target_os = "linux",
         target_os = "openbsd",
@@ -30,37 +30,47 @@ mod os {
     pub use super::unix::*;
 }
 
-#[cfg(all(not(feature = "force-inprocess"), target_os = "macos"))]
+#[cfg(all(not(any(feature = "force-inprocess", feature = "single-thread")), target_os = "macos"))]
 mod macos;
-#[cfg(all(not(feature = "force-inprocess"), target_os = "macos"))]
+#[cfg(all(not(any(feature = "force-inprocess", feature = "single-thread")), target_os = "macos"))]
 mod os {
     pub use super::macos::*;
 }
 
-#[cfg(all(not(feature = "force-inprocess"), target_os = "windows"))]
+#[cfg(all(not(any(feature = "force-inprocess", feature = "single-thread")), target_os = "windows"))]
 mod windows;
-#[cfg(all(not(feature = "force-inprocess"), target_os = "windows"))]
+#[cfg(all(not(any(feature = "force-inprocess", feature = "single-thread")), target_os = "windows"))]
 mod os {
     pub use super::windows::*;
 }
 
-#[cfg(any(
+#[cfg(all(any(
     feature = "force-inprocess",
     target_os = "android",
     target_os = "ios",
     target_os = "wasi",
-    target_os = "unknown"
+    target_os = "unknown"),
+    not(feature = "single-thread")
 ))]
 mod inprocess;
-#[cfg(any(
+#[cfg(all(any(
     feature = "force-inprocess",
     target_os = "android",
     target_os = "ios",
     target_os = "wasi",
-    target_os = "unknown"
+    target_os = "unknown"),
+    not(feature = "single-thread")
 ))]
 mod os {
     pub use super::inprocess::*;
+}
+
+#[cfg(feature = "single-thread")]
+mod single_thread;
+
+#[cfg(feature = "single-thread")]
+mod os {
+    pub use super::single_thread::*;
 }
 
 pub use self::os::{channel, OsOpaqueIpcChannel};

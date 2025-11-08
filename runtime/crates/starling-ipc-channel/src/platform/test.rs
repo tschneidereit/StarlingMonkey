@@ -10,32 +10,40 @@
 use crate::ipc::IpcMessage;
 use crate::platform::OsIpcSharedMemory;
 use crate::platform::{self, OsIpcChannel, OsIpcReceiverSet};
+#[cfg(not(feature = "single-thread"))]
 use std::collections::HashMap;
+#[cfg(not(feature = "single-thread"))]
 use std::sync::Arc;
+#[cfg(not(feature = "single-thread"))]
 use std::thread;
+#[cfg(not(feature = "single-thread"))]
 use std::time::{Duration, Instant};
 
-use crate::platform::{OsIpcOneShotServer, OsIpcSender};
+#[cfg(not(feature = "single-thread"))]
+use crate::platform::OsIpcOneShotServer;
+use crate::platform::OsIpcSender;
 #[cfg(not(any(
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 use crate::test::{fork, Wait};
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 use libc;
 #[cfg(not(any(
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 use libc::{kill, SIGCONT, SIGSTOP};
 
 // Helper to get a channel_name argument passed in; used for the
 // cross-process spawn server tests.
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 use crate::test::{get_channel_name_arg, spawn_server};
 
 #[test]
@@ -118,6 +126,7 @@ fn medium_data() {
     assert_eq!(ipc_message, IpcMessage::from_data(data.to_vec()));
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn medium_data_with_sender_transfer() {
     let data: Vec<u8> = (0..get_max_fragment_size())
@@ -137,6 +146,7 @@ fn medium_data_with_sender_transfer() {
     assert_eq!(ipc_message, IpcMessage::from_data(data.to_vec()));
 }
 
+#[cfg(not(feature = "single-thread"))]
 fn check_big_data(size: u32) {
     let (tx, rx) = platform::channel().unwrap();
     let thread = thread::spawn(move || {
@@ -152,11 +162,13 @@ fn check_big_data(size: u32) {
     thread.join().unwrap();
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn big_data() {
     check_big_data(1024 * 1024);
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn huge_data() {
     check_big_data(1024 * 1024 * 50);
@@ -166,6 +178,7 @@ fn huge_data() {
     check_big_data(1024 * 1024 * 48);
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn big_data_with_sender_transfer() {
     let (super_tx, super_rx) = platform::channel().unwrap();
@@ -312,6 +325,7 @@ fn fd_only() {
     with_n_fds(1, 0);
 }
 
+#[cfg(not(feature = "single-thread"))]
 macro_rules! create_big_data_with_n_fds {
     ($name:ident, $n:expr) => {
         #[test]
@@ -355,14 +369,22 @@ macro_rules! create_big_data_with_n_fds {
     };
 }
 
+#[cfg(not(feature = "single-thread"))]
 create_big_data_with_n_fds!(big_data_with_0_fds, 0);
+#[cfg(not(feature = "single-thread"))]
 create_big_data_with_n_fds!(big_data_with_1_fds, 1);
+#[cfg(not(feature = "single-thread"))]
 create_big_data_with_n_fds!(big_data_with_2_fds, 2);
+#[cfg(not(feature = "single-thread"))]
 create_big_data_with_n_fds!(big_data_with_3_fds, 3);
+#[cfg(not(feature = "single-thread"))]
 create_big_data_with_n_fds!(big_data_with_4_fds, 4);
+#[cfg(not(feature = "single-thread"))]
 create_big_data_with_n_fds!(big_data_with_5_fds, 5);
+#[cfg(not(feature = "single-thread"))]
 create_big_data_with_n_fds!(big_data_with_6_fds, 6);
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn concurrent_senders() {
     let num_senders = 3;
@@ -456,7 +478,8 @@ fn receiver_set() {
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 fn receiver_set_eintr() {
     let (server, name) = OsIpcOneShotServer::new().unwrap();
@@ -583,6 +606,7 @@ fn receiver_set_medium_data() {
     }
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn receiver_set_big_data() {
     let (tx0, rx0) = platform::channel().unwrap();
@@ -632,6 +656,7 @@ fn receiver_set_big_data() {
     thread1.join().unwrap();
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn receiver_set_concurrent() {
     let num_channels = 5;
@@ -688,6 +713,7 @@ fn receiver_set_concurrent() {
     }
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn server_accept_first() {
     let (server, name) = OsIpcOneShotServer::new().unwrap();
@@ -703,6 +729,7 @@ fn server_accept_first() {
     assert_eq!(ipc_message, IpcMessage::from_data(data.to_vec()));
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn server_connect_first() {
     let (server, name) = OsIpcOneShotServer::new().unwrap();
@@ -719,7 +746,7 @@ fn server_connect_first() {
     assert_eq!(ipc_message, IpcMessage::from_data(data.to_vec()));
 }
 
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 #[test]
 fn cross_process_spawn() {
     let data: &[u8] = b"1234567";
@@ -746,7 +773,8 @@ fn cross_process_spawn() {
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 #[test]
 fn cross_process_fork() {
@@ -765,7 +793,7 @@ fn cross_process_fork() {
     assert_eq!(ipc_message, IpcMessage::from_data(data.to_vec()));
 }
 
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 #[test]
 fn cross_process_sender_transfer_spawn() {
     let channel_name = get_channel_name_arg("server");
@@ -804,7 +832,8 @@ fn cross_process_sender_transfer_spawn() {
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 #[test]
 fn cross_process_sender_transfer_fork() {
@@ -890,6 +919,7 @@ fn no_receiver_notification_pending() {
 /// Checks for broken pipe notification when receiver is closed after a delay.
 ///
 /// This might uncover some timing-related issues.
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn no_receiver_notification_delayed() {
     let (sender, receiver) = platform::channel().unwrap();
@@ -972,6 +1002,7 @@ fn no_senders_notification_try_recv() {
 /// Checks for channel closed notification when receiver is closed after a delay.
 ///
 /// This might uncover some timing-related issues.
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn no_senders_notification_try_recv_delayed() {
     let (sender, receiver) = platform::channel().unwrap();
@@ -995,6 +1026,7 @@ fn no_senders_notification_try_recv_delayed() {
     thread.join().unwrap();
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn try_recv_large() {
     let (tx, rx) = platform::channel().unwrap();
@@ -1020,6 +1052,7 @@ fn try_recv_large() {
     assert!(rx.try_recv().is_err());
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn try_recv_large_delayed() {
     // These settings work well on my system when doing cargo test --release.
@@ -1121,7 +1154,7 @@ mod sync_test {
 // Needs investigation.  It may be a similar underlying issue, just done by
 // the kernel instead of explicitly (ports in a message that's already
 // buffered are intended for only one process).
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 #[cfg_attr(any(target_os = "windows"), ignore)]
 #[test]
 fn cross_process_two_step_transfer_spawn() {

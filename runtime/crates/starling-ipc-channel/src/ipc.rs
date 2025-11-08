@@ -811,6 +811,16 @@ impl OpaqueIpcReceiver {
             phantom: PhantomData,
         }
     }
+
+    /// Register a callback to be invoked when messages are sent to this receiver.
+    /// This is used by the Router in single-threaded mode.
+    #[cfg(feature = "single-thread")]
+    pub(crate) fn register_callback<F>(&self, callback: F)
+    where
+        F: FnMut(IpcMessage) + Send + 'static,
+    {
+        self.os_receiver.register_callback(Box::new(callback));
+    }
 }
 
 impl<'de> Deserialize<'de> for OpaqueIpcReceiver {

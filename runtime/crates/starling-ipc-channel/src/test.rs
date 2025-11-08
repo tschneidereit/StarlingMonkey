@@ -8,48 +8,59 @@
 // except according to those terms.
 
 use std::cell::RefCell;
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 use std::env;
 #[cfg(not(any(
     feature = "force-inprocess",
     target_os = "android",
     target_os = "ios",
     target_os = "windows",
+    feature = "single-thread",
 )))]
 use std::io::Error;
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios",)))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 use std::process::{self, Command, Stdio};
 #[cfg(not(any(
     feature = "force-inprocess",
     target_os = "android",
     target_os = "ios",
     target_os = "windows",
+    feature = "single-thread",
 )))]
 use std::ptr;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
-use std::{iter, thread};
+#[cfg(not(feature = "single-thread"))]
+use std::thread;
 
-use crossbeam_channel::{self, Sender};
+#[cfg(not(feature = "single-thread"))]
+use crossbeam_channel;
+#[cfg(not(feature = "single-thread"))]
+use crossbeam_channel::Sender;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(not(any(
     feature = "force-inprocess",
     target_os = "android",
     target_os = "ios",
-    target_os = "windows"
+    target_os = "windows",
+    feature = "single-thread",
 )))]
 use crate::ipc::IpcOneShotServer;
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 use crate::ipc::IpcReceiver;
 use crate::ipc::{self, IpcReceiverSet, IpcSender, IpcSharedMemory};
-use crate::router::{RouterProxy, ROUTER};
+use crate::router::RouterProxy;
+
+#[cfg(not(feature = "single-thread"))]
+use crate::router::ROUTER;
 
 #[cfg(not(any(
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 // I'm not actually sure invoking this is indeed unsafe -- but better safe than sorry...
 pub unsafe fn fork<F: FnOnce()>(child_func: F) -> libc::pid_t {
@@ -67,7 +78,8 @@ pub unsafe fn fork<F: FnOnce()>(child_func: F) -> libc::pid_t {
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 pub trait Wait {
     fn wait(self);
@@ -77,7 +89,8 @@ pub trait Wait {
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 impl Wait for libc::pid_t {
     fn wait(self) {
@@ -89,7 +102,7 @@ impl Wait for libc::pid_t {
 
 // Helper to get a channel_name argument passed in; used for the
 // cross-process spawn server tests.
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 pub fn get_channel_name_arg(which: &str) -> Option<String> {
     for arg in env::args() {
         let arg_str = &*format!("channel_name-{which}:");
@@ -102,7 +115,7 @@ pub fn get_channel_name_arg(which: &str) -> Option<String> {
 
 // Helper to get a channel_name argument passed in; used for the
 // cross-process spawn server tests.
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios",)))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 pub fn spawn_server(test_name: &str, server_args: &[(&str, &str)]) -> process::Child {
     Command::new(env::current_exe().unwrap())
         .arg(test_name)
@@ -215,7 +228,7 @@ fn select() {
     }
 }
 
-#[cfg(not(any(feature = "force-inprocess", target_os = "android", target_os = "ios")))]
+#[cfg(not(any(feature = "force-inprocess", feature = "single-thread", target_os = "android", target_os = "ios")))]
 #[test]
 fn cross_process_embedded_senders_spawn() {
     let person = ("Patrick Walton".to_owned(), 29);
@@ -240,7 +253,8 @@ fn cross_process_embedded_senders_spawn() {
     feature = "force-inprocess",
     target_os = "windows",
     target_os = "android",
-    target_os = "ios"
+    target_os = "ios",
+    feature = "single-thread",
 )))]
 #[test]
 fn cross_process_embedded_senders_fork() {
@@ -264,6 +278,7 @@ fn cross_process_embedded_senders_fork() {
     assert_eq!(received_person, person);
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn router_simple_global() {
     // Note: All ROUTER operation need to run in a single test,
@@ -323,6 +338,7 @@ fn router_simple_global() {
     ROUTER.shutdown();
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[cfg_attr(not(feature = "enable-slow-tests"), ignore)]
 #[test]
 fn router_flood() {
@@ -374,6 +390,7 @@ fn router_multiplexing() {
     assert_eq!(received_person_1, person);
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn router_multithreaded_multiplexing() {
     let person = ("Patrick Walton".to_owned(), 29);
@@ -394,6 +411,7 @@ fn router_multithreaded_multiplexing() {
     assert_eq!(received_person_1, person);
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn router_drops_callbacks_on_sender_shutdown() {
     struct Dropper {
@@ -421,6 +439,7 @@ fn router_drops_callbacks_on_sender_shutdown() {
     assert_eq!(drop_rx.recv(), Ok(42));
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn router_drops_callbacks_on_cloned_sender_shutdown() {
     struct Dropper {
@@ -450,6 +469,7 @@ fn router_drops_callbacks_on_cloned_sender_shutdown() {
     assert_eq!(drop_rx.recv(), Ok(42));
 }
 
+#[cfg(not(feature = "single-thread"))]
 #[test]
 fn router_big_data() {
     let person = ("Patrick Walton".to_owned(), 29);

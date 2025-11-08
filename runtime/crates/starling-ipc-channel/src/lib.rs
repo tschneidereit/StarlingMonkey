@@ -34,6 +34,8 @@ extern crate windows;
 
 pub mod ipc;
 pub mod platform;
+#[cfg_attr(not(feature = "single-thread"), path = "router.rs")]
+#[cfg_attr(feature = "single-thread", path = "router_single_thread.rs")]
 pub mod router;
 
 #[cfg(test)]
