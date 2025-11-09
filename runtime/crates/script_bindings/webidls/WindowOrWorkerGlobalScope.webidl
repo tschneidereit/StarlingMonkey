@@ -28,9 +28,9 @@ interface mixin WindowOrWorkerGlobalScope {
 //  Promise<ImageBitmap> createImageBitmap(ImageBitmapSource image, long sx, long sy, long sw, long sh,
 //                                         optional ImageBitmapOptions options = {});
 
-//  // structured cloning
-//  [Throws]
-//  any structuredClone(any value, optional StructuredSerializeOptions options = {});
+  // structured cloning
+  [Throws]
+  any structuredClone(any value, optional StructuredSerializeOptions options = {});
 };
 
 // https://w3c.github.io/hr-time/#the-performance-attribute
@@ -51,7 +51,7 @@ partial interface mixin WindowOrWorkerGlobalScope {
 
 // https://fetch.spec.whatwg.org/#fetch-method
 partial interface mixin WindowOrWorkerGlobalScope {
-//  [NewObject] Promise<Response> fetch(RequestInfo input, optional RequestInit init = {});
+  [NewObject] Promise<Response> fetch(RequestInfo input, optional RequestInit init = {});
 };
 
 Window includes WindowOrWorkerGlobalScope;

@@ -2,16 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+use std::sync::Arc;
+
 use crate::dom::abstractworker::WorkerScriptMsg;
 use crate::dom::abstractworkerglobalscope::{run_worker_event_loop, WorkerEventLoopMethods};
-use crate::dom::bindings::cell::{DomRefCell, Ref};
 use crate::dom::bindings::codegen::Bindings::StarlingGlobalScopeBinding;
-use crate::dom::bindings::error::report_pending_exception;
 use crate::dom::bindings::import::base::SafeJSContext;
 use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::reflector::DomObject;
 use crate::dom::bindings::root::DomRoot;
-use crate::dom::bindings::settings_stack::AutoEntryScript;
 use crate::dom::bindings::str::DOMString;
 use crate::dom::bindings::trace::CustomTraceable;
 use crate::dom::bindings::utils::define_all_exposed_interfaces;
@@ -19,21 +18,22 @@ use crate::dom::globalscope::GlobalScope;
 use crate::dom::workerglobalscope::WorkerGlobalScope;
 use crate::messaging::ScriptEventLoopSender;
 use crate::realms::{enter_realm, InRealm};
-use crate::script_runtime::{CanGc, IntroductionType, JSContext, Runtime};
+use crate::script_runtime::{CanGc, Runtime};
 use crate::task_queue::TaskQueue;
 use crate::task_source::{SendableTaskSource, TaskSourceName};
 use base::id::PipelineId;
-use constellation_traits::ScriptToConstellationChan;
+use constellation_traits::{ScriptToConstellationChan, WorkerGlobalScopeInit};
 use crossbeam_channel::{unbounded, Receiver, Sender};
+use devtools_traits::WorkerId;
 use dom_struct::dom_struct;
 use embedder_traits::{EmbedderMsg, EmbedderProxy, EventLoopWaker, ScriptToEmbedderChan};
 use ipc_channel::ipc;
-use js::jsval::UndefinedValue;
-use js::rust::ParentRuntime;
+use net_traits::request::InsecureRequestsPolicy;
 use net_traits::ResourceThreads;
-use profile_traits::{generic_channel, mem as profile_mem, time as profile_time};
+use profile_traits::generic_channel;
 use servo_url::{MutableOrigin, ServoUrl};
 use storage_traits::StorageThreads;
+use uuid::Uuid;
 
 unsafe_no_jsmanaged_fields!(TaskQueue<WorkerScriptMsg>);
 
@@ -44,28 +44,13 @@ pub struct StarlingGlobalScope {
     #[ignore_malloc_size_of = "Defined in std"]
     task_queue: TaskQueue<WorkerScriptMsg>,
     own_sender: Sender<WorkerScriptMsg>,
-    worker_name: DOMString,
-
-    #[no_trace]
-    worker_url: DomRefCell<ServoUrl>,
-    #[ignore_malloc_size_of = "Defined in js"]
-    runtime: DomRefCell<Option<Runtime>>,
 }
 
 impl StarlingGlobalScope {
 
     #[allow(unsafe_code, clippy::too_many_arguments)]
     pub(crate) fn new(
-        pipeline_id: PipelineId,
-        // devtools_chan: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
-        mem_profiler_chan: profile_mem::ProfilerChan,
-        time_profiler_chan: profile_time::ProfilerChan,
-        script_to_constellation_chan: ScriptToConstellationChan,
-        script_to_embedder_chan: ScriptToEmbedderChan,
-        resource_threads: ResourceThreads,
-        storage_threads: StorageThreads,
-        origin: MutableOrigin,
-        creation_url: ServoUrl,
+        init: WorkerGlobalScopeInit,
         worker_name: DOMString,
         worker_url: ServoUrl,
         runtime: Runtime,
@@ -74,16 +59,7 @@ impl StarlingGlobalScope {
     ) -> DomRoot<Self> {
         let cx = runtime.cx();
         let scope = Box::new(Self::new_inherited(
-            pipeline_id,
-            // devtools_chan,
-            mem_profiler_chan,
-            time_profiler_chan,
-            script_to_constellation_chan,
-            script_to_embedder_chan,
-            resource_threads,
-            storage_threads,
-            origin,
-            creation_url,
+            init,
             worker_name,
             worker_url,
             runtime,
@@ -100,16 +76,7 @@ impl StarlingGlobalScope {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_inherited(
-        pipeline_id: PipelineId,
-        // devtools_chan: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
-        mem_profiler_chan: profile_mem::ProfilerChan,
-        time_profiler_chan: profile_time::ProfilerChan,
-        script_to_constellation_chan: ScriptToConstellationChan,
-        script_to_embedder_chan: ScriptToEmbedderChan,
-        resource_threads: ResourceThreads,
-        storage_threads: StorageThreads,
-        origin: MutableOrigin,
-        creation_url: ServoUrl,
+        init: WorkerGlobalScopeInit,
         worker_name: DOMString,
         worker_url: ServoUrl,
         runtime: Runtime,
@@ -118,58 +85,16 @@ impl StarlingGlobalScope {
     ) -> Self {
         Self {
             globalscope: WorkerGlobalScope::new_inherited(
-                pipeline_id,
-                // devtools_chan,
-                mem_profiler_chan,
-                time_profiler_chan,
-                script_to_constellation_chan,
-                script_to_embedder_chan,
-                resource_threads,
-                storage_threads,
-                origin,
-                creation_url,
-                runtime.microtask_queue.clone(),
-                // false,
+                init,
+                worker_name,
+                worker_url,
+                runtime,
+                Arc::new(false.into()),
+                InsecureRequestsPolicy::Upgrade,
             ),
             task_queue: TaskQueue::new(receiver, own_sender.clone()),
             own_sender,
-            worker_name,
-            // worker_type,
-            worker_url: DomRefCell::new(worker_url),
-            runtime: DomRefCell::new(Some(runtime)),
-            // location: Default::default(),
-            // navigation_start: CrossProcessInstant::now(),
-            // performance: Default::default(),
-            // timer_scheduler: RefCell::default(),
         }
-    }
-
-    // /// Clear various items when the worker event-loop shuts-down.
-    // pub(crate) fn clear_js_runtime(&self) {
-    //     // Drop the runtime.
-    //     let runtime = self.runtime.borrow_mut().take();
-    //     drop(runtime);
-    // }
-
-    pub(crate) fn runtime_handle(&self) -> ParentRuntime {
-        self.runtime
-            .borrow()
-            .as_ref()
-            .unwrap()
-            .prepare_for_new_child()
-    }
-
-    #[allow(unsafe_code)]
-    pub(crate) fn get_cx(&self) -> JSContext {
-        unsafe { JSContext::from_ptr(self.runtime.borrow().as_ref().unwrap().cx()) }
-    }
-
-    pub(crate) fn get_url(&'_ self) -> Ref<ServoUrl> {
-        self.worker_url.borrow()
-    }
-
-    pub(crate) fn set_url(&self, url: ServoUrl) {
-        *self.worker_url.borrow_mut() = url;
     }
 
     pub(crate) fn event_loop_sender(&self) -> Option<ScriptEventLoopSender> {
@@ -265,18 +190,25 @@ impl StarlingGlobalScope {
         let storage_threads: StorageThreads = StorageThreads::new(storage_sender);
         let (core_sender, _) = ipc::channel().unwrap();
         let mock_resource_threads = ResourceThreads::new(core_sender);
-
-        let global = Self::new(
+        let init = WorkerGlobalScopeInit {
             pipeline_id,
-            // None,
+            // devtools_chan,
+            origin: origin.immutable().clone(),
+            creation_url,
             mem_profiler_chan,
             time_profiler_chan,
+            to_devtools_sender: None,
+            from_devtools_sender: None,
             script_to_constellation_chan,
             script_to_embedder_chan,
-            mock_resource_threads,
+            resource_threads: mock_resource_threads,
             storage_threads,
-            origin,
-            creation_url,
+            worker_id: WorkerId(Uuid::default()),
+            inherited_secure_context: None,
+        };
+
+        let global = Self::new(
+            init,
             DOMString::from_string(worker_name),
             worker_url,
             runtime,
@@ -298,38 +230,8 @@ impl StarlingGlobalScope {
 
     #[allow(unsafe_code)]
     pub fn execute_script(&self, source: &str, can_gc: CanGc) {
-        let _aes = AutoEntryScript::new(self.upcast());
-        let cx = self.runtime.borrow().as_ref().unwrap().cx();
-        rooted!(in(cx) let mut rval = UndefinedValue());
-        let mut options = self
-            .runtime
-            .borrow()
-            .as_ref()
-            .unwrap()
-            .new_compile_options(self.worker_url.borrow().as_str(), 1);
-        options.set_introduction_type(IntroductionType::WORKER);
-        match self.runtime.borrow().as_ref().unwrap().evaluate_script(
-            self.reflector().get_jsobject(),
-            source,
-            rval.handle_mut(),
-            options,
-        ) {
-            Ok(_) => (),
-            Err(_) => {
-                println!("evaluate_script failed");
-                unsafe {
-                    let ar = enter_realm(self);
-                    report_pending_exception(
-                        JSContext::from_ptr(cx),
-                        true,
-                        InRealm::Entered(&ar),
-                        can_gc,
-                    );
-                }
-            },
-        }
-
-        self.globalscope.as_global_scope().perform_a_microtask_checkpoint(can_gc);
+        self.globalscope.execute_script(source.into(), can_gc);
+        self.globalscope.upcast::<GlobalScope>().perform_a_microtask_checkpoint(can_gc);
     }
 
     fn handle_mixed_message(&self, msg: MixedMessage, _can_gc: CanGc) -> bool {

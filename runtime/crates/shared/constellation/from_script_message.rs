@@ -29,11 +29,11 @@ use net_traits::policy_container::PolicyContainer;
 use net_traits::request::{Destination, InsecureRequestsPolicy, Referrer, RequestBody};
 use net_traits::{ReferrerPolicy, ResourceThreads};
 use profile_traits::mem::MemoryReportResult;
-// use profile_traits::{mem, time as profile_time};
+use profile_traits::{mem, time as profile_time};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use servo_url::{ImmutableOrigin, ServoUrl};
-// use storage_traits::StorageThreads;
+use storage_traits::StorageThreads;
 use storage_traits::webstorage_thread::StorageType;
 use strum_macros::IntoStaticStr;
 #[cfg(feature = "webgpu")]
@@ -435,12 +435,12 @@ pub struct IFrameLoadInfo {
 pub struct WorkerGlobalScopeInit {
     /// Chan to a resource thread
     pub resource_threads: ResourceThreads,
-    // /// Chan to a storage thread
-    // pub storage_threads: StorageThreads,
-    // /// Chan to the memory profiler
-    // pub mem_profiler_chan: mem::ProfilerChan,
-    // /// Chan to the time profiler
-    // pub time_profiler_chan: profile_time::ProfilerChan,
+    /// Chan to a storage thread
+    pub storage_threads: StorageThreads,
+    /// Chan to the memory profiler
+    pub mem_profiler_chan: mem::ProfilerChan,
+    /// Chan to the time profiler
+    pub time_profiler_chan: profile_time::ProfilerChan,
     /// To devtools sender
     pub to_devtools_sender: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
     /// From devtools sender
