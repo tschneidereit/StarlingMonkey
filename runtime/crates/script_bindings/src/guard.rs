@@ -6,7 +6,6 @@
 
 use js::rust::HandleObject;
 use servo_config::prefs::get;
-// use servo_config::prefs::get;
 
 use crate::DomTypes;
 use crate::codegen::Globals::Globals;

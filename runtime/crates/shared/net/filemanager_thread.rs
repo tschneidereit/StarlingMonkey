@@ -4,9 +4,9 @@
 
 use std::cmp::{max, min};
 use std::ops::Range;
-// use std::path::PathBuf;
-// use std::time::SystemTime;
-//
+use std::path::PathBuf;
+use std::time::SystemTime;
+
 // use base::id::WebViewId;
 // use embedder_traits::FilterPattern;
 use ipc_channel::ipc::IpcSender;
@@ -22,19 +22,19 @@ use crate::blob_url_store::{BlobBuf, BlobURLStoreError};
 /// File manager store entry's origin
 pub type FileOrigin = String;
 
-// /// A token modulating access to a file for a blob URL.
-// pub enum FileTokenCheck {
-//     /// Checking against a token not required,
-//     /// used for accessing a file
-//     /// that isn't linked to from a blob URL.
-//     NotRequired,
-//     /// Checking against token required.
-//     Required(Uuid),
-//     /// Request should always fail,
-//     /// used for cases when a check is required,
-//     /// but no token could be acquired.
-//     ShouldFail,
-// }
+/// A token modulating access to a file for a blob URL.
+pub enum FileTokenCheck {
+    /// Checking against a token not required,
+    /// used for accessing a file
+    /// that isn't linked to from a blob URL.
+    NotRequired,
+    /// Checking against token required.
+    Required(Uuid),
+    /// Request should always fail,
+    /// used for cases when a check is required,
+    /// but no token could be acquired.
+    ShouldFail,
+}
 
 /// Relative slice positions of a sequence,
 /// whose semantic should be consistent with (start, end) parameters in
@@ -122,17 +122,17 @@ impl RelativePos {
     }
 }
 
-// /// Response to file selection request
-// #[derive(Debug, Deserialize, Serialize)]
-// pub struct SelectedFile {
-//     pub id: Uuid,
-//     pub filename: PathBuf,
-//     pub modified: SystemTime,
-//     pub size: u64,
-//     // https://w3c.github.io/FileAPI/#dfn-type
-//     pub type_string: String,
-// }
-//
+/// Response to file selection request
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SelectedFile {
+    pub id: Uuid,
+    pub filename: PathBuf,
+    pub modified: SystemTime,
+    pub size: u64,
+    // https://w3c.github.io/FileAPI/#dfn-type
+    pub type_string: String,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub enum FileManagerThreadMsg {
     // /// Select a single file. Last field is pre-selected file path for testing

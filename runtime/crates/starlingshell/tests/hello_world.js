@@ -12,6 +12,10 @@ async function more() {
   let reader = readable.getReader();
   let result = await reader.read();
   console.log('read from stream:', result.value);
+  let p = fetch('https://example.com/');
+  console.log('after fetch call');
+  let response = await p;
+    console.log('fetched response with status:', response.status);
 }
 
 addEventListener("foo", () => {
@@ -20,4 +24,4 @@ addEventListener("foo", () => {
 });
   dispatchEvent(new Event("foo"));
 
-setTimeout(() => console.log("timeout"), 20);
+setTimeout(() => console.log("timeout"), 2000);

@@ -9,7 +9,7 @@ use std::sync::{LazyLock, OnceLock};
 use std::thread::{self, JoinHandle};
 
 use base::cross_process_instant::CrossProcessInstant;
-// use base::id::{CookieStoreId, HistoryStateId};
+use base::id::{CookieStoreId, /*HistoryStateId*/};
 use base::{IpcSend, IpcSendResult};
 use content_security_policy::{self as csp};
 use cookie::Cookie;
@@ -18,7 +18,7 @@ use headers::{ContentType, HeaderMapExt, ReferrerPolicy as ReferrerPolicyHeader}
 use http::{Error as HttpError, HeaderMap, HeaderValue, StatusCode, header};
 use hyper_serde::Serde;
 // use hyper_util::client::legacy::Error as HyperError;
-use ipc_channel::ipc::{self, IpcError, IpcReceiver, IpcSender};
+use ipc_channel::ipc::{self, IpcError, /*IpcReceiver,*/ IpcSender};
 use ipc_channel::router::ROUTER;
 use malloc_size_of::malloc_size_of_is_0;
 use malloc_size_of_derive::MallocSizeOf;
@@ -474,10 +474,10 @@ pub enum WebSocketNetworkEvent {
 /// IPC channels to communicate with the script thread about network or DOM events.
 pub enum FetchChannels {
     ResponseMsg(IpcSender<FetchResponseMsg>),
-    WebSocket {
-        event_sender: IpcSender<WebSocketNetworkEvent>,
-        action_receiver: IpcReceiver<WebSocketDomAction>,
-    },
+    // WebSocket {
+    //     event_sender: IpcSender<WebSocketNetworkEvent>,
+    //     action_receiver: IpcReceiver<WebSocketDomAction>,
+    // },
     /// If the fetch is just being done to populate the cache,
     /// not because the data is needed now.
     Prefetch,
@@ -489,31 +489,31 @@ pub enum CoreResourceMsg {
     Cancel(Vec<RequestId>),
     /// Initiate a fetch in response to processing a redirection
     FetchRedirect(RequestBuilder, ResponseInit, IpcSender<FetchResponseMsg>),
-    // /// Store a cookie for a given originating URL
-    // SetCookieForUrl(ServoUrl, Serde<Cookie<'static>>, CookieSource),
-    // /// Store a set of cookies for a given originating URL
-    // SetCookiesForUrl(ServoUrl, Vec<Serde<Cookie<'static>>>, CookieSource),
-    // SetCookieForUrlAsync(
-    //     CookieStoreId,
-    //     ServoUrl,
-    //     Serde<Cookie<'static>>,
-    //     CookieSource,
-    // ),
-    // /// Retrieve the stored cookies for a given URL
-    // GetCookiesForUrl(ServoUrl, IpcSender<Option<String>>, CookieSource),
-    // /// Get a cookie by name for a given originating URL
-    // GetCookiesDataForUrl(
-    //     ServoUrl,
-    //     IpcSender<Vec<Serde<Cookie<'static>>>>,
-    //     CookieSource,
-    // ),
-    // GetCookieDataForUrlAsync(CookieStoreId, ServoUrl, Option<String>),
-    // GetAllCookieDataForUrlAsync(CookieStoreId, ServoUrl, Option<String>),
-    // DeleteCookies(ServoUrl),
-    // DeleteCookie(ServoUrl, String),
-    // DeleteCookieAsync(CookieStoreId, ServoUrl, String),
-    // NewCookieListener(CookieStoreId, IpcSender<CookieAsyncResponse>, ServoUrl),
-    // RemoveCookieListener(CookieStoreId),
+    /// Store a cookie for a given originating URL
+    SetCookieForUrl(ServoUrl, Serde<Cookie<'static>>, CookieSource),
+    /// Store a set of cookies for a given originating URL
+    SetCookiesForUrl(ServoUrl, Vec<Serde<Cookie<'static>>>, CookieSource),
+    SetCookieForUrlAsync(
+        CookieStoreId,
+        ServoUrl,
+        Serde<Cookie<'static>>,
+        CookieSource,
+    ),
+    /// Retrieve the stored cookies for a given URL
+    GetCookiesForUrl(ServoUrl, IpcSender<Option<String>>, CookieSource),
+    /// Get a cookie by name for a given originating URL
+    GetCookiesDataForUrl(
+        ServoUrl,
+        IpcSender<Vec<Serde<Cookie<'static>>>>,
+        CookieSource,
+    ),
+    GetCookieDataForUrlAsync(CookieStoreId, ServoUrl, Option<String>),
+    GetAllCookieDataForUrlAsync(CookieStoreId, ServoUrl, Option<String>),
+    DeleteCookies(ServoUrl),
+    DeleteCookie(ServoUrl, String),
+    DeleteCookieAsync(CookieStoreId, ServoUrl, String),
+    NewCookieListener(CookieStoreId, IpcSender<CookieAsyncResponse>, ServoUrl),
+    RemoveCookieListener(CookieStoreId),
     // /// Get a history state by a given history state id
     // GetHistoryState(HistoryStateId, IpcSender<Option<Vec<u8>>>),
     // /// Set a history state for a given history state id

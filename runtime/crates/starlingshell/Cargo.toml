@@ -10,10 +10,22 @@ publish.workspace = true
 
 [dependencies]
 base = { workspace = true }
+clap = { version = "4.5", features = ["derive"] }
+constellation_traits = { workspace = true }
+crossbeam-channel = { workspace = true }
+devtools_traits = { workspace = true }
+embedder_traits = { workspace = true }
+env_logger = "0.11.8"
+ipc-channel = { workspace = true }
+net = { workspace = true }
+net_traits = { workspace = true }
+profile = { path = "../profile" }
+profile_traits = { workspace = true }
+rustls = { workspace = true }
 script.workspace = true
 servo_url = { workspace = true }
-env_logger = "0.11.8"
-clap = { version = "4.5", features = ["derive"] }
+storage_traits = { workspace = true }
+uuid = { version = "1.18.1", features = ["v4"] }
 
 [features]
 crown = ['script/crown']

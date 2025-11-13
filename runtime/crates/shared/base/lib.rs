@@ -14,7 +14,7 @@ pub mod generic_channel;
 pub mod id;
 pub mod print_tree;
 pub mod text;
-// pub mod threadpool;
+pub mod threadpool;
 mod unicode_block;
 
 use std::fs::File;
