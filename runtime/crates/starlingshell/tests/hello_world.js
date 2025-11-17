@@ -15,7 +15,8 @@ async function more() {
   let p = fetch('https://example.com/');
   console.log('after fetch call');
   let response = await p;
-    console.log('fetched response with status:', response.status);
+  console.log('fetched response with status:', response.status);
+  console.log(`Response body: ${await response.text()}`);
 }
 
 addEventListener("foo", () => {

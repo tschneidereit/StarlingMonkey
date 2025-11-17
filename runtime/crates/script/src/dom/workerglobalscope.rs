@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use std::cell::{RefCell, RefMut};
+use std::cell::{Cell, RefCell, RefMut};
 use std::default::Default;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -145,6 +145,9 @@ pub struct WorkerGlobalScope {
     #[no_trace]
     timer_scheduler: RefCell<TimerScheduler>,
 
+    /// Counter for pending fetch requests to keep the event loop alive
+    pending_fetch_count: Cell<u32>,
+
     #[no_trace]
     insecure_requests_policy: InsecureRequestsPolicy,
 
@@ -216,6 +219,7 @@ impl WorkerGlobalScope {
             // performance: Default::default(),
             // indexeddb: Default::default(),
             timer_scheduler: RefCell::default(),
+            pending_fetch_count: Cell::new(0),
             insecure_requests_policy,
             trusted_types: Default::default(),
             // reporting_observer_list: Default::default(),
@@ -340,6 +344,29 @@ impl WorkerGlobalScope {
     /// Get a mutable reference to the [`TimerScheduler`] for this [`ServiceWorkerGlobalScope`].
     pub(crate) fn timer_scheduler(&self) -> RefMut<'_, TimerScheduler> {
         self.timer_scheduler.borrow_mut()
+    }
+
+    /// Check if there are any pending timers.
+    pub fn has_pending_timers(&self) -> bool {
+        self.timer_scheduler.borrow().has_pending_timers()
+    }
+
+    /// Increment the counter for pending fetch requests.
+    pub fn increment_pending_fetch_count(&self) {
+        self.pending_fetch_count.set(self.pending_fetch_count.get() + 1);
+    }
+
+    /// Decrement the counter for pending fetch requests.
+    /// TODO: ideally calls to this shouldn't be spread out across the codebase.
+    pub fn decrement_pending_fetch_count(&self) {
+        let count = self.pending_fetch_count.get();
+        debug_assert!(count > 0, "Attempting to decrement pending fetch count when it's already 0");
+        self.pending_fetch_count.set(count.saturating_sub(1));
+    }
+
+    /// Check if there are any pending fetch requests.
+    pub fn has_pending_fetches(&self) -> bool {
+        self.pending_fetch_count.get() > 0
     }
 
     /// Return a copy to the shared task canceller that is used to cancel all tasks

@@ -314,6 +314,11 @@ impl FetchContext {
             cx,
             can_gc,
         );
+
+        // Decrement the pending fetch counter
+        if let Some(worker_global) = self.global.root().downcast::<crate::dom::workerglobalscope::WorkerGlobalScope>() {
+            worker_global.decrement_pending_fetch_count();
+        }
     }
 }
 
@@ -359,6 +364,10 @@ impl FetchResponseListener for FetchContext {
                     Error::Type("Network error occurred".to_string()),
                     CanGc::note(),
                 );
+                // Decrement the pending fetch counter
+                if let Some(worker_global) = self.global.root().downcast::<crate::dom::workerglobalscope::WorkerGlobalScope>() {
+                    worker_global.decrement_pending_fetch_count();
+                }
                 return;
             },
             // Step 12.4. Set responseObject to the result of creating a Response object,
@@ -400,6 +409,11 @@ impl FetchResponseListener for FetchContext {
         // Step 12.5. Resolve p with responseObject.
         promise.resolve_native(&self.response_object.root(), CanGc::note());
         self.fetch_promise = Some(TrustedPromise::new(promise));
+
+        // Decrement the pending fetch counter
+        if let Some(worker_global) = self.global.root().downcast::<crate::dom::workerglobalscope::WorkerGlobalScope>() {
+            worker_global.decrement_pending_fetch_count();
+        }
     }
 
     fn process_response_chunk(&mut self, _: RequestId, chunk: Vec<u8>) {
@@ -422,18 +436,18 @@ impl FetchResponseListener for FetchContext {
     // fn resource_timing_mut(&mut self) -> &mut ResourceFetchTiming {
     //     &mut self.resource_timing
     // }
-    // 
+    //
     // fn resource_timing(&self) -> &ResourceFetchTiming {
     //     &self.resource_timing
     // }
-    // 
+    //
     // fn submit_resource_timing(&mut self) {
     //     // navigation submission is handled in servoparser/mod.rs
     //     if self.resource_timing.timing_type == ResourceTimingType::Resource {
     //         network_listener::submit_timing(self, CanGc::note())
     //     }
     // }
-    // 
+    //
     // fn process_csp_violations(&mut self, _request_id: RequestId, violations: Vec<Violation>) {
     //     let global = &self.resource_timing_global();
     //     global.report_csp_violations(violations, None, None);
@@ -447,7 +461,7 @@ impl FetchResponseListener for FetchContext {
 //             self.resource_timing_global().get_url().clone(),
 //         )
 //     }
-// 
+//
 //     fn resource_timing_global(&self) -> DomRoot<GlobalScope> {
 //         self.response_object.root().global()
 //     }

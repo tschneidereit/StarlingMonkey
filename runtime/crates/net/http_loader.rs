@@ -133,12 +133,12 @@ impl HttpState {
     //     // We do not make an authentication request for non-WebView associated HTTP requests.
     //     let webview_id = request.target_webview_id?;
     //     let for_proxy = response.status == StatusCode::PROXY_AUTHENTICATION_REQUIRED;
-    // 
+    //
     //     // If this is not actually a navigation request return None.
     //     if request.mode != RequestMode::Navigate {
     //         return None;
     //     }
-    // 
+    //
     //     let embedder_proxy = self.embedder_proxy.lock().unwrap();
     //     let (ipc_sender, ipc_receiver) = generic_channel::channel().unwrap();
     //     embedder_proxy.send(EmbedderMsg::RequestAuthentication(
@@ -271,10 +271,10 @@ fn is_same_site(site_a: &ImmutableOrigin, site_b: &ImmutableOrigin) -> bool {
 //         // Step 2.1
 //         let host_a = site_a.host().map(|h| h.to_string()).unwrap_or_default();
 //         let host_b = site_b.host().map(|h| h.to_string()).unwrap_or_default();
-// 
+//
 //         let host_a_reg = reg_suffix(&host_a);
 //         let host_b_reg = reg_suffix(&host_b);
-// 
+//
 //         // Step 2.2-2.3
 //         (site_a.host() == site_b.host() && host_a_reg.is_empty()) ||
 //             (host_a_reg == host_b_reg && !host_a_reg.is_empty())
@@ -945,9 +945,9 @@ pub async fn http_fetch(
         .await;
 
         // Substep 4
-        if cors_flag && cors_check(&fetch_params.request, &fetch_result).is_err() {
-            return Response::network_error(NetworkError::Internal("CORS check failed".into()));
-        }
+        // if cors_flag && cors_check(&fetch_params.request, &fetch_result).is_err() {
+        //     return Response::network_error(NetworkError::Internal("CORS check failed".into()));
+        // }
 
         fetch_result.return_internal = false;
         response = Some(fetch_result);
@@ -1457,14 +1457,14 @@ async fn http_network_or_cache_fetch(
     //     if !http_request.headers.contains_key(header::AUTHORIZATION) {
     //         // Substep 3
     //         let mut authorization_value = None;
-    // 
+    //
     //         // Substep 4
     //         if let Some(basic) = auth_from_cache(&context.state.auth_cache, &current_url.origin()) {
     //             if !http_request.use_url_credentials || !has_credentials(&current_url) {
     //                 authorization_value = Some(basic);
     //             }
     //         }
-    // 
+    //
     //         // Substep 5
     //         if authentication_fetch_flag &&
     //             authorization_value.is_none() &&
@@ -1475,7 +1475,7 @@ async fn http_network_or_cache_fetch(
     //                 current_url.password().unwrap_or(""),
     //             ));
     //         }
-    // 
+    //
     //         // Substep 6
     //         if let Some(basic) = authorization_value {
     //             http_request.headers.typed_insert(basic);
@@ -1506,7 +1506,7 @@ async fn http_network_or_cache_fetch(
     //             })
     //             .clone()
     //     };
-    // 
+    //
     //     // Start of critical section on http-cache state.
     //     let mut state = lock.lock().unwrap();
     //     while let HttpCacheEntryState::PendingStore(_) = *state {
@@ -1519,7 +1519,7 @@ async fn http_network_or_cache_fetch(
     //             break;
     //         }
     //     }
-    // 
+    //
     //     // TODO(#33616): Step 8.23 Set httpCache to the result of determining the
     //     // HTTP cache partition, given httpRequest.
     //     if let Ok(http_cache) = context.state.http_cache.read() {
@@ -1527,7 +1527,7 @@ async fn http_network_or_cache_fetch(
     //         //              possibly needing validation, as per the "Constructing Responses from Caches"
     //         //              chapter of HTTP Caching, if any.
     //         let stored_response = http_cache.construct_response(http_request, done_chan);
-    // 
+    //
     //         // Step 8.25.2 If storedResponse is non-null, then:
     //         if let Some(response_from_cache) = stored_response {
     //             let response_headers = response_from_cache.response.headers.clone();
@@ -1546,7 +1546,7 @@ async fn http_network_or_cache_fetch(
     //                         response_from_cache.needs_validation,
     //                     ),
     //                 };
-    // 
+    //
     //             if needs_revalidation {
     //                 revalidating_flag = true;
     //                 // Substep 5
@@ -1569,7 +1569,7 @@ async fn http_network_or_cache_fetch(
     //                 // Ensure the done chan is not set if we're not using the cached response,
     //                 // as the cache might have set it to Some if it constructed a pending response.
     //                 *done_chan = None;
-    // 
+    //
     //                 // Update the cache state, incrementing the pending store count,
     //                 // or starting the count.
     //                 if let HttpCacheEntryState::PendingStore(i) = *state {
@@ -1622,7 +1622,7 @@ async fn http_network_or_cache_fetch(
     //         // We wait for the response in the cache to "finish",
     //         // with a body of either Done or Cancelled.
     //         assert!(response.is_some());
-    // 
+    //
     //         loop {
     //             match ch.1.recv().await {
     //                 Some(Data::Payload(_)) => {},
@@ -1640,7 +1640,7 @@ async fn http_network_or_cache_fetch(
     //     // Set done_chan back to None, it's cache-related usefulness ends here.
     //     *done_chan = None;
     // }
-    // 
+    //
     // wait_for_cached_response(done_chan, &mut response).await;
 
     // TODO(#33616): Step 9. If aborted, then return the appropriate network error for fetchParams.
@@ -1737,20 +1737,20 @@ async fn http_network_or_cache_fetch(
     //     response.headers.contains_key(WWW_AUTHENTICATE)
     // {
     //     // TODO: Step 14.1 Spec says requires testing on multiple WWW-Authenticate headers
-    // 
+    //
     //     let request = &mut fetch_params.request;
-    // 
+    //
     //     // Step 14.2 If request’s body is non-null, then:
     //     if request.body.is_some() {
     //         // TODO Implement body source
     //     }
-    // 
+    //
     //     // Step 14.3 If request’s use-URL-credentials flag is unset or isAuthenticationFetch is true, then:
     //     if !request.use_url_credentials || authentication_fetch_flag {
     //         let Some(credentials) = context.state.request_authentication(request, &response) else {
     //             return response;
     //         };
-    // 
+    //
     //         if let Err(err) = request
     //             .current_url_mut()
     //             .set_username(&credentials.username)
@@ -1758,7 +1758,7 @@ async fn http_network_or_cache_fetch(
     //             error!("error setting username for url: {:?}", err);
     //             return response;
     //         };
-    // 
+    //
     //         if let Err(err) = request
     //             .current_url_mut()
     //             .set_password(Some(&credentials.password))
@@ -1767,11 +1767,11 @@ async fn http_network_or_cache_fetch(
     //             return response;
     //         };
     //     }
-    // 
+    //
     //     // Make sure this is set to None,
     //     // since we're about to start a new `http_network_or_cache_fetch`.
     //     *done_chan = None;
-    // 
+    //
     //     // Step 14.4 Set response to the result of running HTTP-network-or-cache fetch given fetchParams and true.
     //     response = http_network_or_cache_fetch(
     //         fetch_params,
@@ -1787,24 +1787,24 @@ async fn http_network_or_cache_fetch(
     // if response.status == StatusCode::PROXY_AUTHENTICATION_REQUIRED {
     //     let request = &mut fetch_params.request;
     //     // Step 15.1 If request’s window is "no-window", then return a network error.
-    // 
+    //
     //     if request_has_no_window {
     //         return Response::network_error(NetworkError::Internal(
     //             "Can't find Window object".into(),
     //         ));
     //     }
-    // 
+    //
     //     // (Step 15.2 does not exist, requires testing on Proxy-Authenticate headers)
-    // 
+    //
     //     // TODO(#33616): Step 15.3 If fetchParams is canceled, then return
     //     // the appropriate network error for fetchParams.
-    // 
+    //
     //     // Step 15.4 Prompt the end user as appropriate in request’s window
     //     // window and store the result as a proxy-authentication entry.
     //     let Some(credentials) = context.state.request_authentication(request, &response) else {
     //         return response;
     //     };
-    // 
+    //
     //     // Store the credentials as a proxy-authentication entry.
     //     let entry = AuthCacheEntry {
     //         user_name: credentials.username,
@@ -1815,11 +1815,11 @@ async fn http_network_or_cache_fetch(
     //         let key = request.current_url().origin().ascii_serialization();
     //         auth_cache.entries.insert(key, entry);
     //     }
-    // 
+    //
     //     // Make sure this is set to None,
     //     // since we're about to start a new `http_network_or_cache_fetch`.
     //     *done_chan = None;
-    // 
+    //
     //     // Step 15.5 Set response to the result of running HTTP-network-or-cache fetch given fetchParams.
     //     response = http_network_or_cache_fetch(
     //         fetch_params,
@@ -1854,7 +1854,7 @@ async fn http_network_or_cache_fetch(
 //     Allowed,
 //     Blocked,
 // }
-// 
+//
 // // TODO(#33615): Judging from the name, this appears to be https://fetch.spec.whatwg.org/#cross-origin-resource-policy-check,
 // //       but the steps aren't even close to the spec. Perhaps this needs to be rewritten?
 // fn cross_origin_resource_policy_check(
@@ -1865,7 +1865,7 @@ async fn http_network_or_cache_fetch(
 //     if request.mode != RequestMode::NoCors {
 //         return CrossOriginResourcePolicy::Allowed;
 //     }
-// 
+//
 //     // Step 2
 //     let current_url_origin = request.current_url().origin();
 //     let same_origin = if let Origin::Origin(ref origin) = request.origin {
@@ -1873,23 +1873,23 @@ async fn http_network_or_cache_fetch(
 //     } else {
 //         false
 //     };
-// 
+//
 //     if same_origin {
 //         return CrossOriginResourcePolicy::Allowed;
 //     }
-// 
+//
 //     // Step 3
 //     let policy = response
 //         .headers
 //         .get(HeaderName::from_static("cross-origin-resource-policy"))
 //         .map(|h| h.to_str().unwrap_or(""))
 //         .unwrap_or("");
-// 
+//
 //     // Step 4
 //     if policy == "same-origin" {
 //         return CrossOriginResourcePolicy::Blocked;
 //     }
-// 
+//
 //     // Step 5
 //     if let Origin::Origin(ref request_origin) = request.origin {
 //         let schemeless_same_origin = is_schemelessy_same_site(request_origin, &current_url_origin);
@@ -1900,12 +1900,12 @@ async fn http_network_or_cache_fetch(
 //             return CrossOriginResourcePolicy::Allowed;
 //         }
 //     };
-// 
+//
 //     // Step 6
 //     if policy == "same-site" {
 //         return CrossOriginResourcePolicy::Blocked;
 //     }
-// 
+//
 //     CrossOriginResourcePolicy::Allowed
 // }
 

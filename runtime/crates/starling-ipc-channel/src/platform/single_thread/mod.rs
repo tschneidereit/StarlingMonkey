@@ -113,7 +113,7 @@ impl OsIpcReceiver {
             }
         }
         drop(r);
-        
+
         // Now register the callback for future messages
         RECEIVER_CALLBACKS.lock().unwrap().insert(self.id, callback);
     }
@@ -194,7 +194,7 @@ impl OsIpcSender {
     ) -> Result<(), ChannelError> {
         let os_ipc_channels = ports.into_iter().map(OsOpaqueIpcChannel::new).collect();
         let ipc_message = IpcMessage::new(data.to_vec(), os_ipc_channels, shared_memory_regions);
-        
+
         // Check if there's a callback registered for this receiver
         let mut callbacks = RECEIVER_CALLBACKS.lock().unwrap();
         if let Some(callback) = callbacks.get_mut(&self.receiver_id) {

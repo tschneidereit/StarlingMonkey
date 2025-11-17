@@ -93,6 +93,11 @@ impl TimerScheduler {
         self.queue.retain(|event| event.id != id);
     }
 
+    /// Check if there are any pending timers scheduled.
+    pub fn has_pending_timers(&self) -> bool {
+        !self.queue.is_empty()
+    }
+
     /// Get a [`Receiver<Instant>`] that receives a message after waiting for the next timer
     /// to fire. If there are no timers, the channel will *never* send a message.
     pub fn wait_channel(&self) -> Receiver<Instant> {

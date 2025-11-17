@@ -378,11 +378,11 @@ impl<T: FetchResponseListener> Action<T> for FetchResponseMsg {
             },
             FetchResponseMsg::ProcessResponseEOF(request_id, data) => {
                 match data {
-                    Ok(ref _response_resource_timing) => {
+                    Ok(ref response_resource_timing) => {
                         // update listener with values from response
                         // *listener.resource_timing_mut() = response_resource_timing.clone();
-                        // listener
-                        //     .process_response_eof(request_id, Ok(response_resource_timing.clone()));
+                        listener
+                            .process_response_eof(request_id, Ok(response_resource_timing.clone()));
                         // // TODO timing check https://w3c.github.io/resource-timing/#dfn-timing-allow-check
                         //
                         // listener.submit_resource_timing();

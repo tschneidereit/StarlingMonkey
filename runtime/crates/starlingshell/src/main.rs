@@ -68,7 +68,7 @@ fn main() {
 
     let protocols = ProtocolRegistry::with_internal_protocols();
 
-    let (public_resource_threads, private_resource_threads, async_runtime) = new_resource_threads(
+    let (public_resource_threads, private_resource_threads, _async_runtime) = new_resource_threads(
         None,
         time_profiler_chan.clone(),
         mem_profiler_chan.clone(),
@@ -126,9 +126,19 @@ fn main() {
     };
 
     global.execute_script(&script, CanGc::note());
-    global.process_events(CanGc::note());
-    sleep(Duration::from_millis(50));
-    global.process_events(CanGc::note());
+
+    // Keep processing events while there are pending timers or other async activities
+    while global.has_pending_activity() {
+        // Process embedder messages
+        while let Ok(msg) = embedder_receiver.try_recv() {
+            handle_embedder_msg(msg);
+        }
+
+        // Wait a bit for the next timer/event to be ready
+        sleep(Duration::from_millis(10));
+        global.process_events(CanGc::note());
+    }
+
     exit(0);
 }
 
@@ -137,6 +147,23 @@ struct DefaultEventLoopWaker;
 impl EventLoopWaker for DefaultEventLoopWaker {
     fn clone_box(&self) -> Box<dyn EventLoopWaker> {
         Box::new(DefaultEventLoopWaker)
+    }
+}
+
+fn handle_embedder_msg(msg: EmbedderMsg) {
+    use embedder_traits::WebResourceResponseMsg;
+
+    match msg {
+        EmbedderMsg::WebResourceRequested(_webview_id, _request, sender) => {
+            // For now, we don't intercept any requests - just let them proceed normally
+            if let Err(e) = sender.send(WebResourceResponseMsg::DoNotIntercept) {
+                eprintln!("[DEBUG] Failed to send DoNotIntercept response: {:?}", e);
+            }
+        }
+        _ => {
+            // Ignore other embedder messages for now
+            eprintln!("[DEBUG] Received unhandled embedder message");
+        }
     }
 }
 

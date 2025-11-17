@@ -3337,6 +3337,8 @@ impl GlobalScope {
         context: Arc<Mutex<Listener>>,
         task_source: SendableTaskSource,
     ) {
+        self.downcast::<WorkerGlobalScope>().unwrap().increment_pending_fetch_count();
+
         let network_listener = NetworkListener {
             context,
             task_source,

@@ -201,4 +201,10 @@ impl StarlingGlobalScope {
     pub fn process_events(&self, _can_gc: CanGc) {
         run_worker_event_loop(&*self, CanGc::note());
     }
+
+    /// Check if there are any pending timers or events that need processing.
+    pub fn has_pending_activity(&self) -> bool {
+        let worker_global = self.upcast::<WorkerGlobalScope>();
+        worker_global.has_pending_timers() || worker_global.has_pending_fetches()
+    }
 }
