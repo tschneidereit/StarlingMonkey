@@ -23,6 +23,7 @@ impl RequestInterceptor {
         RequestInterceptor { embedder_proxy }
     }
 
+    #[cfg(not(feature = "single-thread"))]
     pub fn intercept_request(
         &self,
         request: &mut Request,

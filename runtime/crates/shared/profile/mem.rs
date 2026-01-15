@@ -25,7 +25,7 @@ pub trait OpaqueSender<T> {
     fn send(&self, message: T);
 }
 
-impl<T> OpaqueSender<T> for Sender<T> {
+impl<T: 'static> OpaqueSender<T> for Sender<T> {
     fn send(&self, message: T) {
         if let Err(e) = Sender::send(self, message) {
             warn!(
@@ -52,7 +52,7 @@ where
 
 impl<T> OpaqueSender<T> for GenericSender<T>
 where
-    T: serde::Serialize,
+    T: serde::Serialize + 'static,
 {
     fn send(&self, message: T) {
         if let Err(e) = GenericSender::send(self, message) {

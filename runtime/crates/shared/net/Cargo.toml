@@ -13,6 +13,9 @@ path = "lib.rs"
 test = false
 doctest = false
 
+[features]
+single-thread = ["base/single-thread", "crossbeam-channel/single-thread", "ipc-channel/single-thread"]
+
 [dependencies]
 base = { workspace = true }
 #compositing_traits = { workspace = true }

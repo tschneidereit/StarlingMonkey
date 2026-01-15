@@ -22,6 +22,7 @@ impl<T> IpcReceiver<T>
 where
     T: for<'de> Deserialize<'de> + Serialize,
 {
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv(&self) -> Result<T, ipc::IpcError> {
         time_profile!(
             ProfilerCategory::IpcReceiver,
@@ -60,6 +61,7 @@ pub struct IpcBytesReceiver {
 }
 
 impl IpcBytesReceiver {
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv(&self) -> Result<Vec<u8>, ipc::IpcError> {
         time_profile!(
             ProfilerCategory::IpcBytesReceiver,

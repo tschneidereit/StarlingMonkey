@@ -207,7 +207,7 @@ impl URLMethods<crate::DomTypeHolder> for URL {
                     let msg = FileManagerThreadMsg::RevokeBlobURL(id, origin, tx);
                     let _ = resource_threads.send(CoreResourceMsg::ToFileManager(msg));
 
-                    let _ = rx.recv().unwrap();
+                    let _ = rx.try_recv().unwrap();
                 }
             }
         }

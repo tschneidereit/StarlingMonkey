@@ -13,6 +13,7 @@ path = "lib.rs"
 
 [features]
 tracing = ["dep:tracing"]
+single-thread = ["base/single-thread", "crossbeam-channel/single-thread", "ipc-channel/single-thread"]
 
 [dependencies]
 base = { workspace = true }

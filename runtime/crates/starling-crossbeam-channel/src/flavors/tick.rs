@@ -55,6 +55,7 @@ impl Channel {
     }
 
     /// Receives a message from the channel.
+    #[cfg(not(feature = "single-thread"))]
     #[inline]
     pub(crate) fn recv(&self, deadline: Option<Instant>) -> Result<Instant, RecvTimeoutError> {
         loop {

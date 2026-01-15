@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use crossbeam_channel::{/*Receiver,*/ select};
+// use crossbeam_channel::{/*Receiver,*/ select};
 // use devtools_traits::DevtoolScriptControlMsg;
 use rustc_hash::FxHashSet;
 
@@ -39,7 +39,7 @@ pub(crate) fn run_worker_event_loop<T, WorkerMsg, Event>(
     // worker: Option<&TrustedWorkerAddress>,
     can_gc: CanGc,
 ) where
-    WorkerMsg: QueuedTaskConversion + Send,
+    WorkerMsg: QueuedTaskConversion + Send + 'static,
     T: WorkerEventLoopMethods<WorkerMsg = WorkerMsg, Event = Event>
         + DerivedFrom<WorkerGlobalScope>
         + DerivedFrom<GlobalScope>
@@ -56,20 +56,33 @@ pub(crate) fn run_worker_event_loop<T, WorkerMsg, Event>(
     // let event = task_queue.take_tasks(msg.unwrap(), &fully_active);
     // T::from_worker_msg(task_queue.recv().unwrap())
 
-    let event = select! {
-        // recv(worker_scope.control_receiver()) -> msg => T::from_control_msg(msg.unwrap()),
-        recv(task_queue.select()) -> msg => {
-            task_queue.take_tasks(msg.unwrap(), &fully_active);
+    let event = {
+        if let Ok(msg) = task_queue.select().try_recv() {
+            task_queue.take_tasks(msg, &fully_active);
             T::from_worker_msg(task_queue.recv().unwrap())
-        },
-        // recv(devtools_receiver) -> msg => T::from_devtools_msg(msg.unwrap()),
-        recv(scope.timer_scheduler().wait_channel()) -> _ => T::from_timer_msg(),
-        default => {
+        } else if let Ok(_) = scope.timer_scheduler().wait_channel().try_recv() {
+            T::from_timer_msg()
+        } else {
             // Never block on events: the event loop is driven externally.
             log::warn!("Event loop spun without ready events.");
             return
         }
     };
+
+    // let event = select! {
+    //     // recv(worker_scope.control_receiver()) -> msg => T::from_control_msg(msg.unwrap()),
+    //     recv(task_queue.select()) -> msg => {
+    //         task_queue.take_tasks(msg.unwrap(), &fully_active);
+    //         T::from_worker_msg(task_queue.recv().unwrap())
+    //     },
+    //     // recv(devtools_receiver) -> msg => T::from_devtools_msg(msg.unwrap()),
+    //     recv(scope.timer_scheduler().wait_channel()) -> _ => T::from_timer_msg(),
+    //     default => {
+    //         // Never block on events: the event loop is driven externally.
+    //         log::warn!("Event loop spun without ready events.");
+    //         return
+    //     }
+    // };
 
     scope.timer_scheduler().dispatch_completed_timers();
 

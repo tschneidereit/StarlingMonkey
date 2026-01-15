@@ -1860,7 +1860,7 @@ impl GlobalScope {
 
         let msg = FileManagerThreadMsg::DecRef(id, origin, tx);
         self.send_to_file_manager(msg);
-        let _ = rx.recv();
+        let _ = rx.try_recv();
     }
 
     /// Get a slice to the inner data of a Blob,
@@ -2055,7 +2055,7 @@ impl GlobalScope {
         let msg =
             FileManagerThreadMsg::AddSlicedURLEntry(*parent_file_id, *rel_pos, tx, origin.clone());
         self.send_to_file_manager(msg);
-        match rx.recv().expect("File manager thread is down.") {
+        match rx.try_recv().expect("File manager thread is down.") {
             Ok(new_id) => {
                 *blob_info.blob_impl.blob_data_mut() = BlobData::File(FileBlob::new(
                     new_id,
@@ -2095,7 +2095,7 @@ impl GlobalScope {
                     let msg = FileManagerThreadMsg::ActivateBlobURL(f.get_id(), tx, origin.clone());
                     self.send_to_file_manager(msg);
 
-                    match rx.recv().unwrap() {
+                    match rx.try_recv().unwrap() {
                         Ok(_) => return f.get_id(),
                         // Return a dummy id on error
                         Err(_) => return Uuid::new_v4(),
@@ -2221,7 +2221,7 @@ impl GlobalScope {
         let mut bytes = vec![];
 
         loop {
-            match receiver.recv().unwrap() {
+            match receiver.try_recv().unwrap() {
                 Ok(ReadFileProgress::Meta(mut blob_buf)) => {
                     bytes.append(&mut blob_buf.bytes);
                 },

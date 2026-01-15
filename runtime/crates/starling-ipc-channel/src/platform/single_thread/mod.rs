@@ -9,7 +9,7 @@
 
 use crate::ipc::{self, IpcMessage};
 use bincode;
-use crossbeam_channel::{self, Receiver, RecvTimeoutError, Select, Sender, TryRecvError};
+use crossbeam_channel::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::cell::{Ref, RefCell};
 use std::cmp::PartialEq;
 use std::collections::hash_map::HashMap;
@@ -58,7 +58,7 @@ impl ServerRecord {
     }
 
     fn accept(&self) {
-        self.conn_receiver.recv().unwrap();
+        self.conn_receiver.try_recv().unwrap();
     }
 
     fn connect(&self) {
@@ -125,6 +125,7 @@ impl OsIpcReceiver {
         }
     }
 
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv(&self) -> Result<IpcMessage, ChannelError> {
         let r = self.receiver.borrow();
         let r = r.as_ref().unwrap();
@@ -146,6 +147,7 @@ impl OsIpcReceiver {
         }
     }
 
+    #[cfg(not(feature = "single-thread"))]
     pub fn try_recv_timeout(&self, duration: Duration) -> Result<IpcMessage, ChannelError> {
         let r = self.receiver.borrow();
         let r = r.as_ref().unwrap();
@@ -232,42 +234,6 @@ impl OsIpcReceiverSet {
         self.receivers.push(receiver.consume());
         Ok(last_index)
     }
-
-    pub fn select(&mut self) -> Result<Vec<OsIpcSelectionResult>, ChannelError> {
-        if self.receivers.is_empty() {
-            return Err(ChannelError::UnknownError);
-        }
-
-        struct Remove(usize, u64);
-
-        // FIXME: Remove early returns and explicitly drop `borrows` when lifetimes are non-lexical
-        let Remove(r_index, r_id) = {
-            let borrows: Vec<_> = self
-                .receivers
-                .iter()
-                .map(|r| Ref::map(r.receiver.borrow(), |o| o.as_ref().unwrap()))
-                .collect();
-
-            let mut select = Select::new();
-            for r in &borrows {
-                select.recv(r);
-            }
-            let res = select.select();
-            let receiver_index = res.index();
-            let receiver_id = self.receiver_ids[receiver_index];
-            if let Ok(ChannelMessage(ipc_message)) = res.recv(&borrows[receiver_index]) {
-                return Ok(vec![OsIpcSelectionResult::DataReceived(
-                    receiver_id,
-                    ipc_message,
-                )]);
-            } else {
-                Remove(receiver_index, receiver_id)
-            }
-        };
-        self.receivers.remove(r_index);
-        self.receiver_ids.remove(r_index);
-        Ok(vec![OsIpcSelectionResult::ChannelClosed(r_id)])
-    }
 }
 
 pub enum OsIpcSelectionResult {
@@ -319,7 +285,7 @@ impl OsIpcOneShotServer {
             .clone();
         record.accept();
         ONE_SHOT_SERVERS.lock().unwrap().remove(&self.name).unwrap();
-        let ipc_message = self.receiver.recv()?;
+        let ipc_message = self.receiver.try_recv()?;
         Ok((self.receiver, ipc_message))
     }
 }

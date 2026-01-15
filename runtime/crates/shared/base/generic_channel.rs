@@ -169,7 +169,7 @@ impl<T: Serialize> fmt::Debug for GenericSender<T> {
     }
 }
 
-impl<T: Serialize> GenericSender<T> {
+impl<T: Serialize + 'static> GenericSender<T> {
     #[inline]
     pub fn send(&self, msg: T) -> SendResult {
         match self.0 {
@@ -228,6 +228,7 @@ impl From<crossbeam_channel::RecvError> for ReceiveError {
     }
 }
 
+#[derive(Debug)]
 pub enum TryReceiveError {
     Empty,
     ReceiveError(ReceiveError),
@@ -285,6 +286,7 @@ impl<T> GenericReceiver<T>
 where
     T: for<'de> Deserialize<'de> + Serialize,
 {
+    #[cfg(not(feature = "single-thread"))]
     #[inline]
     pub fn recv(&self) -> ReceiveResult<T> {
         match self.0 {
@@ -332,6 +334,33 @@ where
                 crossbeam_receiver
             },
             GenericReceiverVariants::Crossbeam(receiver) => receiver,
+        }
+    }
+
+    /// Registers a callback to be invoked when messages are received.
+    ///
+    /// For `Ipc` receivers, this uses the Router to call the callback.
+    /// For `Crossbeam` receivers, this drains existing messages and registers
+    /// the callback for future messages.
+    ///
+    /// # Note
+    ///
+    /// This method consumes the receiver. The callback will be invoked for all
+    /// future messages, as well as any messages already buffered.
+    #[cfg(feature = "single-thread")]
+    #[inline]
+    pub fn register_callback<F>(self, callback: F)
+    where
+        T: Send + 'static,
+        F: FnMut(Result<T, bincode::Error>) + Send + 'static,
+    {
+        match self.0 {
+            GenericReceiverVariants::Ipc(ipc_receiver) => {
+                ROUTER.add_typed_route(ipc_receiver, Box::new(callback));
+            },
+            GenericReceiverVariants::Crossbeam(receiver) => {
+                receiver.register_callback(callback);
+            },
         }
     }
 }
@@ -513,9 +542,9 @@ mod single_process_channel_tests {
     // fn generic_ipc_ping_pong() {
     //     let (tx, rx) = new_generic_channel_ipc().unwrap();
     //     let (tx2, rx2) = new_generic_channel_ipc().unwrap();
-    // 
+    //
     //     tx.send(tx2).expect("Send failed");
-    // 
+    //
     //     std::thread::scope(|s| {
     //         s.spawn(move || {
     //             let reply_sender = rx.recv().expect("Receive failed");
@@ -525,14 +554,14 @@ mod single_process_channel_tests {
     //     let res = rx2.recv().expect("Receive of reply failed");
     //     assert_eq!(res, 42);
     // }
-    // 
+    //
     // #[test]
     // fn send_crossbeam_sender_over_ipc_channel() {
     //     let (tx, rx) = new_generic_channel_ipc().unwrap();
     //     let (tx2, rx2) = new_generic_channel_crossbeam();
-    // 
+    //
     //     tx.send(tx2).expect("Send failed");
-    // 
+    //
     //     std::thread::scope(|s| {
     //         s.spawn(move || {
     //             let reply_sender = rx.recv().expect("Receive failed");
@@ -542,14 +571,14 @@ mod single_process_channel_tests {
     //     let res = rx2.recv().expect("Receive of reply failed");
     //     assert_eq!(res, 42);
     // }
-    // 
+    //
     // #[test]
     // fn send_generic_ipc_channel_over_crossbeam() {
     //     let (tx, rx) = new_generic_channel_crossbeam();
     //     let (tx2, rx2) = new_generic_channel_ipc().unwrap();
-    // 
+    //
     //     tx.send(tx2).expect("Send failed");
-    // 
+    //
     //     std::thread::scope(|s| {
     //         s.spawn(move || {
     //             let reply_sender = rx.recv().expect("Receive failed");
@@ -559,15 +588,15 @@ mod single_process_channel_tests {
     //     let res = rx2.recv().expect("Receive of reply failed");
     //     assert_eq!(res, 42);
     // }
-    // 
+    //
     // #[test]
     // fn send_crossbeam_receiver_over_ipc_channel() {
     //     let (tx, rx) = new_generic_channel_ipc().unwrap();
     //     let (tx2, rx2) = new_generic_channel_crossbeam();
-    // 
+    //
     //     tx.send(rx2).expect("Send failed");
     //     tx2.send(42).expect("Send failed");
-    // 
+    //
     //     std::thread::scope(|s| {
     //         s.spawn(move || {
     //             let another_receiver = rx.recv().expect("Receive failed");

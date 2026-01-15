@@ -339,6 +339,8 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(all(feature = "std", feature = "single-thread"))]
+mod callback;
 #[cfg(feature = "std")]
 mod channel;
 #[cfg(feature = "std")]
@@ -351,7 +353,7 @@ mod err;
 mod flavors;
 #[cfg(feature = "std")]
 mod select;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "single-thread")))]
 mod select_macro;
 #[cfg(feature = "std")]
 mod utils;
@@ -374,5 +376,8 @@ pub use crate::{
         ReadyTimeoutError, RecvError, RecvTimeoutError, SelectTimeoutError, SendError,
         SendTimeoutError, TryReadyError, TryRecvError, TrySelectError, TrySendError,
     },
-    select::{Select, SelectedOperation},
 };
+
+/// Re-export callback types for single-thread mode.
+#[cfg(all(feature = "std", feature = "single-thread"))]
+pub use crate::callback::ReceiverCallback;

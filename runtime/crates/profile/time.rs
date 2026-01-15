@@ -167,6 +167,7 @@ impl Profiler {
         }
     }
 
+    #[cfg(not(feature = "single-thread"))]
     pub fn start(&mut self) {
         while let Ok(msg) = self.port.recv() {
             if !self.handle_msg(msg) {

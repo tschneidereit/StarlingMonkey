@@ -13,7 +13,7 @@ use base::id::PipelineId;
 #[cfg(feature = "bluetooth")]
 use bluetooth_traits::BluetoothRequest;
 // use constellation_traits::ScriptToConstellationMessage;
-use crossbeam_channel::{Receiver, SendError, Sender, select};
+use crossbeam_channel::{Receiver, SendError, Sender, /*select*/};
 // use devtools_traits::{DevtoolScriptControlMsg, ScriptToDevtoolsControlMsg};
 // use embedder_traits::ScriptToEmbedderChan;
 // use ipc_channel::ipc::IpcSender;
@@ -254,7 +254,7 @@ pub(crate) enum ScriptEventLoopReceiver {
 impl ScriptEventLoopReceiver {
     pub(crate) fn recv(&self) -> Result<CommonScriptMsg, ()> {
         match self {
-            Self::Starling(receiver) => match receiver.recv() {
+            Self::Starling(receiver) => match receiver.try_recv() {
                 Ok(WorkerScriptMsg::Common(script_msg)) => Ok(script_msg),
                 Ok(_) => panic!("unexpected starling event message!"),
                 Err(_) => Err(()),

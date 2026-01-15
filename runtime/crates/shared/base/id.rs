@@ -150,7 +150,7 @@ impl PipelineNamespaceInstaller {
                 let _ = sender.send(PipelineNamespaceRequest(self.namespace_sender.clone()));
                 let namespace_id = self
                     .namespace_receiver
-                    .recv()
+                    .try_recv()
                     .expect("The constellation to make a pipeline namespace id available");
                 PipelineNamespace::install(namespace_id);
             },

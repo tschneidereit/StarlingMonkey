@@ -247,6 +247,7 @@ where
     T: for<'de> Deserialize<'de> + Serialize,
 {
     /// Blocking receive.
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv(&self) -> Result<T, IpcError> {
         self.os_receiver.recv()?.to().map_err(IpcError::Bincode)
     }
@@ -266,6 +267,7 @@ where
     /// exceeds the duration that your operating system can represent in milliseconds, this may
     /// block forever. At the time of writing, the smallest duration that may trigger this behavior
     /// is over 24 days.
+    #[cfg(not(feature = "single-thread"))]
     pub fn try_recv_timeout(&self, duration: Duration) -> Result<T, TryRecvError> {
         self.os_receiver
             .try_recv_timeout(duration)?
@@ -498,6 +500,7 @@ impl IpcReceiverSet {
     /// received or a channel closed event.
     ///
     /// [IpcReceiver]: struct.IpcReceiver.html
+    #[cfg(not(feature = "single-thread"))]
     pub fn select(&mut self) -> Result<Vec<IpcSelectionResult>, io::Error> {
         let results = self.os_receiver_set.select()?;
         Ok(results
@@ -916,6 +919,7 @@ pub struct IpcBytesReceiver {
 
 impl IpcBytesReceiver {
     /// Blocking receive.
+    #[cfg(not(feature = "single-thread"))]
     #[inline]
     pub fn recv(&self) -> Result<Vec<u8>, IpcError> {
         match self.os_receiver.recv() {

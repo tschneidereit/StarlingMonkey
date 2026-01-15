@@ -1,5 +1,7 @@
 //! The channel interface.
 
+#[cfg(feature = "single-thread")]
+use std::boxed::Box;
 use std::fmt;
 use std::iter::FusedIterator;
 use std::mem;
@@ -383,6 +385,9 @@ impl<T> Sender<T> {
     /// If called on a zero-capacity channel, this method will send the message only if there
     /// happens to be a receive operation on the other side of the channel at the same time.
     ///
+    /// In single-thread mode with a registered callback, the message is delivered synchronously
+    /// via the callback.
+    ///
     /// # Examples
     ///
     /// ```
@@ -396,7 +401,36 @@ impl<T> Sender<T> {
     /// drop(r);
     /// assert_eq!(s.try_send(3), Err(TrySendError::Disconnected(3)));
     /// ```
+    #[cfg(not(feature = "single-thread"))]
     pub fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
+        match &self.flavor {
+            SenderFlavor::Array(chan) => chan.try_send(msg),
+            SenderFlavor::List(chan) => chan.try_send(msg),
+            SenderFlavor::Zero(chan) => chan.try_send(msg),
+        }
+    }
+
+    /// Attempts to send a message into the channel without blocking.
+    ///
+    /// In single-thread mode with a registered callback, the message is delivered synchronously
+    /// via the callback.
+    #[cfg(feature = "single-thread")]
+    pub fn try_send(&self, msg: T) -> Result<(), TrySendError<T>>
+    where
+        T: Send + 'static,
+    {
+        let channel_id = match &self.flavor {
+            SenderFlavor::Array(chan) => chan.channel_id(),
+            SenderFlavor::List(chan) => chan.channel_id(),
+            SenderFlavor::Zero(chan) => chan.channel_id(),
+        };
+
+        if crate::callback::has_callback(channel_id) {
+            // Callback is registered - invoke it (this consumes msg)
+            let _ = crate::callback::try_invoke_callback(channel_id, msg);
+            return Ok(());
+        }
+
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.try_send(msg),
             SenderFlavor::List(chan) => chan.try_send(msg),
@@ -412,6 +446,9 @@ impl<T> Sender<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a receive operation to
     /// appear on the other side of the channel.
+    ///
+    /// In single-thread mode with a registered callback, the message is delivered synchronously
+    /// via the callback, bypassing the channel buffer entirely.
     ///
     /// # Examples
     ///
@@ -432,7 +469,44 @@ impl<T> Sender<T> {
     /// assert_eq!(s.send(2), Ok(()));
     /// assert_eq!(s.send(3), Err(SendError(3)));
     /// ```
+    #[cfg(not(feature = "single-thread"))]
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
+        match &self.flavor {
+            SenderFlavor::Array(chan) => chan.send(msg, None),
+            SenderFlavor::List(chan) => chan.send(msg, None),
+            SenderFlavor::Zero(chan) => chan.send(msg, None),
+        }
+        .map_err(|err| match err {
+            SendTimeoutError::Disconnected(msg) => SendError(msg),
+            SendTimeoutError::Timeout(_) => unreachable!(),
+        })
+    }
+
+    /// Blocks the current thread until a message is sent or the channel is disconnected.
+    ///
+    /// In single-thread mode with a registered callback, the message is delivered synchronously
+    /// via the callback, bypassing the channel buffer entirely. If no callback is registered,
+    /// the message is buffered normally and will be delivered when register_callback is called.
+    #[cfg(feature = "single-thread")]
+    pub fn send(&self, msg: T) -> Result<(), SendError<T>>
+    where
+        T: 'static,
+    {
+        // Check if a callback is registered
+        let channel_id = match &self.flavor {
+            SenderFlavor::Array(chan) => chan.channel_id(),
+            SenderFlavor::List(chan) => chan.channel_id(),
+            SenderFlavor::Zero(chan) => chan.channel_id(),
+        };
+
+        if crate::callback::has_callback(channel_id) {
+            // Callback is registered - invoke it (this consumes msg)
+            let _ = crate::callback::try_invoke_callback(channel_id, msg);
+            return Ok(());
+        }
+
+        // No callback registered, buffer the message normally.
+        // It will be drained when register_callback is called.
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.send(msg, None),
             SenderFlavor::List(chan) => chan.send(msg, None),
@@ -481,7 +555,23 @@ impl<T> Sender<T> {
     ///     Err(SendTimeoutError::Disconnected(3)),
     /// );
     /// ```
+    #[cfg(not(feature = "single-thread"))]
     pub fn send_timeout(&self, msg: T, timeout: Duration) -> Result<(), SendTimeoutError<T>> {
+        match Instant::now().checked_add(timeout) {
+            Some(deadline) => self.send_deadline(msg, deadline),
+            None => self.send(msg).map_err(SendTimeoutError::from),
+        }
+    }
+
+    /// Waits for a message to be sent into the channel, but only for a limited time.
+    ///
+    /// In single-thread mode with a registered callback, the message is delivered synchronously
+    /// via the callback, ignoring the timeout.
+    #[cfg(feature = "single-thread")]
+    pub fn send_timeout(&self, msg: T, timeout: Duration) -> Result<(), SendTimeoutError<T>>
+    where
+        T: Send + 'static,
+    {
         match Instant::now().checked_add(timeout) {
             Some(deadline) => self.send_deadline(msg, deadline),
             None => self.send(msg).map_err(SendTimeoutError::from),
@@ -527,7 +617,36 @@ impl<T> Sender<T> {
     ///     Err(SendTimeoutError::Disconnected(3)),
     /// );
     /// ```
+    #[cfg(not(feature = "single-thread"))]
     pub fn send_deadline(&self, msg: T, deadline: Instant) -> Result<(), SendTimeoutError<T>> {
+        match &self.flavor {
+            SenderFlavor::Array(chan) => chan.send(msg, Some(deadline)),
+            SenderFlavor::List(chan) => chan.send(msg, Some(deadline)),
+            SenderFlavor::Zero(chan) => chan.send(msg, Some(deadline)),
+        }
+    }
+
+    /// Waits for a message to be sent into the channel, but only until a given deadline.
+    ///
+    /// In single-thread mode with a registered callback, the message is delivered synchronously
+    /// via the callback, ignoring the deadline.
+    #[cfg(feature = "single-thread")]
+    pub fn send_deadline(&self, msg: T, deadline: Instant) -> Result<(), SendTimeoutError<T>>
+    where
+        T: Send + 'static,
+    {
+        let channel_id = match &self.flavor {
+            SenderFlavor::Array(chan) => chan.channel_id(),
+            SenderFlavor::List(chan) => chan.channel_id(),
+            SenderFlavor::Zero(chan) => chan.channel_id(),
+        };
+
+        if crate::callback::has_callback(channel_id) {
+            // Callback is registered - invoke it (this consumes msg)
+            let _ = crate::callback::try_invoke_callback(channel_id, msg);
+            return Ok(());
+        }
+
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.send(msg, Some(deadline)),
             SenderFlavor::List(chan) => chan.send(msg, Some(deadline)),
@@ -809,6 +928,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(r.recv(), Ok(5));
     /// assert_eq!(r.recv(), Err(RecvError));
     /// ```
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv(&self) -> Result<T, RecvError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.recv(None),
@@ -874,6 +994,7 @@ impl<T> Receiver<T> {
     ///     Err(RecvTimeoutError::Disconnected),
     /// );
     /// ```
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
         match Instant::now().checked_add(timeout) {
             Some(deadline) => self.recv_deadline(deadline),
@@ -920,6 +1041,7 @@ impl<T> Receiver<T> {
     ///     Err(RecvTimeoutError::Disconnected),
     /// );
     /// ```
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.recv(Some(deadline)),
@@ -1145,15 +1267,103 @@ impl<T> Receiver<T> {
             _ => false,
         }
     }
+
+    /// Registers a callback to be invoked when messages are sent to this channel.
+    ///
+    /// In single-thread mode, when a callback is registered, messages are delivered
+    /// synchronously by invoking the callback directly from the sender, bypassing
+    /// the channel buffer entirely.
+    ///
+    /// Any messages already buffered in the channel will be drained and passed to
+    /// the callback before it is registered for future messages.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called on a timer channel (`At`, `Tick`, or `Never` flavors),
+    /// as these do not support callback mode.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    /// use crossbeam_channel::{unbounded, ReceiverCallback};
+    ///
+    /// let (s, r) = unbounded();
+    ///
+    /// let received = Arc::new(Mutex::new(Vec::new()));
+    /// let received_clone = received.clone();
+    ///
+    /// let callback: ReceiverCallback<i32> = Arc::new(Mutex::new(Box::new(move |msg| {
+    ///     received_clone.lock().unwrap().push(msg);
+    /// })));
+    ///
+    /// r.register_callback(callback);
+    ///
+    /// // Messages are now delivered via callback
+    /// s.send(1).unwrap();
+    /// s.send(2).unwrap();
+    ///
+    /// assert_eq!(*received.lock().unwrap(), vec![1, 2]);
+    /// ```
+    #[cfg(feature = "single-thread")]
+    pub fn register_callback<F>(&self, callback: F)
+    where
+        F: FnMut(T) + Send + 'static,
+        T: Send + 'static,
+    {
+        use crate::callback;
+        use std::sync::{Arc, Mutex};
+
+        let callback_arc: callback::ReceiverCallback<T> =
+            Arc::new(Mutex::new(Box::new(callback)));
+
+        match &self.flavor {
+            ReceiverFlavor::Array(chan) => {
+                // Drain existing messages and pass to callback
+                while let Ok(msg) = chan.try_recv() {
+                    let mut cb = callback_arc.lock().unwrap();
+                    (*cb)(msg);
+                }
+                callback::register_callback(chan.channel_id(), callback_arc);
+            }
+            ReceiverFlavor::List(chan) => {
+                // Drain existing messages and pass to callback
+                while let Ok(msg) = chan.try_recv() {
+                    let mut cb = callback_arc.lock().unwrap();
+                    (*cb)(msg);
+                }
+                callback::register_callback(chan.channel_id(), callback_arc);
+            }
+            ReceiverFlavor::Zero(chan) => {
+                // Zero-capacity channels have no buffer to drain
+                callback::register_callback(chan.channel_id(), callback_arc);
+            }
+            ReceiverFlavor::At(_) | ReceiverFlavor::Tick(_) | ReceiverFlavor::Never(_) => {
+                panic!("Timer channels (after, tick, never) do not support callback mode");
+            }
+        }
+    }
 }
 
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         unsafe {
             match &self.flavor {
-                ReceiverFlavor::Array(chan) => chan.release(|c| c.disconnect()),
-                ReceiverFlavor::List(chan) => chan.release(|c| c.disconnect_receivers()),
-                ReceiverFlavor::Zero(chan) => chan.release(|c| c.disconnect()),
+                ReceiverFlavor::Array(chan) => {
+                    #[cfg(feature = "single-thread")]
+                    crate::callback::unregister_callback(chan.channel_id());
+                    chan.release(|c| c.disconnect())
+                }
+                ReceiverFlavor::List(chan) => {
+                    #[cfg(feature = "single-thread")]
+                    crate::callback::unregister_callback(chan.channel_id());
+                    chan.release(|c| c.disconnect_receivers())
+                }
+                ReceiverFlavor::Zero(chan) => {
+                    #[cfg(feature = "single-thread")]
+                    crate::callback::unregister_callback(chan.channel_id());
+                    chan.release(|c| c.disconnect())
+                }
                 ReceiverFlavor::At(_) => {}
                 ReceiverFlavor::Tick(_) => {}
                 ReceiverFlavor::Never(_) => {}
@@ -1239,7 +1449,7 @@ impl<T> Iterator for Iter<'_, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.receiver.recv().ok()
+        self.receiver.try_recv().ok()
     }
 }
 
@@ -1337,7 +1547,7 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.receiver.recv().ok()
+        self.receiver.try_recv().ok()
     }
 }
 

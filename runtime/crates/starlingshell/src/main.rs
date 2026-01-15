@@ -6,7 +6,7 @@ use devtools_traits::WorkerId;
 use embedder_traits::{EmbedderMsg, EmbedderProxy, EventLoopWaker, ScriptToEmbedderChan};
 use net::protocols::ProtocolRegistry;
 use net::resource_thread::new_resource_threads;
-use net_traits::start_fetch_thread;
+use net_traits::init_fetch_channel;
 use profile_traits::generic_channel;
 use script::{CanGc, GlobalScope};
 use std::fs;
@@ -41,7 +41,7 @@ fn main() {
     PipelineNamespace::install(PipelineNamespaceId(0));
     let pipeline_id = PipelineId::new();
 
-    let _fetch_thread = start_fetch_thread();
+    init_fetch_channel();
 
     let url = servo_url::ServoUrl::parse("http://evalcode").unwrap();
     let time_profiler_chan = profile::time::Profiler::create(

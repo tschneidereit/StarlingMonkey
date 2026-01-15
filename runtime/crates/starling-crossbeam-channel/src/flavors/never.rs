@@ -34,6 +34,7 @@ impl<T> Channel<T> {
     }
 
     /// Receives a message from the channel.
+    #[cfg(not(feature = "single-thread"))]
     #[inline]
     pub(crate) fn recv(&self, deadline: Option<Instant>) -> Result<T, RecvTimeoutError> {
         utils::sleep_until(deadline);

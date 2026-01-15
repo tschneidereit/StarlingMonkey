@@ -19,7 +19,8 @@ use crossbeam_channel::Sender;
 use devtools_traits::DevtoolsControlMsg;
 use embedder_traits::EmbedderProxy;
 use hyper_serde::Serde;
-use ipc_channel::ipc::{self, IpcReceiver, IpcReceiverSet, IpcSender};
+use ipc_channel::ipc::{self, IpcReceiver, IpcSender};
+use ipc_channel::router::ROUTER;
 use log::{debug, warn};
 use net_traits::blob_url_store::parse_blob_url;
 use net_traits::filemanager_thread::FileTokenCheck;
@@ -130,42 +131,33 @@ pub fn new_core_resource_thread(
     let (private_setup_chan, private_setup_port) = ipc::channel().unwrap();
     let (report_chan, report_port) = ipc::channel().unwrap();
 
-    thread::Builder::new()
-        .name("ResourceManager".to_owned())
-        .spawn(move || {
-            let resource_manager = CoreResourceManager::new(
-                devtools_sender,
-                time_profiler_chan,
-                embedder_proxy.clone(),
-                ca_certificates.clone(),
-                ignore_certificate_errors,
-            );
+    let resource_manager = CoreResourceManager::new(
+        devtools_sender,
+        time_profiler_chan,
+        embedder_proxy.clone(),
+        ca_certificates.clone(),
+        ignore_certificate_errors,
+    );
 
-            let mut channel_manager = ResourceChannelManager {
-                resource_manager,
-                config_dir,
-                ca_certificates,
-                ignore_certificate_errors,
-                cancellation_listeners: Default::default(),
-                cookie_listeners: Default::default(),
-            };
+    let channel_manager = ResourceChannelManager {
+        resource_manager,
+        config_dir,
+        ca_certificates,
+        ignore_certificate_errors,
+        cancellation_listeners: Default::default(),
+        cookie_listeners: Default::default(),
+    };
 
-            mem_profiler_chan.run_with_memory_reporting(
-                || {
-                    channel_manager.start(
-                        public_setup_port,
-                        private_setup_port,
-                        report_port,
-                        protocols,
-                        embedder_proxy,
-                    )
-                },
-                String::from("network-cache-reporter"),
-                report_chan,
-                |report_chan| report_chan,
-            );
-        })
-        .expect("Thread spawning failed");
+    channel_manager.start(
+        public_setup_port,
+        private_setup_port,
+        report_port,
+        protocols,
+        embedder_proxy,
+        mem_profiler_chan,
+        report_chan,
+    );
+
     (public_setup_chan, private_setup_chan)
 }
 
@@ -232,14 +224,15 @@ fn create_http_states(
 }
 
 impl ResourceChannelManager {
-    #[allow(unsafe_code)]
     fn start(
-        &mut self,
+        self,
         public_receiver: IpcReceiver<CoreResourceMsg>,
         private_receiver: IpcReceiver<CoreResourceMsg>,
         memory_reporter: IpcReceiver<ReportsChan>,
         protocols: Arc<ProtocolRegistry>,
         embedder_proxy: EmbedderProxy,
+        mem_profiler_chan: MemProfilerChan,
+        report_chan: IpcSender<ReportsChan>,
     ) {
         let (public_http_state, private_http_state) = create_http_states(
             self.config_dir.as_deref(),
@@ -248,38 +241,71 @@ impl ResourceChannelManager {
             embedder_proxy,
         );
 
-        let mut rx_set = IpcReceiverSet::new().unwrap();
-        let private_id = rx_set.add(private_receiver).unwrap();
-        let public_id = rx_set.add(public_receiver).unwrap();
-        let reporter_id = rx_set.add(memory_reporter).unwrap();
+        // Register with the memory profiler to receive memory report requests.
+        // This sets up a callback chain: profiler -> reporter_sender -> reporter_receiver
+        // (via ROUTER callback) -> report_chan -> memory_reporter (report_port).
+        // We store the registration to keep it alive for the lifetime of the application.
+        let _registration = mem_profiler_chan.prepare_memory_reporting(
+            String::from("network-cache-reporter"),
+            report_chan,
+            |report_chan| report_chan,
+        );
+        // Note: _registration is stored to prevent automatic unregistration.
+        // In callback mode, this needs to stay alive. We leak it intentionally
+        // since the resource manager lives for the lifetime of the application.
+        std::mem::forget(_registration);
 
-        loop {
-            for receiver in rx_set.select().unwrap().into_iter() {
-                // Handles case where profiler thread shuts down before resource thread.
-                if let ipc::IpcSelectionResult::ChannelClosed(..) = receiver {
-                    continue;
-                }
-                let (id, data) = receiver.unwrap();
-                // If message is memory report, get the size_of of public and private http caches
-                if id == reporter_id {
-                    if let Ok(msg) = data.to() {
-                        self.process_report(msg, &public_http_state, &private_http_state);
-                        continue;
+        // Wrap state in Arc<Mutex<>> so callbacks can share it
+        let shared_self = Arc::new(Mutex::new(self));
+
+        // Register callback for memory reporter
+        {
+            let shared_self = Arc::clone(&shared_self);
+            let public_http_state = Arc::clone(&public_http_state);
+            let private_http_state = Arc::clone(&private_http_state);
+
+            ROUTER.add_typed_route(
+                memory_reporter,
+                Box::new(move |msg: Result<ReportsChan, _>| {
+                    if let Ok(msg) = msg {
+                        let mut channel_manager = shared_self.lock().unwrap();
+                        channel_manager.process_report(msg, &public_http_state, &private_http_state);
                     }
-                } else {
-                    let group = if id == private_id {
-                        &private_http_state
-                    } else {
-                        assert_eq!(id, public_id);
-                        &public_http_state
-                    };
-                    if let Ok(msg) = data.to() {
-                        if !self.process_msg(msg, group, Arc::clone(&protocols)) {
-                            return;
-                        }
+                }),
+            );
+        }
+
+        // Register callback for private receiver
+        {
+            let shared_self = Arc::clone(&shared_self);
+            let private_http_state = Arc::clone(&private_http_state);
+            let protocols = Arc::clone(&protocols);
+
+            ROUTER.add_typed_route(
+                private_receiver,
+                Box::new(move |msg: Result<CoreResourceMsg, _>| {
+                    if let Ok(msg) = msg {
+                        let mut channel_manager = shared_self.lock().unwrap();
+                        channel_manager.process_msg(msg, &private_http_state, Arc::clone(&protocols));
                     }
-                }
-            }
+                }),
+            );
+        }
+
+        // Register callback for public receiver
+        {
+            let shared_self = Arc::clone(&shared_self);
+            let public_http_state = Arc::clone(&public_http_state);
+
+            ROUTER.add_typed_route(
+                public_receiver,
+                Box::new(move |msg: Result<CoreResourceMsg, _>| {
+                    if let Ok(msg) = msg {
+                        let mut channel_manager = shared_self.lock().unwrap();
+                        channel_manager.process_msg(msg, &public_http_state, Arc::clone(&protocols));
+                    }
+                }),
+            );
         }
     }
 

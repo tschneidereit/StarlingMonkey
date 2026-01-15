@@ -53,7 +53,7 @@ pub(crate) struct TaskQueue<T> {
     inactive: DomRefCell<FxHashMap<PipelineId, VecDeque<QueuedTask>>>,
 }
 
-impl<T: QueuedTaskConversion> TaskQueue<T> {
+impl<T: QueuedTaskConversion + 'static> TaskQueue<T> {
     pub(crate) fn new(port: Receiver<T>, wake_up_sender: Sender<T>) -> TaskQueue<T> {
         TaskQueue {
             port,

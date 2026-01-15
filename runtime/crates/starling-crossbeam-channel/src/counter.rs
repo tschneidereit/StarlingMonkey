@@ -89,6 +89,15 @@ impl<C> PartialEq for Sender<C> {
     }
 }
 
+impl<C> Sender<C> {
+    /// Returns a unique identifier for this channel (the pointer address).
+    /// This is used in single-thread mode for callback lookup.
+    #[cfg(feature = "single-thread")]
+    pub(crate) fn channel_id(&self) -> usize {
+        self.counter as usize
+    }
+}
+
 /// The receiving side.
 pub(crate) struct Receiver<C> {
     counter: *mut Counter<C>,
@@ -141,5 +150,14 @@ impl<C> ops::Deref for Receiver<C> {
 impl<C> PartialEq for Receiver<C> {
     fn eq(&self, other: &Receiver<C>) -> bool {
         self.counter == other.counter
+    }
+}
+
+impl<C> Receiver<C> {
+    /// Returns a unique identifier for this channel (the pointer address).
+    /// This is used in single-thread mode for callback registration.
+    #[cfg(feature = "single-thread")]
+    pub(crate) fn channel_id(&self) -> usize {
+        self.counter as usize
     }
 }

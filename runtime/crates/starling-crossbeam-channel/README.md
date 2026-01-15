@@ -44,6 +44,70 @@ Add this to your `Cargo.toml`:
 crossbeam-channel = "0.5"
 ```
 
+## Single-Thread Mode
+
+This fork includes a `single-thread` feature that enables callback-based message
+delivery instead of blocking `recv()` calls. This is useful for single-threaded
+environments where you want to avoid spawning threads.
+
+### Enabling Single-Thread Mode
+
+```toml
+[dependencies]
+crossbeam-channel = { version = "0.5", features = ["single-thread"] }
+```
+
+### Using Callbacks
+
+```rust
+use crossbeam_channel::unbounded;
+
+let (s, r) = unbounded();
+
+// Register a callback to receive messages
+r.register_callback(|msg: i32| {
+    println!("Received: {}", msg);
+});
+
+// Messages are now delivered synchronously via the callback
+s.send(42).unwrap();
+```
+
+### Limitations in Single-Thread Mode
+
+When the `single-thread` feature is enabled:
+
+1. **`select!` macro is disabled**: Code using `select!` will not compile. You must
+   register separate callbacks for each receiver instead.
+
+2. **Timer channels are disabled**: The `after()`, `tick()`, and `never()` functions
+   are not available. Calling `register_callback()` on timer-flavored receivers will panic.
+
+3. **`Select` struct is disabled**: Dynamic selection over multiple channels is not
+   supported. Use separate callbacks instead.
+
+### Migration from `select!`
+
+If you have code using `select!` like this:
+
+```rust
+// This won't compile in single-thread mode
+select! {
+    recv(r1) -> msg => handle_r1(msg),
+    recv(r2) -> msg => handle_r2(msg),
+}
+```
+
+Migrate it to use separate callbacks:
+
+```rust
+r1.register_callback(|msg| handle_r1(msg));
+r2.register_callback(|msg| handle_r2(msg));
+```
+
+Note that unlike `select!`, which processes one message at a time from any ready
+channel, callbacks are invoked independently and may run in any order.
+
 ## Compatibility
 
 Crossbeam Channel supports stable Rust releases going back at least six months,

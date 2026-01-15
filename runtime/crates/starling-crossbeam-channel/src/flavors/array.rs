@@ -394,6 +394,7 @@ impl<T> Channel<T> {
     }
 
     /// Receives a message from the channel.
+    #[cfg(not(feature = "single-thread"))]
     pub(crate) fn recv(&self, deadline: Option<Instant>) -> Result<T, RecvTimeoutError> {
         let token = &mut Token::default();
         loop {

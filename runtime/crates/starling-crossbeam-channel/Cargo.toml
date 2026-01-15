@@ -23,6 +23,12 @@ default = ["std"]
 # NOTE: Disabling `std` feature is not supported yet.
 std = ["crossbeam-utils/std"]
 
+# Enable single-threaded callback mode.
+# In this mode, messages are delivered via registered callbacks instead of
+# blocking recv() calls. The select! macro and timer channels (after, tick, never)
+# are disabled in this mode.
+single-thread = ["std"]
+
 [dependencies]
 crossbeam-utils = { version = "0.8.18", default-features = false }
 

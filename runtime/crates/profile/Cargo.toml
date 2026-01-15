@@ -11,6 +11,9 @@ rust-version.workspace = true
 name = "profile"
 path = "lib.rs"
 
+[features]
+single-thread = ["ipc-channel/single-thread"]
+
 [dependencies]
 base = { workspace = true }
 ipc-channel = { workspace = true }

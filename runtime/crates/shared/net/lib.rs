@@ -5,7 +5,7 @@
 #![deny(unsafe_code)]
 
 use std::fmt::Display;
-use std::sync::{LazyLock, OnceLock};
+use std::sync::{LazyLock, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
 
 use base::cross_process_instant::CrossProcessInstant;
@@ -558,6 +558,7 @@ struct FetchThread {
     /// A crossbeam receiver attached to the router proxy which converts incoming fetch
     /// updates from IPC messages to crossbeam messages as well as another sender which
     /// handles requests from clients wanting to do fetches.
+    #[cfg(not(feature = "single-thread"))]
     receiver: Receiver<ToFetchThreadMessage>,
     /// An [`IpcSender`] that's sent with every fetch request and leads back to our
     /// router proxy.
@@ -565,6 +566,7 @@ struct FetchThread {
 }
 
 impl FetchThread {
+    #[cfg(not(feature = "single-thread"))]
     fn spawn() -> (Sender<ToFetchThreadMessage>, JoinHandle<()>) {
         let (sender, receiver) = unbounded();
         let (to_fetch_sender, from_fetch_sender) = ipc::channel().unwrap();
@@ -591,71 +593,106 @@ impl FetchThread {
         (sender, join_handle)
     }
 
+    #[cfg(not(feature = "single-thread"))]
     fn run(&mut self) {
-        loop {
-            match self.receiver.recv().unwrap() {
-                ToFetchThreadMessage::StartFetch(
-                    request_builder,
-                    response_init,
-                    callback,
-                    core_resource_thread,
-                ) => {
-                    let request_builder_id = request_builder.id;
-
-                    // Only redirects have a `response_init` field.
-                    let message = match response_init {
-                        Some(response_init) => CoreResourceMsg::FetchRedirect(
-                            request_builder,
-                            response_init,
-                            self.to_fetch_sender.clone(),
-                        ),
-                        None => CoreResourceMsg::Fetch(
-                            request_builder,
-                            FetchChannels::ResponseMsg(self.to_fetch_sender.clone()),
-                        ),
-                    };
-
-                    core_resource_thread.send(message).unwrap();
-
-                    self.active_fetches.insert(request_builder_id, callback);
-                },
-                ToFetchThreadMessage::FetchResponse(fetch_response_msg) => {
-                    let request_id = fetch_response_msg.request_id();
-                    let fetch_finished =
-                        matches!(fetch_response_msg, FetchResponseMsg::ProcessResponseEOF(..));
-
-                    self.active_fetches
-                        .get_mut(&request_id)
-                        .expect("Got fetch response for unknown fetch")(
-                        fetch_response_msg
-                    );
-
-                    if fetch_finished {
-                        self.active_fetches.remove(&request_id);
-                    }
-                },
-                ToFetchThreadMessage::Cancel(request_ids, core_resource_thread) => {
-                    // Errors are ignored here, because Servo sends many cancellation requests when shutting down.
-                    // At this point the networking task might be shut down completely, so just ignore errors
-                    // during this time.
-                    let _ = core_resource_thread.send(CoreResourceMsg::Cancel(request_ids));
-                },
-                ToFetchThreadMessage::Exit => break,
-            }
+        while self.handle_to_fetch_thread_message(self.receiver.recv().unwrap()) {
         }
+    }
+
+    fn handle_to_fetch_thread_message(&mut self, message: ToFetchThreadMessage) -> bool {
+        match message {
+            ToFetchThreadMessage::StartFetch(
+                request_builder,
+                response_init,
+                callback,
+                core_resource_thread,
+            ) => {
+                let request_builder_id = request_builder.id;
+
+                // Only redirects have a `response_init` field.
+                let message = match response_init {
+                    Some(response_init) => CoreResourceMsg::FetchRedirect(
+                        request_builder,
+                        response_init,
+                        self.to_fetch_sender.clone(),
+                    ),
+                    None => CoreResourceMsg::Fetch(
+                        request_builder,
+                        FetchChannels::ResponseMsg(self.to_fetch_sender.clone()),
+                    ),
+                };
+
+                core_resource_thread.send(message).unwrap();
+
+                self.active_fetches.insert(request_builder_id, callback);
+            },
+            ToFetchThreadMessage::FetchResponse(fetch_response_msg) => {
+                let request_id = fetch_response_msg.request_id();
+                let fetch_finished =
+                    matches!(fetch_response_msg, FetchResponseMsg::ProcessResponseEOF(..));
+
+                self.active_fetches
+                    .get_mut(&request_id)
+                    .expect("Got fetch response for unknown fetch")(
+                    fetch_response_msg
+                );
+
+                if fetch_finished {
+                    self.active_fetches.remove(&request_id);
+                }
+            },
+            ToFetchThreadMessage::Cancel(request_ids, core_resource_thread) => {
+                // Errors are ignored here, because Servo sends many cancellation requests when shutting down.
+                // At this point the networking task might be shut down completely, so just ignore errors
+                // during this time.
+                let _ = core_resource_thread.send(CoreResourceMsg::Cancel(request_ids));
+            },
+            ToFetchThreadMessage::Exit => return false,
+        }
+
+        true
     }
 }
 
+#[cfg(not(feature = "single-thread"))]
 static FETCH_THREAD: OnceLock<Sender<ToFetchThreadMessage>> = OnceLock::new();
+
+#[cfg(feature = "single-thread")]
+static FETCH_THREAD: OnceLock<Mutex<FetchThread>> = OnceLock::new();
 
 /// Start the fetch thread,
 /// and returns the join handle to the background thread.
+#[cfg(not(feature = "single-thread"))]
 pub fn start_fetch_thread() -> JoinHandle<()> {
     let (sender, join_handle) = FetchThread::spawn();
     FETCH_THREAD
         .set(sender)
         .expect("Fetch thread should be set only once on start-up");
     join_handle
+}
+
+pub fn init_fetch_channel() {
+    let (to_fetch_sender, from_fetch_sender) = ipc::channel().unwrap();
+    let fetch_state = FetchThread {
+        active_fetches: FxHashMap::default(),
+        to_fetch_sender: to_fetch_sender.clone(),
+    };
+
+    ROUTER.add_typed_route(
+        from_fetch_sender,
+        Box::new(move |message| {
+            let message: FetchResponseMsg = message.unwrap();
+            let mut fetch_state = FETCH_THREAD.get()
+                .expect("Fetch thread should always be initialized on start-up");
+            if !fetch_state.lock().unwrap().handle_to_fetch_thread_message(ToFetchThreadMessage::FetchResponse(message)) {
+                // Exit signal received
+                // TODO: handle
+            }
+        }),
+    );
+    FETCH_THREAD
+        .set(Mutex::new(fetch_state))
+        .map_err(|_| ()).expect("Fetch thread should be set only once on start-up");
 }
 
 /// Send the exit message to the background thread,
@@ -666,7 +703,8 @@ pub fn exit_fetch_thread() {
     let _ = FETCH_THREAD
         .get()
         .expect("Fetch thread should always be initialized on start-up")
-        .send(ToFetchThreadMessage::Exit);
+        .lock()
+        .unwrap().handle_to_fetch_thread_message(ToFetchThreadMessage::Exit);
 }
 
 /// Instruct the resource thread to make a new fetch request.
@@ -679,7 +717,7 @@ pub fn fetch_async(
     let _ = FETCH_THREAD
         .get()
         .expect("Fetch thread should always be initialized on start-up")
-        .send(ToFetchThreadMessage::StartFetch(
+        .lock().unwrap().handle_to_fetch_thread_message(ToFetchThreadMessage::StartFetch(
             request,
             response_init,
             callback,
@@ -693,7 +731,7 @@ pub fn cancel_async_fetch(request_ids: Vec<RequestId>, core_resource_thread: &Co
     let _ = FETCH_THREAD
         .get()
         .expect("Fetch thread should always be initialized on start-up")
-        .send(ToFetchThreadMessage::Cancel(
+        .lock().unwrap().handle_to_fetch_thread_message(ToFetchThreadMessage::Cancel(
             request_ids,
             core_resource_thread.clone(),
         ));

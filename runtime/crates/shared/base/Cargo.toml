@@ -13,6 +13,9 @@ path = "lib.rs"
 test = true
 doctest = false
 
+[features]
+single-thread = ["crossbeam-channel/single-thread", "ipc-channel/single-thread"]
+
 [dependencies]
 crossbeam-channel = { workspace = true }
 bincode = { workspace = true }

@@ -20,6 +20,7 @@ impl<T> GenericReceiver<T>
 where
     T: for<'de> Deserialize<'de> + Serialize,
 {
+    #[cfg(not(feature = "single-thread"))]
     pub fn recv(&self) -> Result<T, generic_channel::ReceiveError> {
         time_profile!(
             ProfilerCategory::IpcReceiver,

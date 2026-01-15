@@ -399,11 +399,11 @@ pub async fn main_fetch(
     let current_scheme = current_url.scheme();
 
     // Intercept the request and maybe override the response.
-    context
-        .request_interceptor
-        .lock()
-        .unwrap()
-        .intercept_request(request, &mut response, context);
+    // context
+    //     .request_interceptor
+    //     .lock()
+    //     .unwrap()
+    //     .intercept_request(request, &mut response, context);
 
     let mut response = match response {
         Some(res) => res,

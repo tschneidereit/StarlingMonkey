@@ -478,52 +478,52 @@ fn fill_headers_with_metadata(r: DomRoot<Response>, m: Metadata, can_gc: CanGc) 
 //     fn process_csp_violations(&self, violations: Vec<Violation>);
 // }
 
-/// Convenience function for synchronously loading a whole resource.
-pub(crate) fn load_whole_resource(
-    request: RequestBuilder,
-    core_resource_thread: &CoreResourceThread,
-    global: &GlobalScope,
-    // csp_violations_processor: &dyn CspViolationsProcessor,
-    _can_gc: CanGc,
-) -> Result<(Metadata, Vec<u8>), NetworkError> {
-    let request = request.https_state(global.get_https_state());
-    let (action_sender, action_receiver) = ipc::channel().unwrap();
-    // let url = request.url.clone();
-    core_resource_thread
-        .send(CoreResourceMsg::Fetch(
-            request,
-            FetchChannels::ResponseMsg(action_sender),
-        ))
-        .unwrap();
-
-    let mut buf = vec![];
-    let mut metadata = None;
-    loop {
-        match action_receiver.recv().unwrap() {
-            FetchResponseMsg::ProcessRequestBody(..) | FetchResponseMsg::ProcessRequestEOF(..) => {
-            },
-            FetchResponseMsg::ProcessResponse(_, Ok(m)) => {
-                metadata = Some(match m {
-                    FetchMetadata::Unfiltered(m) => m,
-                    FetchMetadata::Filtered { unsafe_, .. } => unsafe_,
-                })
-            },
-            FetchResponseMsg::ProcessResponseChunk(_, data) => buf.extend_from_slice(&data),
-            FetchResponseMsg::ProcessResponseEOF(_, Ok(_)) => {
-                let metadata = metadata.unwrap();
-                // if let Some(timing) = &metadata.timing {
-                //     submit_timing_data(global, url, InitiatorType::Other, timing, can_gc);
-                // }
-                return Ok((metadata, buf));
-            },
-            FetchResponseMsg::ProcessResponse(_, Err(e)) |
-            FetchResponseMsg::ProcessResponseEOF(_, Err(e)) => return Err(e),
-            FetchResponseMsg::ProcessCspViolations(_, _violations) => {
-                // csp_violations_processor.process_csp_violations(violations);
-            },
-        }
-    }
-}
+// /// Convenience function for synchronously loading a whole resource.
+// pub(crate) fn load_whole_resource(
+//     request: RequestBuilder,
+//     core_resource_thread: &CoreResourceThread,
+//     global: &GlobalScope,
+//     // csp_violations_processor: &dyn CspViolationsProcessor,
+//     _can_gc: CanGc,
+// ) -> Result<(Metadata, Vec<u8>), NetworkError> {
+//     let request = request.https_state(global.get_https_state());
+//     let (action_sender, action_receiver) = ipc::channel().unwrap();
+//     // let url = request.url.clone();
+//     core_resource_thread
+//         .send(CoreResourceMsg::Fetch(
+//             request,
+//             FetchChannels::ResponseMsg(action_sender),
+//         ))
+//         .unwrap();
+//
+//     let mut buf = vec![];
+//     let mut metadata = None;
+//     loop {
+//         match action_receiver.recv().unwrap() {
+//             FetchResponseMsg::ProcessRequestBody(..) | FetchResponseMsg::ProcessRequestEOF(..) => {
+//             },
+//             FetchResponseMsg::ProcessResponse(_, Ok(m)) => {
+//                 metadata = Some(match m {
+//                     FetchMetadata::Unfiltered(m) => m,
+//                     FetchMetadata::Filtered { unsafe_, .. } => unsafe_,
+//                 })
+//             },
+//             FetchResponseMsg::ProcessResponseChunk(_, data) => buf.extend_from_slice(&data),
+//             FetchResponseMsg::ProcessResponseEOF(_, Ok(_)) => {
+//                 let metadata = metadata.unwrap();
+//                 // if let Some(timing) = &metadata.timing {
+//                 //     submit_timing_data(global, url, InitiatorType::Other, timing, can_gc);
+//                 // }
+//                 return Ok((metadata, buf));
+//             },
+//             FetchResponseMsg::ProcessResponse(_, Err(e)) |
+//             FetchResponseMsg::ProcessResponseEOF(_, Err(e)) => return Err(e),
+//             FetchResponseMsg::ProcessCspViolations(_, _violations) => {
+//                 // csp_violations_processor.process_csp_violations(violations);
+//             },
+//         }
+//     }
+// }
 
 /// <https://html.spec.whatwg.org/multipage/#create-a-potential-cors-request>
 #[allow(clippy::too_many_arguments)]

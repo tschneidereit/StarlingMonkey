@@ -72,7 +72,7 @@ use crate::dom::webgpu::identityhub::IdentityHub;
 // use crate::dom::window::{base64_atob, base64_btoa};
 // use crate::dom::workerlocation::WorkerLocation;
 // use crate::dom::workernavigator::WorkerNavigator;
-use crate::fetch::{/*CspViolationsProcessor,*/ Fetch, load_whole_resource};
+use crate::fetch::{/*CspViolationsProcessor,*/ Fetch, /*load_whole_resource*/};
 use crate::messaging::{CommonScriptMsg, ScriptEventLoopReceiver, ScriptEventLoopSender};
 use crate::realms::{InRealm, enter_realm};
 use crate::script_runtime::{CanGc, IntroductionType, JSContext, JSContextHelper, Runtime};

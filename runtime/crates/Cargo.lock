@@ -210,7 +210,7 @@ name = "base"
 version = "0.0.1"
 dependencies = [
  "bincode",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "ipc-channel",
  "libc 1.0.0-alpha.1",
  "log",
@@ -685,15 +685,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossbeam-channel"
-version = "0.5.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
-dependencies = [
- "crossbeam-utils",
-]
-
-[[package]]
 name = "crossbeam-deque"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -924,7 +915,7 @@ version = "0.0.1"
 dependencies = [
  "base",
  "cookie",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "http",
  "hyper_serde",
  "log",
@@ -2037,7 +2028,7 @@ version = "0.20.2"
 dependencies = [
  "bincode",
  "criterion",
- "crossbeam-channel 0.5.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crossbeam-channel",
  "crossbeam-utils",
  "fnv",
  "futures-channel",
@@ -2270,7 +2261,7 @@ dependencies = [
  "app_units",
  "atomic_refcell",
  "content-security-policy",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "http",
  "indexmap",
  "ipc-channel",
@@ -2408,7 +2399,7 @@ dependencies = [
  "chrono",
  "content-security-policy",
  "cookie",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "data-url",
  "devtools_traits",
  "embedder_traits",
@@ -2462,7 +2453,7 @@ dependencies = [
  "base",
  "content-security-policy",
  "cookie",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "data-url",
  "embedder_traits",
  "headers",
@@ -2857,7 +2848,7 @@ name = "profile_traits"
 version = "0.0.1"
 dependencies = [
  "base",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "ipc-channel",
  "log",
  "malloc_size_of",
@@ -3138,7 +3129,7 @@ dependencies = [
  "base",
  "bincode",
  "constellation_traits",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "cssparser",
  "data-url",
  "deny_public_fields",
@@ -3192,7 +3183,7 @@ name = "script_bindings"
 version = "0.0.1"
 dependencies = [
  "bitflags",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "deny_public_fields",
  "dom_struct",
  "domobject_derive",
@@ -3510,7 +3501,7 @@ dependencies = [
  "base",
  "clap",
  "constellation_traits",
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "devtools_traits",
  "embedder_traits",
  "env_logger",
@@ -3817,7 +3808,7 @@ dependencies = [
 name = "timers"
 version = "0.0.1"
 dependencies = [
- "crossbeam-channel 0.5.15",
+ "crossbeam-channel",
  "malloc_size_of",
  "malloc_size_of_derive",
 ]

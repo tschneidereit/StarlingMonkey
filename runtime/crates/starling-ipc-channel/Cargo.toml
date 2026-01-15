@@ -31,13 +31,13 @@ harness = false
 default = []
 force-inprocess = []
 async = ["dep:futures-core", "dep:futures-channel"]
-single-thread = []
 win32-trace = []
 enable-slow-tests = []
+single-thread = ["crossbeam-channel/single-thread"]
 
 [dependencies]
 bincode = "1"
-crossbeam-channel = "0.5"
+crossbeam-channel = { workspace = true }
 fnv = "1.0.3"
 futures-channel = { version = "0.3.31", optional = true }
 futures-core = { version = "0.3.31", optional = true }

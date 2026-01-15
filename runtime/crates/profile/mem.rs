@@ -68,6 +68,7 @@ impl Profiler {
         }
     }
 
+    #[cfg(not(feature = "single-thread"))]
     pub fn start(&mut self) {
         while let Ok(msg) = self.port.recv() {
             if !self.handle_msg(msg) {
@@ -126,7 +127,7 @@ impl Profiler {
         for reporter in self.reporters.values() {
             let (chan, port) = ipc::channel().unwrap();
             reporter.collect_reports(ReportsChan(chan));
-            if let Ok(mut reports) = port.recv() {
+            if let Ok(mut reports) = port.try_recv() {
                 result
                     .entry(reports.pid)
                     .or_insert(vec![])
