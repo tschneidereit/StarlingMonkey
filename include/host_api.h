@@ -209,12 +209,30 @@ struct HostBytes final {
   operator std::span<uint8_t>() const { return std::span<uint8_t>(this->ptr.get(), this->len); }
 };
 
-/// An opaque class to be used in classes representing host resources.
+/// Base class for host-API handle state.
 ///
-/// Some host resources have different requirements for their client-side representation
-/// depending on the host API. To accommodate this, we introduce an opaque class to use for
-/// all of them, which the API-specific implementation can define as needed.
-class HandleState;
+/// Each host API implementation defines a concrete subclass (e.g., RustHandleState)
+/// to wrap the underlying resource handle. The base class provides a virtual
+/// interface so that Resource can manage handle state polymorphically.
+class HandleState {
+public:
+  virtual ~HandleState() = default;
+  virtual bool valid() const = 0;
+};
+
+/// Handle state backed by an i32 from the Rust FFI layer.
+class RustHandleState final : public HandleState {
+  int32_t handle_;
+
+public:
+  explicit RustHandleState(int32_t handle) : handle_(handle) {}
+
+  bool valid() const override { return handle_ >= 0; }
+
+  int32_t handle() const { return handle_; }
+
+  void invalidate() { handle_ = -1; }
+};
 
 class Resource {
 protected:

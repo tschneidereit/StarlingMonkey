@@ -1,0 +1,10 @@
+[package]
+name = "rust-host-api-p3"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+wasip3 = "0.4"
+wit-bindgen = { version = "0.51", features = ["async-spawn"] }

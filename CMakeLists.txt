@@ -33,7 +33,6 @@ include("init-corrosion")
 
 include("wasm-tools")
 include("binaryen")
-include("wizer")
 include("weval")
 include("wasmtime")
 include("cbindgen")
@@ -63,7 +62,6 @@ set(SOURCES
     runtime/encode.cpp
     runtime/decode.cpp
     runtime/engine.cpp
-    runtime/event_loop.cpp
     runtime/builtin.cpp
     runtime/script_loader.cpp
     runtime/debugger.cpp
@@ -123,11 +121,8 @@ else()
 endif()
 
 set(RUNTIME_FILE "starling-raw.wasm")
-set(ADAPTER_FILE "preview1-adapter.wasm")
+set(WASM_TOOLS_BIN ${WASM_TOOLS_DIR}/wasm-tools)
 configure_file("componentize.sh.in" "${CMAKE_CURRENT_BINARY_DIR}/componentize.sh" @ONLY)
-if(EXISTS ${ADAPTER})
-    configure_file(${ADAPTER} "${CMAKE_CURRENT_BINARY_DIR}/${ADAPTER_FILE}" COPYONLY)
-endif()
 
 function(componentize OUTPUT)
     set(options)

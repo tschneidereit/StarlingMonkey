@@ -1,6 +1,7 @@
 #include "fetch-api.h"
 #include "builtin.h"
 #include "encode.h"
+#include "event_loop.h"
 #include "extension-api.h"
 #include "fetch-utils.h"
 #include "headers.h"
@@ -40,6 +41,8 @@ struct Terminator : AbortAlgorithm {
 
   bool run(JSContext *cx) override {
     if (auto *t = task.get()) {
+      RefPtr<api::AsyncTask> ref(t);
+      core::EventLoop::cancel_async_task(ENGINE, ref);
       return t->abort(ENGINE);
     }
     return true;

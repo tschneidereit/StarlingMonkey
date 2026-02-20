@@ -2,9 +2,10 @@
 
 #set -euo pipefail
 
-wizer="${WIZER:-@WIZER_DIR@/wizer}"
+wasmtime="${WASMTIME:-@WASMTIME@}"
 wasm_tools="${WASM_TOOLS:-@WASM_TOOLS_BIN@}"
 weval="${WEVAL:-@WEVAL_BIN@}"
+wasi_adapter="${WASI_ADAPTER:-@WASI_ADAPTER@}"
 aot=@AOT@
 preopen_dir="${PREOPEN_DIR:-}"
 
@@ -117,13 +118,20 @@ if [[ -n "$IN_FILE" ]]; then
            -o "$OUT_FILE" \
            -i "$(dirname "$0")/starling-raw.wasm"
   else
-      echo "$STARLING_ARGS" | WASMTIME_BACKTRACE_DETAILS=1 $wizer --allow-wasi --wasm-bulk-memory true \
-           --inherit-stdio true --inherit-env true $preopen_dir -o "$OUT_FILE" \
-           -- "$(dirname "$0")/starling-raw.wasm"
+      echo "$STARLING_ARGS" | WASMTIME_BACKTRACE_DETAILS=1 $wasmtime wizer \
+           -S cli -S inherit-env \
+           -W bulk-memory -W unknown-imports-default \
+           --keep-init-func -r _initialize=wizer.resume \
+           $preopen_dir -o "$OUT_FILE.core" \
+           "$(dirname "$0")/starling-raw.wasm"
+      $wasm_tools component new \
+           --adapt "wasi_snapshot_preview1=$wasi_adapter" \
+           "$OUT_FILE.core" -o "$OUT_FILE"
+      rm "$OUT_FILE.core"
   fi
 else
   echo "Creating runtime-eval component $OUT_FILE"
-  cp "$(dirname "$0")/starling-raw.wasm" "$OUT_FILE"
+  $wasm_tools component new \
+       --adapt "wasi_snapshot_preview1=$wasi_adapter" \
+       "$(dirname "$0")/starling-raw.wasm" -o "$OUT_FILE"
 fi
-
-$wasm_tools component new -v --adapt "wasi_snapshot_preview1=$(dirname "$0")/preview1-adapter.wasm" --output "$OUT_FILE" "$OUT_FILE"

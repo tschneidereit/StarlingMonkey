@@ -1,0 +1,10 @@
+[package]
+name = "rust-host-api"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+wasi = "0.14"
+wit-bindgen = "0.51"

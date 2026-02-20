@@ -54,6 +54,6 @@
     "status": "FAIL"
   },
   "Streaming upload shouldn't work on Http/1.1.": {
-    "status": "FAIL"
+    "status": "PASS"
   }
 }

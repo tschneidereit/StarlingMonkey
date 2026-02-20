@@ -1,130 +1,72 @@
 #include "sockets.h"
 
-#include <../wasi-0.2.0/handles.h>
-
-template <> struct HandleOps<host_api::TCPSocket> {
-  using owned = wasi_sockets_tcp_own_tcp_socket_t;
-  using borrowed = wasi_sockets_tcp_borrow_tcp_socket_t;
-};
-
-class TCPSocketHandle final : public WASIHandle<host_api::TCPSocket> {
-  wasi_sockets_instance_network_own_network_t network_;
-  PollableHandle pollable_handle_;
-  wasi_io_streams_own_input_stream_t input_;
-  wasi_io_streams_own_output_stream_t output_;
-
-  friend host_api::TCPSocket;
-
-public:
-  explicit TCPSocketHandle(HandleOps<host_api::TCPSocket>::owned handle)
-      : WASIHandle(handle), pollable_handle_(INVALID_POLLABLE_HANDLE) {
-    network_ = wasi_sockets_instance_network_instance_network();
-  }
-
-  static TCPSocketHandle *cast(HandleState *handle) {
-    return reinterpret_cast<TCPSocketHandle *>(handle);
-  }
-
-  wasi_sockets_tcp_borrow_network_t network() const {
-    return wasi_sockets_tcp_borrow_network_t(network_.__handle);
-  }
-  PollableHandle pollable_handle() {
-    if (pollable_handle_ == INVALID_POLLABLE_HANDLE) {
-      pollable_handle_ = wasi_sockets_tcp_method_tcp_socket_subscribe(borrow()).__handle;
-    }
-    return pollable_handle_;
-  }
-};
+extern "C" {
+int32_t host_api_tcp_socket_make(bool ipv4);
+bool host_api_tcp_socket_connect(int32_t handle, uint8_t a, uint8_t b, uint8_t c, uint8_t d,
+                                 uint16_t port);
+bool host_api_tcp_socket_send(int32_t handle, const uint8_t *data, size_t len);
+bool host_api_tcp_socket_receive(int32_t handle, uint32_t chunk_size, uint8_t **out_ptr,
+                                 size_t *out_len);
+void host_api_tcp_socket_close(int32_t handle);
+void host_api_string_free(uint8_t *ptr, size_t len);
+}
 
 namespace host_api {
+class SocketHandleState final : public HandleState {
+  int32_t handle_;
+public:
+  explicit SocketHandleState(int32_t handle) : handle_(handle) {}
+  bool valid() const override { return handle_ >= 0; }
+  int32_t handle() const { return handle_; }
+  void invalidate() { handle_ = -1; }
+};
+
+static int32_t get_socket_handle(HandleState *state) {
+  return static_cast<SocketHandleState *>(state)->handle();
+}
 
 TCPSocket::TCPSocket(std::unique_ptr<HandleState> state) {
   this->handle_state_ = std::move(state);
 }
 
 TCPSocket *TCPSocket::make(IPAddressFamily address_family) {
-  wasi_sockets_tcp_create_socket_ip_address_family_t family =
-      address_family == IPV4 ? WASI_SOCKETS_NETWORK_IP_ADDRESS_FAMILY_IPV4
-                             : WASI_SOCKETS_NETWORK_IP_ADDRESS_FAMILY_IPV6;
-  wasi_sockets_tcp_create_socket_own_tcp_socket_t ret;
-  wasi_sockets_tcp_create_socket_error_code_t err;
-  if (!wasi_sockets_tcp_create_socket_create_tcp_socket(family, &ret, &err)) {
+  auto handle = host_api_tcp_socket_make(address_family == IPV4);
+  if (handle < 0) {
     return nullptr;
   }
-  return new TCPSocket(std::unique_ptr<HandleState>(new TCPSocketHandle(ret)));
+  return new TCPSocket(std::make_unique<SocketHandleState>(handle));
 }
 
 bool TCPSocket::connect(AddressIPV4 address, Port port) {
-  auto state = TCPSocketHandle::cast(handle_state_.get());
-  auto handle = state->borrow();
-  auto addr = wasi_sockets_network_ipv4_address_t(get<0>(address), get<1>(address), get<2>(address),
-                                                  get<3>(address));
-  wasi_sockets_tcp_ip_socket_address_t socket_address = {
-      WASI_SOCKETS_NETWORK_IP_SOCKET_ADDRESS_IPV4, {{port, addr}}};
-  wasi_sockets_tcp_error_code_t err;
-  if (!wasi_sockets_tcp_method_tcp_socket_start_connect(handle, state->network(), &socket_address,
-                                                        &err)) {
-    // TODO: handle error
-    return false;
-  }
-
-  wasi_sockets_tcp_tuple2_own_input_stream_own_output_stream_t streams;
-  while (true) {
-    if (!wasi_sockets_tcp_method_tcp_socket_finish_connect(handle, &streams, &err)) {
-      if (err == WASI_SOCKETS_NETWORK_ERROR_CODE_WOULD_BLOCK) {
-        block_on_pollable_handle(state->pollable_handle());
-        continue;
-      }
-      // TODO: handle error
-      return false;
-    }
-    state->input_ = streams.f0;
-    state->output_ = streams.f1;
-    break;
-  }
-
-  return true;
+  auto handle = get_socket_handle(handle_state_.get());
+  return host_api_tcp_socket_connect(handle, std::get<0>(address), std::get<1>(address),
+                                     std::get<2>(address), std::get<3>(address), port);
 }
+
 void TCPSocket::close() {
-  auto state = TCPSocketHandle::cast(handle_state_.get());
-  if (!state->valid()) {
+  if (!valid()) {
     return;
   }
-  wasi_sockets_tcp_error_code_t err;
-  wasi_sockets_tcp_method_tcp_socket_shutdown(state->borrow(),
-    WASI_SOCKETS_TCP_SHUTDOWN_TYPE_BOTH, &err);
-  wasi_io_streams_output_stream_drop_own(state->output_);
-  wasi_io_streams_input_stream_drop_own(state->input_);
-  if (state->pollable_handle_ != INVALID_POLLABLE_HANDLE) {
-    wasi_io_poll_pollable_drop_own(own_pollable_t{state->pollable_handle_});
-  }
-  wasi_sockets_tcp_tcp_socket_drop_own(state->take());
+  auto handle = get_socket_handle(handle_state_.get());
+  host_api_tcp_socket_close(handle);
+  static_cast<SocketHandleState *>(handle_state_.get())->invalidate();
 }
 
 bool TCPSocket::send(HostString chunk) {
-  auto state = TCPSocketHandle::cast(handle_state_.get());
-  auto borrow = wasi_io_streams_borrow_output_stream(state->output_);
-  bindings_list_u8_t list{reinterpret_cast<uint8_t *>(chunk.ptr.get()), chunk.len};
-  uint64_t capacity = 0;
-  wasi_io_streams_stream_error_t err;
-  if (!wasi_io_streams_method_output_stream_check_write(borrow, &capacity, &err)) {
-    // TODO: proper error handling.
-  }
-  // TODO: proper error handling.
-  MOZ_ASSERT(chunk.len <= capacity);
-  return wasi_io_streams_method_output_stream_write(borrow, &list, &err);
+  auto handle = get_socket_handle(handle_state_.get());
+  return host_api_tcp_socket_send(handle, reinterpret_cast<const uint8_t *>(chunk.ptr.get()),
+                                  chunk.len);
 }
 
 HostString TCPSocket::receive(uint32_t chunk_size) {
-  auto state = TCPSocketHandle::cast(handle_state_.get());
-  auto borrow = wasi_io_streams_borrow_input_stream(state->input_);
-  bindings_list_u8_t ret{};
-  wasi_io_streams_stream_error_t err{};
-  mozilla::DebugOnly<bool> success;
-  success = wasi_io_streams_method_input_stream_blocking_read(borrow, chunk_size, &ret, &err);
-  MOZ_ASSERT(success, "Why you not handle errors");
-  UniqueChars chars((char*)ret.ptr);
-  return HostString(std::move(chars), ret.len);
+  auto handle = get_socket_handle(handle_state_.get());
+  uint8_t *ptr = nullptr;
+  size_t len = 0;
+  if (!host_api_tcp_socket_receive(handle, chunk_size, &ptr, &len)) {
+    return HostString(nullptr);
+  }
+  JS::UniqueChars chars(reinterpret_cast<char *>(ptr));
+  return HostString(std::move(chars), len);
 }
 
 } // namespace host_api

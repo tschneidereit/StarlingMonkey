@@ -1,30 +1,30 @@
 {
   "Response.body is null for responses with status=204 (method=GET)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with status=204 (method=POST)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with status=204 (method=OPTIONS)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with status=205 (method=GET)": {
     "status": "PASS"
   },
   "Response.body is null for responses with status=205 (method=POST)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with status=205 (method=OPTIONS)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with status=304 (method=GET)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with status=304 (method=POST)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with status=304 (method=OPTIONS)": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Response.body is null for responses with method=HEAD": {
     "status": "FAIL"

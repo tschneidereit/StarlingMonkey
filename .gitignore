@@ -23,6 +23,7 @@
 
 # Rust compilation output
 /target
+/crates/*/target
 
 /tests/e2e/*/*.wasm
 /tests/e2e/*/*.log

@@ -17,7 +17,7 @@ ctest --test-dir cmake-build-debug -j$(nproc) --output-on-failure
 Alternatively, the integration test server can be directly run with `wasmtime serve` via:
 
 ```console
-wasmtime serve -S common cmake-build-debug/test-server.wasm
+wasmtime serve -W component-model-async=y -S p3=y -S common cmake-build-debug/test-server.wasm
 ```
 
 Then visit `http://0.0.0.0:8080/timers`, or any test name and filter of the form `[testName]/[filter]`

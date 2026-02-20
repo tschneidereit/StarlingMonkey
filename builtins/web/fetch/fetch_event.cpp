@@ -492,7 +492,7 @@ static void dispatch_fetch_event(HandleObject event, double *total_compute) {
   EventTarget::dispatch_event(ENGINE->cx(), event_target, event_val, &rval);
 }
 
-bool handle_incoming_request(host_api::HttpIncomingRequest *request) {
+bool begin_incoming_request(host_api::HttpIncomingRequest *request) {
 #ifdef DEBUG
   fprintf(stderr, "Warning: Using a DEBUG build. Expect things to be SLOW.\n");
 #endif
@@ -500,6 +500,16 @@ bool handle_incoming_request(host_api::HttpIncomingRequest *request) {
 
   HandleObject fetch_event = FetchEvent::instance();
   MOZ_ASSERT(FetchEvent::is_instance(fetch_event));
+
+  // Reset state for request reuse (p3: same instance handles multiple requests).
+  JS::RootedObject req_obj(ENGINE->cx(),
+      &JS::GetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::Request)).toObject());
+  Request::init_slots(req_obj);
+  JS::SetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::CurrentState),
+                      JS::Int32Value(static_cast<int32_t>(FetchEvent::State::unhandled)));
+  JS::SetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::PendingPromiseCount),
+                      JS::Int32Value(0));
+  STREAMING_BODY = nullptr;
 
   if (!FetchEvent::init_incoming_request(ENGINE->cx(), fetch_event, request)) {
     ENGINE->dump_pending_exception("initialization of FetchEvent");
@@ -510,8 +520,11 @@ bool handle_incoming_request(host_api::HttpIncomingRequest *request) {
 
   content_debugger::maybe_init_debugger(ENGINE, true);
   dispatch_fetch_event(fetch_event, &total_compute);
+  return true;
+}
 
-  bool success = ENGINE->run_event_loop();
+bool finish_incoming_request(bool success) {
+  HandleObject fetch_event = FetchEvent::instance();
 
   if (JS_IsExceptionPending(ENGINE->cx())) {
     ENGINE->dump_pending_exception("evaluating incoming request");
@@ -544,6 +557,14 @@ bool handle_incoming_request(host_api::HttpIncomingRequest *request) {
   }
 
   return true;
+}
+
+bool handle_incoming_request(host_api::HttpIncomingRequest *request) {
+  if (!begin_incoming_request(request)) {
+    return false;
+  }
+  bool success = ENGINE->run_event_loop();
+  return finish_incoming_request(success);
 }
 
 bool FetchEvent::init_class(JSContext *cx, JS::HandleObject global) {

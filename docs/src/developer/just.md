@@ -32,6 +32,21 @@ just wpt-setup # prepare WPT hosts
 just wpt-test # run all tests
 just wpt-test console/console-log-symbol.any.js # run specific test
 ```
+```
+
+To update Web Platform Test expectations run:
+
+```console
+just wpt-update # run all tests
+just wpt-update console/console-log-symbol.any.js # update specific test
+```
+
+To build and run an interactive server with a simple web UI for Web Platform Tests run:
+
+```console
+just wpt-setup # prepare WPT hosts
+just wpt-server # the URL of the server will be logged once everything has started
+```
 
 To view a complete list of available recipes, run:
 

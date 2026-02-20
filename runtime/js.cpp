@@ -105,6 +105,7 @@ extern "C" bool exports_wasi_cli_run_run() {
  * command line.
  */
 extern "C" bool init_from_environment() {
+  if (ENGINE) return true;  // Already initialized (e.g., by wizer)
   auto config_parser = starling::ConfigParser();
   config_parser.apply_env();
   ENGINE = new api::Engine(config_parser.take());

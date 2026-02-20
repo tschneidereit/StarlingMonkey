@@ -69,8 +69,8 @@ public:
    * @return True if the response was sent successfully
    * @throws None directly, but surfaces errors to JS via `HANDLE_ERROR`
    */
-  static bool respondWithError(JSContext *cx, 
-                               JS::HandleObject self, 
+  static bool respondWithError(JSContext *cx,
+                               JS::HandleObject self,
                                std::optional<std::string_view> body_text = std::nullopt);
   static bool is_active(JSObject *self);
 
@@ -87,6 +87,19 @@ public:
 };
 
 bool install(api::Engine *engine);
+
+/**
+ * Set up an incoming request: initialize the FetchEvent, start the debugger,
+ * and dispatch the fetch event. Does NOT run the event loop.
+ * Used by p3's async handler to split request handling from event loop execution.
+ */
+bool begin_incoming_request(host_api::HttpIncomingRequest *request);
+
+/**
+ * Finalize request handling after the event loop completes.
+ * Checks for errors, closes streaming bodies, reports unhandled rejections.
+ */
+bool finish_incoming_request(bool event_loop_success);
 
 } // namespace builtins::web::fetch::fetch_event
 

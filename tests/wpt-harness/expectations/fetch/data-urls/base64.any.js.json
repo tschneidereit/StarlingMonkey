@@ -15,16 +15,16 @@
     "status": "FAIL"
   },
   "data: URL base64 handling: \" abcd===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd=== \"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd ===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab\"": {
     "status": "FAIL"
@@ -33,133 +33,133 @@
     "status": "FAIL"
   },
   "data: URL base64 handling: \"abcde\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"𐀀\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"==\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"=====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a==\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a=====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab==\"": {
     "status": "FAIL"
   },
   "data: URL base64 handling: \"ab===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab=====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abc=\"": {
     "status": "FAIL"
   },
   "data: URL base64 handling: \"abc==\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abc===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abc====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abc=====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd==\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd=====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcde=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcde==\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcde===\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcde====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcde=====\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"=a\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"=a=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a=b\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"a=b=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab=c\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab=c=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abc=d\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abc=d=\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab\\vcd\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab　cd\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab、cd\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab\\tcd\"": {
     "status": "FAIL"
@@ -177,7 +177,7 @@
     "status": "FAIL"
   },
   "data: URL base64 handling: \"ab cd\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"ab\\t\\n\\f\\r cd\"": {
     "status": "FAIL"
@@ -189,7 +189,7 @@
     "status": "FAIL"
   },
   "data: URL base64 handling: \"A\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"/A\"": {
     "status": "FAIL"
@@ -201,10 +201,10 @@
     "status": "FAIL"
   },
   "data: URL base64 handling: \"////A\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"/\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"A/\"": {
     "status": "FAIL"
@@ -213,16 +213,16 @@
     "status": "FAIL"
   },
   "data: URL base64 handling: \"AAAA/\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"AAA/\"": {
     "status": "FAIL"
   },
   "data: URL base64 handling: \"\\0nonsense\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"abcd\\0nonsense\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"YQ\"": {
     "status": "FAIL"
@@ -231,15 +231,15 @@
     "status": "FAIL"
   },
   "data: URL base64 handling: \"~~\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"..\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"--\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "data: URL base64 handling: \"__\"": {
-    "status": "FAIL"
+    "status": "PASS"
   }
 }

@@ -1,0 +1,5 @@
+package starling:wizer;
+
+world wizer {
+  export wizer-initialize: func();
+}

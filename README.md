@@ -123,7 +123,7 @@ addEventListener('fetch', event => {
 Componentizing this code like above allows running it like this:
 
 ```console
-wasmtime serve -S cli --dir . index.wasm
+wasmtime serve -W component-model-async=y -S p3=y -S cli --dir . index.wasm
 ```
 
 [cmake]: https://cmake.org/

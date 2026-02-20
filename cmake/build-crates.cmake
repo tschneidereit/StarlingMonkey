@@ -47,3 +47,10 @@ target_link_libraries(rust-crates PRIVATE rust_staticlib rust-hooks-wrappers)
 # Add crates as needed here:
 add_rust_lib(rust-url "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-url")
 add_rust_lib(multipart "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-multipart" "\"capi\", \"simd\"")
+
+# The host API Rust crate is selected by the host_api.cmake for the chosen implementation.
+if (DEFINED RUST_HOST_API_CRATE)
+    add_rust_lib(${RUST_HOST_API_CRATE} "${RUST_HOST_API_CRATE_PATH}")
+else()
+    add_rust_lib(rust-host-api "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-host-api")
+endif()

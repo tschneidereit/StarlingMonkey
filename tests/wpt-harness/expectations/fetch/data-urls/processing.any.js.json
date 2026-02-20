@@ -12,13 +12,13 @@
     "status": "FAIL"
   },
   "\"data:\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "\"data:text/html\"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "\"data:text/html    ;charset=x   \"": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "\"data:,\"": {
     "status": "FAIL"

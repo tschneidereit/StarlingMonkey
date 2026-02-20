@@ -99,7 +99,7 @@ if [ -z "$test_component" ]; then
    fi
 fi
 
-$wasmtime serve -S common --addr 0.0.0.0:0 "$test_component" 1> "$stdout_log" 2> "$stderr_log" &
+$wasmtime serve -W component-model-async=y -S p3=y -S common -S inherit-env -S inherit-network --max-instance-reuse-count 1 --addr 0.0.0.0:0 "$test_component" 1> "$stdout_log" 2> "$stderr_log" &
 wasmtime_pid="$!"
 
 function cleanup {
@@ -147,19 +147,36 @@ if [ -f "$test_serve_body_expectation" ]; then
 fi
 
 if [ -f "$test_serve_stdout_expectation" ]; then
-   cmp -b "$stdout_log" "$test_serve_stdout_expectation" || print_diff_content_on_fail "$stdout_log" "$test_serve_stdout_expectation"
+   # In p3, stdout lines don't have the "stdout [0] :: " prefix that p2 adds.
+   # If the actual output doesn't match and the expectation has prefixed lines,
+   # try stripping the prefix before comparing.
+   if ! cmp -s "$stdout_log" "$test_serve_stdout_expectation"; then
+      sed 's/^stdout \[0\] :: //' "$test_serve_stdout_expectation" > "$stdout_log.expected_stripped"
+      cmp -b "$stdout_log" "$stdout_log.expected_stripped" || print_diff_content_on_fail "$stdout_log" "$test_serve_stdout_expectation"
+      rm -f "$stdout_log.expected_stripped"
+   fi
 fi
 
 if [ -f "$test_serve_stderr_expectation" ]; then
    mv "$stderr_log" "$stderr_log.orig"
-   if [[ $(cat "$stderr_log.orig" | tail -n +2 | head -n1) == "stderr [0] :: Warning: Using a DEBUG build. Expect things to be SLOW." ]]; then
+   # Strip the "Serving HTTP" line, then optionally strip the debug build warning
+   # (which may or may not have a "stderr [0] :: " prefix depending on p2 vs p3).
+   second_line=$(cat "$stderr_log.orig" | tail -n +2 | head -n1)
+   if [[ "$second_line" == "stderr [0] :: Warning: Using a DEBUG build. Expect things to be SLOW." ]] || \
+      [[ "$second_line" == "Warning: Using a DEBUG build. Expect things to be SLOW." ]]; then
       cat $stderr_log.orig | tail -n +3 > "$stderr_log"
       rm $stderr_log.orig
    else
       cat $stderr_log.orig | tail -n +2 > "$stderr_log"
       rm $stderr_log.orig
    fi
-   cmp -b "$stderr_log" "$test_serve_stderr_expectation" || print_diff_content_on_fail "$stderr_log" "$test_serve_stderr_expectation"
+   # In p3, stderr lines don't have the "stderr [0] :: " prefix.
+   # Try stripping the prefix from expectations if a direct match fails.
+   if ! cmp -s "$stderr_log" "$test_serve_stderr_expectation"; then
+      sed 's/^stderr \[0\] :: //' "$test_serve_stderr_expectation" > "$stderr_log.expected_stripped"
+      cmp -b "$stderr_log" "$stderr_log.expected_stripped" || print_diff_content_on_fail "$stderr_log" "$test_serve_stderr_expectation"
+      rm -f "$stderr_log.expected_stripped"
+   fi
 fi
 
 rm "$body_log"

@@ -2,6 +2,7 @@ ncpus := num_cpus()
 justdir := justfile_directory()
 mode := 'debug'
 builddir := justdir / 'cmake-build-' + mode
+wpt_root := justdir / 'deps' / 'wpt-source'
 reconfigure := 'false'
 
 alias b := build
@@ -57,7 +58,7 @@ componentize script="" outfile="starling.wasm": build
 
 # Componentize and serve script with wasmtime
 serve script: (componentize script)
-    wasmtime serve -S common starling.wasm
+    wasmtime serve -W component-model-async=y -S p3=y -S common starling.wasm
 
 # Format code using clang-format. Use --fix to fix files inplace
 format *ARGS:
@@ -83,10 +84,9 @@ wpt-server: (build "wpt-runtime")
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{ builddir }}
-    wpt_root=$(grep '^CPM_PACKAGE_wpt-suite_SOURCE_DIR:INTERNAL=' CMakeCache.txt | cut -d'=' -f2-)
 
-    echo "Using wpt-suite at ${wpt_root}"
-    WASMTIME_BACKTRACE_DETAILS= node {{ justdir }}/tests/wpt-harness/run-wpt.mjs --wpt-root=${wpt_root} -vv --interactive
+    echo "Using wpt-suite at {{ wpt_root }}"
+    WASMTIME_BACKTRACE_DETAILS= node {{ justdir }}/tests/wpt-harness/run-wpt.mjs --wpt-root={{ wpt_root }} -vv --interactive
 
 # Prepare WPT hosts
 [group('wpt')]

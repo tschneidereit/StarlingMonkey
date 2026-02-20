@@ -1,4 +1,8 @@
-set(WASM_TOOLS_VERSION 1.235.0)
+if (HOST_API MATCHES "wasi-0\\.3")
+    set(WASM_TOOLS_VERSION 1.245.1)
+else()
+    set(WASM_TOOLS_VERSION 1.235.0)
+endif()
 
 set(WASM_TOOLS_URL https://github.com/bytecodealliance/wasm-tools/releases/download/v${WASM_TOOLS_VERSION}/wasm-tools-${WASM_TOOLS_VERSION}-${HOST_ARCH}-${HOST_OS}.tar.gz)
 CPMAddPackage(NAME wasm-tools URL ${WASM_TOOLS_URL} DOWNLOAD_ONLY TRUE)

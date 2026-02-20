@@ -324,9 +324,9 @@ async function wasmtimeReady(wasmtime, config) {
 
 async function startWasmtime(runtime, addr, logLevel) {
   if (logLevel > LogLevel.Quiet) {
-    console.info(`Starting Wasmtime server (cmd: wasmtime serve -S common --addr ${addr} ${runtime})...`);
+    console.info(`Starting Wasmtime server (cmd: wasmtime serve -W component-model-async=y -S p3=y -S common --max-instance-reuse-count 1 --addr ${addr} ${runtime})...`);
   }
-  let wasmtime = execFile("wasmtime", ["serve", "-S", "common", "--addr", addr, runtime]);
+  let wasmtime = execFile("wasmtime", ["serve", "-W", "component-model-async=y", "-S", "p3=y", "-S", "common", "--max-instance-reuse-count", "1", "--addr", addr, runtime]);
   childProcesses.wasmtime = wasmtime;
   wasmtime.on("error", event => {
     shutdown(`error starting Wasmtime: ${event}`);
