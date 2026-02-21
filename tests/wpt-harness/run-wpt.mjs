@@ -418,6 +418,7 @@ function getExpectedResults(testPath) {
 }
 
 function getTests(pattern) {
+  let re = new RegExp(pattern);
   config.logLevel >= LogLevel.Verbose &&
     console.log(`Loading tests list from ${config.tests.list}`);
 
@@ -430,7 +431,7 @@ function getTests(pattern) {
   testPaths = testPaths.map(path => path.startsWith(SLOW_PREFIX) ?
                                     path.substr(SLOW_PREFIX.length) :
                                     path)
-    .filter(path => path.indexOf(pattern) != -1);
+    .filter(path => re.test(path));
 
   config.logLevel >= LogLevel.Verbose &&
     console.log(`Loaded ${totalCount} tests, of which ${testPaths.length} match pattern ${pattern}${config.skipSlowTests ? " and aren't skipped for being slow" : ""}`);

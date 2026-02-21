@@ -72,12 +72,19 @@ test regex="": (build "integration-test-server") (build "wpt-runtime")
 [group('wpt')]
 [arg("external-wpt", long)]
 wpt-test filter="" external-wpt="false": (build "wpt-runtime")
-    WPT_FLAGS="--external-wpt-server={{external-wpt}}" WPT_FILTER={{ filter }} ctest --test-dir {{ builddir }} -R wpt --verbose
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd {{ builddir }}
+    WASMTIME_BACKTRACE_DETAILS=1 node "{{ justdir }}/tests/wpt-harness/run-wpt.mjs" "--wpt-root={{ wpt_root }}" --external-wpt-server={{external-wpt}} -vv "{{ filter }}"
 
 # Update web platform test expectations
 [group('wpt')]
-wpt-update filter="": (build "wpt-runtime")
-    WPT_FLAGS="--update-expectations" WPT_FILTER={{ filter }} ctest --test-dir {{ builddir }} -R wpt --verbose
+[arg("external-wpt", long)]
+wpt-update filter="" external-wpt="false": (build "wpt-runtime")
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd {{ builddir }}
+    WASMTIME_BACKTRACE_DETAILS=1 node "{{ justdir }}/tests/wpt-harness/run-wpt.mjs" "--wpt-root={{ wpt_root }}" --external-wpt-server={{external-wpt}} -vv --update-expectations "{{ filter }}"
 
 # Run wpt server
 [group('wpt')]
@@ -87,7 +94,7 @@ wpt-server: (build "wpt-runtime")
     cd {{ builddir }}
 
     echo "Using wpt-suite at {{ wpt_root }}"
-    WASMTIME_BACKTRACE_DETAILS= node {{ justdir }}/tests/wpt-harness/run-wpt.mjs --wpt-root={{ wpt_root }} -vv --interactive
+    WASMTIME_BACKTRACE_DETAILS= node "{{ justdir }}/tests/wpt-harness/run-wpt.mjs" "--wpt-root={{ wpt_root }}" -vv --interactive
 
 # Prepare WPT hosts
 [group('wpt')]
