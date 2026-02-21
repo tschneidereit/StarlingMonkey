@@ -1,16 +1,14 @@
 use crate::handle_table::HandleTable;
 use crate::http_body;
 use wasi::http::outgoing_handler;
-use wasi::http::types::{
-    FutureIncomingResponse, IncomingRequest, Method, OutgoingRequest, Scheme,
-};
+use wasi::http::types::{FutureIncomingResponse, IncomingRequest, Method, OutgoingRequest, Scheme};
 
 use core::cell::RefCell;
 
 thread_local! {
-    static INCOMING_REQ_TABLE: RefCell<HandleTable<IncomingRequest>> = RefCell::new(HandleTable::new());
-    static OUTGOING_REQ_TABLE: RefCell<HandleTable<OutgoingRequest>> = RefCell::new(HandleTable::new());
-    static FUTURE_RESP_TABLE: RefCell<HandleTable<FutureResponseState>> = RefCell::new(HandleTable::new());
+    static INCOMING_REQ_TABLE: RefCell<HandleTable<IncomingRequest>> = const { RefCell::new(HandleTable::new()) };
+    static OUTGOING_REQ_TABLE: RefCell<HandleTable<OutgoingRequest>> = const { RefCell::new(HandleTable::new()) };
+    static FUTURE_RESP_TABLE: RefCell<HandleTable<FutureResponseState>> = const { RefCell::new(HandleTable::new()) };
 }
 
 struct FutureResponseState {
@@ -149,10 +147,7 @@ pub extern "C" fn host_api_incoming_request_authority(handle: i32, out: *mut Hos
 
 /// Get the path-with-query of an incoming request.
 #[no_mangle]
-pub extern "C" fn host_api_incoming_request_path_with_query(
-    handle: i32,
-    out: *mut HostApiString,
-) {
+pub extern "C" fn host_api_incoming_request_path_with_query(handle: i32, out: *mut HostApiString) {
     with_incoming_req(|t| {
         let req = t.get(handle).expect("invalid incoming request handle");
         let path = req.path_with_query().unwrap_or_default();
@@ -211,8 +206,8 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
     };
 
     // Take ownership of the Fields from the headers table.
-    let headers = crate::http_headers::remove_headers(headers_handle)
-        .expect("invalid headers handle");
+    let headers =
+        crate::http_headers::remove_headers(headers_handle).expect("invalid headers handle");
 
     let req = OutgoingRequest::new(headers);
     req.set_method(&method).expect("failed to set method");
@@ -230,12 +225,13 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
         // fail here, but the request object is still usable).
         let _ = req.set_scheme(Some(&scheme));
 
-        let authority =
-            core::str::from_utf8_unchecked(core::slice::from_raw_parts(authority_ptr, authority_len));
+        let authority = core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+            authority_ptr,
+            authority_len,
+        ));
         let _ = req.set_authority(Some(authority));
 
-        let path =
-            core::str::from_utf8_unchecked(core::slice::from_raw_parts(path_ptr, path_len));
+        let path = core::str::from_utf8_unchecked(core::slice::from_raw_parts(path_ptr, path_len));
         let _ = req.set_path_with_query(Some(path));
     }
 
@@ -338,9 +334,8 @@ pub extern "C" fn host_api_future_response_drop(handle: i32) {
     with_future_resp(|t| {
         if let Some(state) = t.remove(handle) {
             if state.pollable_handle != INVALID_POLLABLE_HANDLE {
-                let pollable = unsafe {
-                    wasi::io::poll::Pollable::from_handle(state.pollable_handle as u32)
-                };
+                let pollable =
+                    unsafe { wasi::io::poll::Pollable::from_handle(state.pollable_handle as u32) };
                 drop(pollable);
             }
         }

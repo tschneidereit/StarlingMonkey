@@ -4,7 +4,7 @@ use wasip3::http::types::Fields;
 use core::cell::RefCell;
 
 thread_local! {
-    static HEADERS_TABLE: RefCell<HandleTable<Fields>> = RefCell::new(HandleTable::new());
+    static HEADERS_TABLE: RefCell<HandleTable<Fields>> = const { RefCell::new(HandleTable::new()) };
 }
 
 fn with_headers<F, R>(f: F) -> R
@@ -80,10 +80,9 @@ pub unsafe extern "C" fn host_api_headers_from_entries(
     let pairs: Vec<(String, Vec<u8>)> = entries_slice
         .iter()
         .map(|e| {
-            let name = core::str::from_utf8_unchecked(core::slice::from_raw_parts(
-                e.name_ptr, e.name_len,
-            ))
-            .to_string();
+            let name =
+                core::str::from_utf8_unchecked(core::slice::from_raw_parts(e.name_ptr, e.name_len))
+                    .to_string();
             let value = core::slice::from_raw_parts(e.value_ptr, e.value_len).to_vec();
             (name, value)
         })

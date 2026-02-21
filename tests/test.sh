@@ -99,7 +99,7 @@ if [ -z "$test_component" ]; then
    fi
 fi
 
-$wasmtime serve -W component-model-async=y -S p3=y -S common -S inherit-env -S inherit-network --max-instance-reuse-count 1 --addr 0.0.0.0:0 "$test_component" 1> "$stdout_log" 2> "$stderr_log" &
+$wasmtime serve -W component-model-async=y -S p3=y -S common -S inherit-env -S inherit-network --addr 0.0.0.0:0 "$test_component" 1> "$stdout_log" 2> "$stderr_log" &
 wasmtime_pid="$!"
 
 function cleanup {
@@ -151,7 +151,7 @@ if [ -f "$test_serve_stdout_expectation" ]; then
    # If the actual output doesn't match and the expectation has prefixed lines,
    # try stripping the prefix before comparing.
    if ! cmp -s "$stdout_log" "$test_serve_stdout_expectation"; then
-      sed 's/^stdout \[0\] :: //' "$test_serve_stdout_expectation" > "$stdout_log.expected_stripped"
+      sed 's/^stdout \[[0-9]*\] :: //' "$test_serve_stdout_expectation" > "$stdout_log.expected_stripped"
       cmp -b "$stdout_log" "$stdout_log.expected_stripped" || print_diff_content_on_fail "$stdout_log" "$test_serve_stdout_expectation"
       rm -f "$stdout_log.expected_stripped"
    fi
@@ -173,7 +173,7 @@ if [ -f "$test_serve_stderr_expectation" ]; then
    # In p3, stderr lines don't have the "stderr [0] :: " prefix.
    # Try stripping the prefix from expectations if a direct match fails.
    if ! cmp -s "$stderr_log" "$test_serve_stderr_expectation"; then
-      sed 's/^stderr \[0\] :: //' "$test_serve_stderr_expectation" > "$stderr_log.expected_stripped"
+      sed 's/^stderr \[[0-9]*\] :: //' "$test_serve_stderr_expectation" > "$stderr_log.expected_stripped"
       cmp -b "$stderr_log" "$stderr_log.expected_stripped" || print_diff_content_on_fail "$stderr_log" "$test_serve_stderr_expectation"
       rm -f "$stderr_log.expected_stripped"
    fi

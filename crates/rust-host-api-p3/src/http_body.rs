@@ -1,7 +1,7 @@
 extern crate alloc;
 
-use alloc::vec::Vec;
 use crate::handle_table::HandleTable;
+use alloc::vec::Vec;
 use wit_bindgen::rt::async_support::{StreamReader, StreamWriter};
 
 use core::cell::RefCell;
@@ -28,8 +28,8 @@ struct OutgoingBodyState {
 }
 
 thread_local! {
-    static INCOMING_BODY_TABLE: RefCell<HandleTable<IncomingBodyState>> = RefCell::new(HandleTable::new());
-    static OUTGOING_BODY_TABLE: RefCell<HandleTable<OutgoingBodyState>> = RefCell::new(HandleTable::new());
+    static INCOMING_BODY_TABLE: RefCell<HandleTable<IncomingBodyState>> = const { RefCell::new(HandleTable::new()) };
+    static OUTGOING_BODY_TABLE: RefCell<HandleTable<OutgoingBodyState>> = const { RefCell::new(HandleTable::new()) };
 }
 
 fn with_incoming<F, R>(f: F) -> R
@@ -72,18 +72,44 @@ pub(crate) fn insert_incoming_body(reader: StreamReader<u8>) -> i32 {
 /// Called by the event loop before running the C++ task that will read the
 /// body. This `.await`s the stream reader, storing the result for the
 /// subsequent synchronous `host_api_incoming_body_read` call.
+///
+/// Cancellation-safe: if the future is dropped before the read completes,
+/// the stream reader is restored to the incoming body state.
 pub(crate) async fn prefetch_incoming_body(body_handle: i32) -> bool {
     // Take the reader out to avoid borrowing across await.
-    let reader_opt = with_incoming(|t| {
-        t.get_mut(body_handle).and_then(|s| s.reader.take())
-    });
+    let reader_opt = with_incoming(|t| t.get_mut(body_handle).and_then(|s| s.reader.take()));
 
-    if let Some(mut reader) = reader_opt {
+    if let Some(reader) = reader_opt {
+        // Guard restores the reader if this future is cancelled.
+        struct ReaderGuard {
+            body_handle: i32,
+            reader: Option<StreamReader<u8>>,
+        }
+        impl Drop for ReaderGuard {
+            fn drop(&mut self) {
+                if let Some(reader) = self.reader.take() {
+                    with_incoming(|t| {
+                        if let Some(state) = t.get_mut(self.body_handle) {
+                            state.reader = Some(reader);
+                        }
+                    });
+                }
+            }
+        }
+
+        let mut guard = ReaderGuard {
+            body_handle,
+            reader: Some(reader),
+        };
+        let r = guard.reader.as_mut().unwrap();
+
         // Read up to 4096 bytes at once for efficiency.
         let buf = Vec::with_capacity(4096);
-        let (_result, data) = reader.read(buf).await;
+        let (_result, data) = r.read(buf).await;
+
         if data.is_empty() {
-            // Stream ended (EOF).
+            // Stream ended (EOF). Consume the reader (don't restore).
+            guard.reader.take();
             with_incoming(|t| {
                 if let Some(state) = t.get_mut(body_handle) {
                     state.eof = true;
@@ -93,9 +119,9 @@ pub(crate) async fn prefetch_incoming_body(body_handle: i32) -> bool {
             with_incoming(|t| {
                 if let Some(state) = t.get_mut(body_handle) {
                     state.read_buffer.extend_from_slice(&data);
-                    state.reader = Some(reader);
                 }
             });
+            // Guard's drop will restore the reader.
         }
         true
     } else {
@@ -107,7 +133,7 @@ pub(crate) async fn prefetch_incoming_body(body_handle: i32) -> bool {
 pub(crate) fn has_incoming_data(body_handle: i32) -> bool {
     with_incoming(|t| {
         t.get(body_handle)
-            .map_or(true, |s| !s.read_buffer.is_empty() || s.eof)
+            .is_none_or(|s| !s.read_buffer.is_empty() || s.eof)
     })
 }
 

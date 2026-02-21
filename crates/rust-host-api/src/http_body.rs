@@ -20,8 +20,8 @@ struct OutgoingBodyState {
 const INVALID_POLLABLE_HANDLE: i32 = -1;
 
 thread_local! {
-    static INCOMING_BODY_TABLE: RefCell<HandleTable<IncomingBodyState>> = RefCell::new(HandleTable::new());
-    static OUTGOING_BODY_TABLE: RefCell<HandleTable<OutgoingBodyState>> = RefCell::new(HandleTable::new());
+    static INCOMING_BODY_TABLE: RefCell<HandleTable<IncomingBodyState>> = const { RefCell::new(HandleTable::new()) };
+    static OUTGOING_BODY_TABLE: RefCell<HandleTable<OutgoingBodyState>> = const { RefCell::new(HandleTable::new()) };
 }
 
 fn with_incoming<F, R>(f: F) -> R
@@ -52,7 +52,9 @@ pub struct HostApiReadResult {
 /// Create an incoming body handle from a raw WASI IncomingBody handle.
 /// This is called from the request/response modules when they extract the body.
 pub(crate) fn insert_incoming_body(body: IncomingBody) -> i32 {
-    let stream = body.stream().expect("incoming body stream should be available");
+    let stream = body
+        .stream()
+        .expect("incoming body stream should be available");
     let state = IncomingBodyState {
         _body: body,
         stream,
@@ -88,11 +90,7 @@ pub extern "C" fn host_api_incoming_body_read(
                 unreachable!()
             }
 
-            wit_import(
-                state.stream.handle() as i32,
-                chunk_size as i64,
-                ptr0,
-            );
+            wit_import(state.stream.handle() as i32, chunk_size as i64, ptr0);
 
             let discriminant = *ptr0.cast::<u8>();
             match discriminant {
@@ -111,7 +109,8 @@ pub extern "C" fn host_api_incoming_body_read(
                         };
                     } else {
                         // Got data — take ownership of the buffer
-                        let boxed = Box::from_raw(core::slice::from_raw_parts_mut(data_ptr, data_len));
+                        let boxed =
+                            Box::from_raw(core::slice::from_raw_parts_mut(data_ptr, data_len));
                         *out = HostApiReadResult {
                             ptr: Box::into_raw(boxed) as *mut u8,
                             len: data_len,
@@ -184,7 +183,9 @@ pub extern "C" fn host_api_incoming_body_close(handle: i32) {
 
 /// Create an outgoing body handle from a raw WASI OutgoingBody handle.
 pub(crate) fn insert_outgoing_body(body: OutgoingBody) -> i32 {
-    let stream = body.write().expect("outgoing body stream should be available");
+    let stream = body
+        .write()
+        .expect("outgoing body stream should be available");
     let state = OutgoingBodyState {
         body: Some(body),
         stream,
@@ -264,9 +265,8 @@ pub extern "C" fn host_api_outgoing_body_close(handle: i32) -> bool {
 
             // Drop pollable if any.
             if state.pollable_handle != INVALID_POLLABLE_HANDLE {
-                let pollable = unsafe {
-                    wasi::io::poll::Pollable::from_handle(state.pollable_handle as u32)
-                };
+                let pollable =
+                    unsafe { wasi::io::poll::Pollable::from_handle(state.pollable_handle as u32) };
                 drop(pollable);
             }
 

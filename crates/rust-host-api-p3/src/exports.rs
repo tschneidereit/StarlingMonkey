@@ -39,21 +39,18 @@ impl wasip3::exports::http::handler::Guest for ServiceHandler {
             )));
         }
 
-        // Phase 2: Run the async event loop.
+        // Phase 2: Run the async event loop until this request's response is ready.
         let engine = unsafe { crate::event_loop::starling_event_loop_get_engine() };
-        let loop_ok = crate::event_loop::run(engine).await;
+        let loop_ok = crate::event_loop::run(engine, handle).await;
 
         // Phase 3: Finalize (check errors, close streaming body, etc.)
         let _finish_ok = unsafe { starling_finish_request(loop_ok) };
 
         // Phase 4: Return the response that the JS handler stored via respondWith().
-        // Body data has already been scheduled for flushing by outgoing_body_close
-        // (which spawns an async write task). The flush completes after the
-        // Response is returned and the host starts reading the body stream.
-        crate::http_response::take_pending_response()
-            .unwrap_or(Err(ErrorCode::InternalError(Some(
-                "no response was set".to_string(),
-            ))))
+        let result = crate::http_response::take_pending_response(handle);
+        result.unwrap_or(Err(ErrorCode::InternalError(Some(
+            "no response was set".to_string(),
+        ))))
     }
 }
 

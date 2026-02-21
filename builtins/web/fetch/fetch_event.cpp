@@ -17,6 +17,10 @@
 #include <memory>
 #include <optional>
 
+extern "C" __attribute__((weak)) void host_api_set_response_request_handle(int32_t request_handle);
+extern "C" __attribute__((weak)) bool host_api_has_pending_response(int32_t request_handle);
+extern "C" void starling_event_loop_set_current_request(int32_t request_handle);
+
 using builtins::web::event::Event;
 using builtins::web::event::EventTarget;
 using builtins::web::event::global_event_target;
@@ -33,16 +37,79 @@ JSString *fetch_type_atom;
 JS::PersistentRootedObject INSTANCE;
 host_api::HttpOutgoingBody *STREAMING_BODY;
 
+/// The request handle for the currently-active fetch event context.
+/// Set in begin_incoming_request, saved/restored in push/pop_fetch_event_context.
+int32_t CURRENT_REQUEST_HANDLE = -1;
+
+// Context stack for concurrent request handling.
+// Saves FetchEvent slot values + STREAMING_BODY when a nested request starts.
+// PendingPromiseCount is NOT saved/restored — it remains global across all
+// concurrent requests since it tracks the shared event loop interest.
+struct SavedFetchEventContext {
+  std::unique_ptr<JS::PersistentRooted<JSObject*>> saved_request;
+  int32_t saved_state;
+  host_api::HttpOutgoingBody *saved_streaming_body;
+  int32_t saved_request_handle;
+};
+static std::vector<SavedFetchEventContext> fetch_event_context_stack;
+
+void push_fetch_event_context() {
+  JS::HandleObject fetch_event = FetchEvent::instance();
+  SavedFetchEventContext ctx;
+  ctx.saved_request = std::make_unique<JS::PersistentRooted<JSObject*>>();
+  ctx.saved_request->init(ENGINE->cx(),
+    &JS::GetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::Request)).toObject());
+  ctx.saved_state = JS::GetReservedSlot(fetch_event,
+    static_cast<uint32_t>(FetchEvent::Slots::CurrentState)).toInt32();
+  ctx.saved_streaming_body = STREAMING_BODY;
+  ctx.saved_request_handle = CURRENT_REQUEST_HANDLE;
+  fetch_event_context_stack.push_back(std::move(ctx));
+}
+
+void pop_fetch_event_context() {
+  if (fetch_event_context_stack.empty()) return;
+  auto &ctx = fetch_event_context_stack.back();
+  JS::HandleObject fetch_event = FetchEvent::instance();
+  JS::SetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::Request),
+                      JS::ObjectValue(*ctx.saved_request->get()));
+  JS::SetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::CurrentState),
+                      JS::Int32Value(ctx.saved_state));
+  STREAMING_BODY = ctx.saved_streaming_body;
+  CURRENT_REQUEST_HANDLE = ctx.saved_request_handle;
+  if (CURRENT_REQUEST_HANDLE >= 0) {
+    starling_event_loop_set_current_request(CURRENT_REQUEST_HANDLE);
+  }
+  fetch_event_context_stack.pop_back();
+}
+
 constexpr const std::string_view DEFAULT_NO_HANDLER_ERROR_MSG = "ERROR: no fetch-event handler triggered, was one registered?";
+
+/// RAII helper to temporarily set the current request handle for interest tracking.
+/// Ensures that incr/decr_event_loop_interest attribute to the correct request,
+/// even when a promise handler runs during another request's RunJobs().
+struct ScopedRequestHandle {
+  int32_t saved_handle;
+  ScopedRequestHandle(int32_t handle) {
+    saved_handle = CURRENT_REQUEST_HANDLE;
+    CURRENT_REQUEST_HANDLE = handle;
+    if (handle >= 0) {
+      starling_event_loop_set_current_request(handle);
+    }
+  }
+  ~ScopedRequestHandle() {
+    CURRENT_REQUEST_HANDLE = saved_handle;
+    if (saved_handle >= 0) {
+      starling_event_loop_set_current_request(saved_handle);
+    }
+  }
+};
 
 void inc_pending_promise_count(JSObject *self) {
   MOZ_ASSERT(FetchEvent::is_instance(self));
   auto count = JS::GetReservedSlot(self, FetchEvent::Slots::PendingPromiseCount).toInt32();
   count++;
   MOZ_ASSERT(count > 0);
-  if (count == 1) {
-    ENGINE->incr_event_loop_interest();
-  }
+  ENGINE->incr_event_loop_interest();
 
   JS::SetReservedSlot(self, FetchEvent::Slots::PendingPromiseCount, JS::Int32Value(count));
 }
@@ -52,15 +119,18 @@ void dec_pending_promise_count(JSObject *self) {
   auto count = JS::GetReservedSlot(self, FetchEvent::Slots::PendingPromiseCount).toInt32();
   MOZ_ASSERT(count > 0);
   count--;
-  if (count == 0) {
-    ENGINE->decr_event_loop_interest();
-  }
+  ENGINE->decr_event_loop_interest();
   JS::SetReservedSlot(self, FetchEvent::Slots::PendingPromiseCount, JS::Int32Value(count));
 }
 
 // Step 5 of https://w3c.github.io/ServiceWorker/#wait-until-method
+// extra contains the request handle (int32) captured at add_pending_promise time.
 bool dec_pending_promise_count(JSContext *cx, JS::HandleObject event, JS::HandleValue extra,
                                JS::CallArgs args) {
+  // Temporarily set the request handle to the one captured when this promise
+  // was registered, so the per-request interest decrement goes to the right request.
+  ScopedRequestHandle scoped(extra.toInt32());
+
   // Step 5.1
   dec_pending_promise_count(event);
 
@@ -73,27 +143,49 @@ bool dec_pending_promise_count(JSContext *cx, JS::HandleObject event, JS::Handle
 /// Without this logging, it's very hard to even tell that something went wrong,
 /// because the rejection is just silently ignored: the promise rejection tracker
 /// doesn't ever see it, because adding it to `waitUntil` marks it as handled.
-bool handle_wait_until_rejection(JSContext *cx, JS::HandleObject event, JS::HandleValue promiseVal,
+/// extra contains a JS array [request_handle, promise].
+bool handle_wait_until_rejection(JSContext *cx, JS::HandleObject event, JS::HandleValue extra,
                                  JS::CallArgs args) {
+  // Unpack [request_handle, promise] from extra.
+  RootedObject arr(cx, &extra.toObject());
+  RootedValue handleVal(cx);
+  RootedValue promiseVal(cx);
+  JS_GetElement(cx, arr, 0, &handleVal);
+  JS_GetElement(cx, arr, 1, &promiseVal);
+
+  ScopedRequestHandle scoped(handleVal.toInt32());
+
   fprintf(stderr, "Warning: Promise passed to FetchEvent#waitUntil was rejected with error. "
                   "Pending tasks after that error might not run. Error details:\n");
   RootedObject promise(cx, &promiseVal.toObject());
   ENGINE->dump_promise_rejection(args.get(0), promise, stderr);
-  return dec_pending_promise_count(cx, event, promiseVal, args);
+
+  dec_pending_promise_count(event);
+  return true;
 }
 
 bool add_pending_promise(JSContext *cx, JS::HandleObject self, JS::HandleObject promise, bool for_waitUntil) {
   MOZ_ASSERT(FetchEvent::is_instance(self));
   MOZ_ASSERT(JS::IsPromiseObject(promise));
 
+  // Capture the current request handle so the resolve/reject handlers
+  // attribute interest changes to the correct request.
+  JS::RootedValue handleExtra(cx, JS::Int32Value(CURRENT_REQUEST_HANDLE));
+
   JS::RootedObject resolve_handler(cx);
-  resolve_handler = &GetReservedSlot(self,
-    static_cast<uint32_t>(FetchEvent::Slots::DecPendingPromiseCountFunc)).toObject();
+  resolve_handler = create_internal_method<dec_pending_promise_count>(cx, self, handleExtra);
 
   JS::RootedObject reject_handler(cx);
   if (for_waitUntil) {
-    RootedValue promiseVal(cx, JS::ObjectValue(*promise));
-    reject_handler = create_internal_method<handle_wait_until_rejection>(cx, self, promiseVal);
+    // Pack [request_handle, promise] into an array for the rejection handler,
+    // which needs the promise for error logging.
+    JS::RootedObject arr(cx, JS::NewArrayObject(cx, 2));
+    if (!arr) return false;
+    JS::RootedValue promiseObjVal(cx, JS::ObjectValue(*promise));
+    if (!JS_SetElement(cx, arr, 0, handleExtra)) return false;
+    if (!JS_SetElement(cx, arr, 1, promiseObjVal)) return false;
+    JS::RootedValue arrVal(cx, JS::ObjectValue(*arr));
+    reject_handler = create_internal_method<handle_wait_until_rejection>(cx, self, arrVal);
   } else {
     reject_handler = resolve_handler;
   }
@@ -190,9 +282,10 @@ bool FetchEvent::request_get(JSContext *cx, unsigned argc, JS::Value *vp) {
 namespace {
 
 bool send_response(host_api::HttpOutgoingResponse *response, JS::HandleObject self,
-                   FetchEvent::State new_state) {
-  MOZ_ASSERT(FetchEvent::state(self) == FetchEvent::State::unhandled ||
-             FetchEvent::state(self) == FetchEvent::State::waitToRespond);
+                   FetchEvent::State new_state, int32_t request_handle) {
+  // Tell Rust which request this response belongs to.
+  host_api_set_response_request_handle(request_handle);
+
   auto result = response->send();
   FetchEvent::set_state(self, new_state);
 
@@ -204,7 +297,7 @@ bool send_response(host_api::HttpOutgoingResponse *response, JS::HandleObject se
   return true;
 }
 
-bool start_response(JSContext *cx, JS::HandleObject response_obj) {
+bool start_response(JSContext *cx, JS::HandleObject response_obj, int32_t request_handle) {
   auto status = Response::status(response_obj);
   auto headers = RequestOrResponse::headers_handle_clone(cx, response_obj);
   if (!headers) {
@@ -234,13 +327,20 @@ bool start_response(JSContext *cx, JS::HandleObject response_obj) {
 
   return send_response(response, FetchEvent::instance(),
                        streaming ? FetchEvent::State::responseStreaming
-                                 : FetchEvent::State::responseDone);
+                                 : FetchEvent::State::responseDone,
+                       request_handle);
 }
 
 // Steps in this function refer to the spec at
 // https://w3c.github.io/ServiceWorker/#fetch-event-respondwith
 bool response_promise_then_handler(JSContext *cx, JS::HandleObject event, JS::HandleValue extra,
                                    JS::CallArgs args) {
+  // extra contains the request handle (int32) that was captured at respondWith time.
+  int32_t request_handle = extra.toInt32();
+
+  // Set request context so interest changes attribute to the correct request.
+  ScopedRequestHandle scoped(request_handle);
+
   // Step 10.1
   // Note: the `then` handler is only invoked after all Promise resolution has
   // happened. (Even if there were multiple Promises to unwrap first.) That
@@ -254,27 +354,31 @@ bool response_promise_then_handler(JSContext *cx, JS::HandleObject event, JS::Ha
       return false;
     }
     args.rval().setObject(*rejection);
-    return FetchEvent::respondWithError(cx, event);
+    return FetchEvent::respondWithError(cx, event, std::nullopt, request_handle);
   }
 
   // Step 10.2 (very roughly: the way we handle responses and their bodies is
   // very different.)
   JS::RootedObject response_obj(cx, &args[0].toObject());
-  return start_response(cx, response_obj);
+  return start_response(cx, response_obj, request_handle);
 }
 
 // Steps in this function refer to the spec at
 // https://w3c.github.io/ServiceWorker/#fetch-event-respondwith
 bool response_promise_catch_handler(JSContext *cx, JS::HandleObject event,
-                                    JS::HandleValue promise_val, JS::CallArgs args) {
-  JS::RootedObject promise(cx, &promise_val.toObject());
+                                    JS::HandleValue extra, JS::CallArgs args) {
+  // extra contains the request handle (int32) captured at respondWith time.
+  int32_t request_handle = extra.toInt32();
+
+  // Set request context so interest changes attribute to the correct request.
+  ScopedRequestHandle scoped(request_handle);
 
   fprintf(stderr, "Error while running request handler: ");
-  ENGINE->dump_promise_rejection(args.get(0), promise, stderr);
+  api::Engine::dump_error(args.get(0), stderr);
 
   // TODO: verify that this is the right behavior.
   // Steps 9.1-2
-  return FetchEvent::respondWithError(cx, event);
+  return FetchEvent::respondWithError(cx, event, std::nullopt, request_handle);
 }
 
 } // namespace
@@ -311,7 +415,7 @@ bool FetchEvent::respondWith(JSContext *cx, unsigned argc, JS::Value *vp) {
 
   // Step 9 (continued in `response_promise_catch_handler` above)
   JS::RootedObject catch_handler(cx);
-  JS::RootedValue extra(cx, JS::ObjectValue(*response_promise));
+  JS::RootedValue extra(cx, JS::Int32Value(CURRENT_REQUEST_HANDLE));
   catch_handler = create_internal_method<response_promise_catch_handler>(cx, self, extra);
   if (!catch_handler) {
     return false;
@@ -319,7 +423,7 @@ bool FetchEvent::respondWith(JSContext *cx, unsigned argc, JS::Value *vp) {
 
   // Step 10 (continued in `response_promise_then_handler` above)
   JS::RootedObject then_handler(cx);
-  then_handler = create_internal_method<response_promise_then_handler>(cx, self);
+  then_handler = create_internal_method<response_promise_then_handler>(cx, self, extra);
   if (!then_handler) {
     return false;
   }
@@ -332,8 +436,12 @@ bool FetchEvent::respondWith(JSContext *cx, unsigned argc, JS::Value *vp) {
   return true;
 }
 
-  bool FetchEvent::respondWithError(JSContext *cx, JS::HandleObject self, std::optional<std::string_view> body_text) {
-  MOZ_RELEASE_ASSERT(state(self) == State::unhandled || state(self) == State::waitToRespond);
+  bool FetchEvent::respondWithError(JSContext *cx, JS::HandleObject self,
+                                    std::optional<std::string_view> body_text,
+                                    int32_t request_handle) {
+  // Note: state assertion removed for concurrent request handling.
+  // With multiple concurrent requests sharing the singleton FetchEvent,
+  // the state may reflect a different request's progress.
 
   auto headers = std::make_unique<host_api::HttpHeaders>();
   if (body_text) {
@@ -357,7 +465,7 @@ bool FetchEvent::respondWith(JSContext *cx, unsigned argc, JS::Value *vp) {
     body->write(reinterpret_cast<const uint8_t*>(body_text->data()), body_text->length());
   }
 
-  return send_response(response, self, FetchEvent::State::respondedWithError);
+  return send_response(response, self, FetchEvent::State::respondedWithError, request_handle);
 }
 
 // Steps in this function refer to the spec at
@@ -492,7 +600,7 @@ static void dispatch_fetch_event(HandleObject event, double *total_compute) {
   EventTarget::dispatch_event(ENGINE->cx(), event_target, event_val, &rval);
 }
 
-bool begin_incoming_request(host_api::HttpIncomingRequest *request) {
+bool begin_incoming_request(host_api::HttpIncomingRequest *request, int32_t request_handle) {
 #ifdef DEBUG
   fprintf(stderr, "Warning: Using a DEBUG build. Expect things to be SLOW.\n");
 #endif
@@ -501,18 +609,30 @@ bool begin_incoming_request(host_api::HttpIncomingRequest *request) {
   HandleObject fetch_event = FetchEvent::instance();
   MOZ_ASSERT(FetchEvent::is_instance(fetch_event));
 
-  // Reset state for request reuse (p3: same instance handles multiple requests).
-  JS::RootedObject req_obj(ENGINE->cx(),
-      &JS::GetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::Request)).toObject());
-  Request::init_slots(req_obj);
+  // Save current FetchEvent state for concurrent request support.
+  push_fetch_event_context();
+
+  // Set the request handle for this context.
+  CURRENT_REQUEST_HANDLE = request_handle;
+  if (request_handle >= 0) {
+    starling_event_loop_set_current_request(request_handle);
+  }
+
+  // Create a fresh Request for this context (don't reuse the outer request's object).
+  JS::RootedObject new_request(ENGINE->cx(), FetchEvent::prepare_downstream_request(ENGINE->cx()));
+  if (!new_request) {
+    pop_fetch_event_context();
+    return false;
+  }
+  JS::SetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::Request),
+                      JS::ObjectValue(*new_request));
   JS::SetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::CurrentState),
                       JS::Int32Value(static_cast<int32_t>(FetchEvent::State::unhandled)));
-  JS::SetReservedSlot(fetch_event, static_cast<uint32_t>(FetchEvent::Slots::PendingPromiseCount),
-                      JS::Int32Value(0));
   STREAMING_BODY = nullptr;
 
   if (!FetchEvent::init_incoming_request(ENGINE->cx(), fetch_event, request)) {
     ENGINE->dump_pending_exception("initialization of FetchEvent");
+    pop_fetch_event_context();
     return false;
   }
 
@@ -540,10 +660,20 @@ bool finish_incoming_request(bool success) {
                     "lifetime if needed.\n");
   }
 
-  if (!FetchEvent::response_started(fetch_event)) {
-    // If at this point no fetch event handler has run, we can
-    // send a specific error indicating that there is likely no handler registered
-    FetchEvent::respondWithError(ENGINE->cx(), fetch_event, DEFAULT_NO_HANDLER_ERROR_MSG);
+  bool response_ready;
+  if (CURRENT_REQUEST_HANDLE >= 0) {
+    // p3 path: check if a response was stored for this specific request.
+    response_ready = host_api_has_pending_response(CURRENT_REQUEST_HANDLE);
+  } else {
+    // wasi-0.2.3 path: use the singleton FetchEvent state.
+    response_ready = FetchEvent::response_started(fetch_event);
+  }
+
+  if (!response_ready) {
+    // No response was set for this request — send an error.
+    FetchEvent::respondWithError(ENGINE->cx(), fetch_event, DEFAULT_NO_HANDLER_ERROR_MSG,
+                                 CURRENT_REQUEST_HANDLE);
+    pop_fetch_event_context();
     return true;
   }
 
@@ -556,11 +686,14 @@ bool finish_incoming_request(bool success) {
     ENGINE->report_unhandled_promise_rejections();
   }
 
+  pop_fetch_event_context();
   return true;
 }
 
 bool handle_incoming_request(host_api::HttpIncomingRequest *request) {
-  if (!begin_incoming_request(request)) {
+  // For the synchronous path (wasi-0.2.3), use -1 as request handle
+  // since there's no concurrent request handling.
+  if (!begin_incoming_request(request, -1)) {
     return false;
   }
   bool success = ENGINE->run_event_loop();

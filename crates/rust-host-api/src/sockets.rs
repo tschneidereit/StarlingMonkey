@@ -18,7 +18,7 @@ struct TcpSocketState {
 }
 
 thread_local! {
-    static SOCKET_TABLE: RefCell<HandleTable<TcpSocketState>> = RefCell::new(HandleTable::new());
+    static SOCKET_TABLE: RefCell<HandleTable<TcpSocketState>> = const { RefCell::new(HandleTable::new()) };
 }
 
 fn with_sockets<F, R>(f: F) -> R
@@ -162,8 +162,7 @@ pub extern "C" fn host_api_tcp_socket_close(handle: i32) {
 
             // Drop pollable if any.
             if state.pollable_handle != INVALID_POLLABLE_HANDLE {
-                let pollable =
-                    unsafe { Pollable::from_handle(state.pollable_handle as u32) };
+                let pollable = unsafe { Pollable::from_handle(state.pollable_handle as u32) };
                 drop(pollable);
             }
             // Socket is dropped automatically.

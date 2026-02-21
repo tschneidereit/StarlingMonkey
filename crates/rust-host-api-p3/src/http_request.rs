@@ -1,7 +1,9 @@
 use crate::handle_table::HandleTable;
 use crate::http_body;
+use std::future::Future;
+use std::pin::Pin;
 use wasip3::http::types::{ErrorCode, Fields, Method, Request, Response, Scheme};
-use wit_bindgen::rt::async_support::{spawn, FutureReader, FutureWriter, StreamWriter};
+use wit_bindgen::rt::async_support::{FutureReader, FutureWriter, StreamWriter};
 
 use core::cell::RefCell;
 
@@ -14,11 +16,11 @@ enum IncomingRequestState {
 }
 
 thread_local! {
-    static INCOMING_REQ_TABLE: RefCell<HandleTable<IncomingRequestState>> = RefCell::new(HandleTable::new());
-    static OUTGOING_REQ_TABLE: RefCell<HandleTable<OutgoingRequestParts>> = RefCell::new(HandleTable::new());
-    static FUTURE_RESP_TABLE: RefCell<HandleTable<FutureResponseState>> = RefCell::new(HandleTable::new());
+    static INCOMING_REQ_TABLE: RefCell<HandleTable<IncomingRequestState>> = const { RefCell::new(HandleTable::new()) };
+    static OUTGOING_REQ_TABLE: RefCell<HandleTable<OutgoingRequestParts>> = const { RefCell::new(HandleTable::new()) };
+    static FUTURE_RESP_TABLE: RefCell<HandleTable<FutureResponseState>> = const { RefCell::new(HandleTable::new()) };
     /// Save the request's FutureReader for error signaling (from consume_body).
-    static REQUEST_ERROR_WRITERS: RefCell<HandleTable<FutureWriter<Result<(), ErrorCode>>>> = RefCell::new(HandleTable::new());
+    static REQUEST_ERROR_WRITERS: RefCell<HandleTable<FutureWriter<Result<(), ErrorCode>>>> = const { RefCell::new(HandleTable::new()) };
 }
 
 /// Parts of an outgoing request before it's sent.
@@ -30,17 +32,10 @@ struct OutgoingRequestParts {
     _send_result: Option<FutureReader<Result<(), ErrorCode>>>,
 }
 
-/// Data for a pending outgoing HTTP send.
-struct PendingSendData {
-    request: Request,
-}
-
 struct FutureResponseState {
-    /// Pending send data — present until the event loop executes the send.
-    pending_send: Option<PendingSendData>,
-    /// True while a spawned send task is in flight.
-    sending: bool,
-    /// Populated after client::send completes.
+    /// The unawaited send future, stored here and later taken by the event loop.
+    send_future: Option<PendingResponse>,
+    /// Populated after client::send completes (set by the event loop).
     response: Option<Response>,
     /// Set to true if the send failed.
     error: bool,
@@ -138,7 +133,8 @@ pub extern "C" fn host_api_incoming_request_body(handle: i32) -> i32 {
             IncomingRequestState::Available(req) => {
                 // Create an error future for consume_body.
                 // wit_future::new returns (FutureWriter, FutureReader).
-                let (error_writer, error_reader) = wasip3::wit_future::new::<Result<(), ErrorCode>>(|| Ok(()));
+                let (error_writer, error_reader) =
+                    wasip3::wit_future::new::<Result<(), ErrorCode>>(|| Ok(()));
 
                 let (body_reader, _trailers_reader) = Request::consume_body(req, error_reader);
 
@@ -213,10 +209,7 @@ pub extern "C" fn host_api_incoming_request_authority(handle: i32, out: *mut Hos
 
 /// Get the path-with-query of an incoming request.
 #[no_mangle]
-pub extern "C" fn host_api_incoming_request_path_with_query(
-    handle: i32,
-    out: *mut HostApiString,
-) {
+pub extern "C" fn host_api_incoming_request_path_with_query(handle: i32, out: *mut HostApiString) {
     with_incoming_req(|t| {
         let state = t.get(handle).expect("invalid incoming request handle");
         let req = match state {
@@ -262,8 +255,8 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
         core::str::from_utf8_unchecked(core::slice::from_raw_parts(method_ptr, method_len));
 
     // Take ownership of the Fields from the headers table.
-    let headers = crate::http_headers::remove_headers(headers_handle)
-        .expect("invalid headers handle");
+    let headers =
+        crate::http_headers::remove_headers(headers_handle).expect("invalid headers handle");
 
     // Create a body stream for the request.
     // wit_stream::new returns (StreamWriter, StreamReader).
@@ -272,7 +265,8 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
     // Create trailers future (no trailers).
     // wit_future::new returns (FutureWriter, FutureReader).
     // Drop the writer immediately; the reader will return the default Ok(None).
-    let (trailers_writer, trailers_reader) = wasip3::wit_future::new::<Result<Option<Fields>, ErrorCode>>(|| Ok(None));
+    let (trailers_writer, trailers_reader) =
+        wasip3::wit_future::new::<Result<Option<Fields>, ErrorCode>>(|| Ok(None));
     drop(trailers_writer);
 
     // Create the request.
@@ -303,20 +297,23 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
         };
         let _ = req.set_scheme(Some(&scheme));
 
-        let authority =
-            core::str::from_utf8_unchecked(core::slice::from_raw_parts(authority_ptr, authority_len));
+        let authority = core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+            authority_ptr,
+            authority_len,
+        ));
         let _ = req.set_authority(Some(authority));
 
-        let path =
-            core::str::from_utf8_unchecked(core::slice::from_raw_parts(path_ptr, path_len));
+        let path = core::str::from_utf8_unchecked(core::slice::from_raw_parts(path_ptr, path_len));
         let _ = req.set_path_with_query(Some(path));
     }
 
-    with_outgoing_req(|t| t.insert(OutgoingRequestParts {
-        request: req,
-        body_writer: Some(body_writer),
-        _send_result: Some(send_result),
-    }))
+    with_outgoing_req(|t| {
+        t.insert(OutgoingRequestParts {
+            request: req,
+            body_writer: Some(body_writer),
+            _send_result: Some(send_result),
+        })
+    })
 }
 
 /// Get a headers handle from an outgoing request.
@@ -346,8 +343,9 @@ pub extern "C" fn host_api_outgoing_request_body(handle: i32) -> i32 {
 /// Send an outgoing request. Takes ownership of the request handle.
 /// Returns a future incoming response handle, or -1 on error.
 ///
-/// The actual HTTP send is deferred to the async event loop. This function
-/// stores the request for later sending and returns immediately.
+/// The send future is stored unawaited in the FutureResponseState.
+/// The event loop will include it in its `select_all` race and update
+/// the state when it completes.
 #[no_mangle]
 pub extern "C" fn host_api_outgoing_request_send(handle: i32) -> i32 {
     let parts = with_outgoing_req(|t| t.remove(handle).expect("invalid outgoing request handle"));
@@ -355,12 +353,11 @@ pub extern "C" fn host_api_outgoing_request_send(handle: i32) -> i32 {
     // Drop body writer if still held (closes the empty stream for GET requests).
     drop(parts.body_writer);
 
+    let send_fut = Box::pin(wasip3::http::client::send(parts.request));
+
     with_future_resp(|t| {
         t.insert(FutureResponseState {
-            pending_send: Some(PendingSendData {
-                request: parts.request,
-            }),
-            sending: false,
+            send_future: Some(send_fut),
             response: None,
             error: false,
         })
@@ -408,99 +405,45 @@ pub extern "C" fn host_api_future_response_drop(handle: i32) {
 
 // === Async helpers for the event loop ===
 
-/// Check if a future response is ready (send completed or failed).
+/// Check if a future response is ready (response arrived or error set).
 pub(crate) fn future_response_is_ready(handle: i32) -> bool {
     with_future_resp(|t| {
-        t.get(handle).map_or(true, |s| {
-            // Ready if response is available OR send was never started and
-            // is not in flight (error case).
-            s.response.is_some() || (s.pending_send.is_none() && !s.sending)
-        })
+        t.get(handle)
+            .is_none_or(|s| s.response.is_some() || s.error)
     })
 }
 
-/// Check if a send is currently in flight (spawned but not yet complete).
-pub(crate) fn is_send_in_flight(handle: i32) -> bool {
+pub type PendingResponse = Pin<Box<dyn Future<Output = Result<Response, ErrorCode>>>>;
+
+/// Take the stored send future out of the state so the event loop can await it.
+/// Returns `None` if the send has already been taken or completed.
+pub(crate) fn take_send_future(
+    handle: i32,
+) -> Option<PendingResponse> {
+    with_future_resp(|t| t.get_mut(handle).and_then(|s| s.send_future.take()))
+}
+
+/// Store the completed send result back into the FutureResponseState.
+pub(crate) fn complete_send(handle: i32, result: Result<Response, ErrorCode>) {
     with_future_resp(|t| {
-        t.get(handle).map_or(false, |s| s.sending)
-    })
-}
-
-/// Check if a send has not yet been started (pending_send is available).
-pub(crate) fn has_pending_send(handle: i32) -> bool {
-    with_future_resp(|t| {
-        t.get(handle).map_or(false, |s| s.pending_send.is_some())
-    })
-}
-
-/// Execute the pending HTTP send for a future response.
-///
-/// Called by the event loop when a FutureResponseReady task needs to make
-/// progress. Body data is flushed via a concurrent task spawned by
-/// `host_api_outgoing_body_close`, so this function only needs to await
-/// the send itself.
-pub(crate) async fn execute_pending_send(future_handle: i32) {
-    let pending = with_future_resp(|t| {
-        t.get_mut(future_handle).and_then(|s| s.pending_send.take())
-    });
-
-    if let Some(data) = pending {
-        match wasip3::http::client::send(data.request).await {
-            Ok(response) => {
-                with_future_resp(|t| {
-                    if let Some(state) = t.get_mut(future_handle) {
-                        state.response = Some(response);
-                    }
-                });
-            }
-            Err(_e) => {
-                with_future_resp(|t| {
-                    if let Some(state) = t.get_mut(future_handle) {
-                        state.error = true;
-                    }
-                });
+        if let Some(state) = t.get_mut(handle) {
+            match result {
+                Ok(response) => state.response = Some(response),
+                Err(_) => state.error = true,
             }
         }
-    }
+    })
 }
 
-/// Spawn the pending HTTP send as a concurrent task.
-///
-/// Used when other tasks (timers) need to be processed concurrently with
-/// the HTTP round-trip. The spawned task stores the response when complete.
-pub(crate) fn spawn_pending_send(future_handle: i32) {
-    let pending = with_future_resp(|t| {
-        if let Some(s) = t.get_mut(future_handle) {
-            let pending = s.pending_send.take();
-            if pending.is_some() {
-                s.sending = true;
-            }
-            pending
-        } else {
-            None
+/// Restore a send future back into state after cancellation (e.g. when another
+/// future wins in `select_all` and this one gets dropped before completing).
+pub(crate) fn restore_send_future(
+    handle: i32,
+    fut: PendingResponse,
+) {
+    with_future_resp(|t| {
+        if let Some(state) = t.get_mut(handle) {
+            state.send_future = Some(fut);
         }
-    });
-
-    if let Some(data) = pending {
-        spawn(async move {
-            match wasip3::http::client::send(data.request).await {
-                Ok(response) => {
-                    with_future_resp(|t| {
-                        if let Some(state) = t.get_mut(future_handle) {
-                            state.response = Some(response);
-                            state.sending = false;
-                        }
-                    });
-                }
-                Err(_) => {
-                    with_future_resp(|t| {
-                        if let Some(state) = t.get_mut(future_handle) {
-                            state.sending = false;
-                            state.error = true;
-                        }
-                    });
-                }
-            }
-        });
-    }
+    })
 }

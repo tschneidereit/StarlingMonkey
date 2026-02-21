@@ -5,9 +5,9 @@ use wasi::http::types::{IncomingResponse, OutgoingResponse, ResponseOutparam};
 use core::cell::RefCell;
 
 thread_local! {
-    static INCOMING_RESP_TABLE: RefCell<HandleTable<IncomingResponse>> = RefCell::new(HandleTable::new());
-    static OUTGOING_RESP_TABLE: RefCell<HandleTable<OutgoingResponse>> = RefCell::new(HandleTable::new());
-    static RESPONSE_OUTPARAM: RefCell<Option<ResponseOutparam>> = RefCell::new(None);
+    static INCOMING_RESP_TABLE: RefCell<HandleTable<IncomingResponse>> = const { RefCell::new(HandleTable::new()) };
+    static OUTGOING_RESP_TABLE: RefCell<HandleTable<OutgoingResponse>> = const { RefCell::new(HandleTable::new()) };
+    static RESPONSE_OUTPARAM: RefCell<Option<ResponseOutparam>> = const { RefCell::new(None) };
 }
 
 fn with_incoming_resp<F, R>(f: F) -> R
@@ -78,8 +78,8 @@ pub extern "C" fn host_api_incoming_response_drop(handle: i32) {
 /// Returns an outgoing response handle, or -1 on error.
 #[no_mangle]
 pub extern "C" fn host_api_outgoing_response_make(status: u16, headers_handle: i32) -> i32 {
-    let headers = crate::http_headers::remove_headers(headers_handle)
-        .expect("invalid headers handle");
+    let headers =
+        crate::http_headers::remove_headers(headers_handle).expect("invalid headers handle");
 
     let resp = OutgoingResponse::new(headers);
     if status != 200 {

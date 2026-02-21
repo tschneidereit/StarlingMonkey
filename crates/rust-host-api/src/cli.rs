@@ -1,4 +1,4 @@
-/// FFI wrappers for `wasi::cli::environment`.
+//! FFI wrappers for `wasi::cli::environment`.
 
 /// Get the number of CLI arguments.
 #[no_mangle]

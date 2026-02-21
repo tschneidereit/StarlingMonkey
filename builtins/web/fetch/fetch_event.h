@@ -71,7 +71,8 @@ public:
    */
   static bool respondWithError(JSContext *cx,
                                JS::HandleObject self,
-                               std::optional<std::string_view> body_text = std::nullopt);
+                               std::optional<std::string_view> body_text = std::nullopt,
+                               int32_t request_handle = -1);
   static bool is_active(JSObject *self);
 
   static State state(JSObject *self);
@@ -93,7 +94,7 @@ bool install(api::Engine *engine);
  * and dispatch the fetch event. Does NOT run the event loop.
  * Used by p3's async handler to split request handling from event loop execution.
  */
-bool begin_incoming_request(host_api::HttpIncomingRequest *request);
+bool begin_incoming_request(host_api::HttpIncomingRequest *request, int32_t request_handle);
 
 /**
  * Finalize request handling after the event loop completes.

@@ -1,15 +1,15 @@
-mod handle_table;
-mod poll;
-mod random;
-mod clocks;
-mod http_headers;
-mod http_body;
-mod http_request;
-mod http_response;
-mod sockets;
 mod cli;
+mod clocks;
 mod event_loop;
 mod exports;
+mod handle_table;
+mod http_body;
+mod http_headers;
+mod http_request;
+mod http_response;
+mod poll;
+mod random;
+mod sockets;
 
 // We use `-nostartfiles` to omit crt1-reactor.o and provide our own
 // `_initialize` that calls `run_ctors_once()` instead of `__wasm_call_ctors`

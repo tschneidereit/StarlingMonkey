@@ -1,5 +1,5 @@
-/// A generic typed handle table that stores values and hands out i32 handles.
-/// Used to manage WASI resource lifetimes across the Rust/C++ FFI boundary.
+//! A generic typed handle table that stores values and hands out i32 handles.
+//! Used to manage WASI resource lifetimes across the Rust/C++ FFI boundary.
 
 pub struct HandleTable<T> {
     entries: Vec<Option<T>>,
@@ -30,7 +30,9 @@ impl<T> HandleTable<T> {
     }
 
     pub fn get_mut(&mut self, handle: i32) -> Option<&mut T> {
-        self.entries.get_mut(handle as usize).and_then(|e| e.as_mut())
+        self.entries
+            .get_mut(handle as usize)
+            .and_then(|e| e.as_mut())
     }
 
     pub fn remove(&mut self, handle: i32) -> Option<T> {

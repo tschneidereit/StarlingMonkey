@@ -1,7 +1,5 @@
 use crate::handle_table::HandleTable;
-use wasip3::sockets::types::{
-    IpAddressFamily, IpSocketAddress, Ipv4SocketAddress, TcpSocket,
-};
+use wasip3::sockets::types::{IpAddressFamily, IpSocketAddress, Ipv4SocketAddress, TcpSocket};
 // block_on is used here because the debugger protocol is inherently synchronous:
 // the debugger client sends a command, we must read/process/respond before
 // continuing. These operations happen at pause points where no other async
@@ -17,7 +15,7 @@ struct TcpSocketState {
 }
 
 thread_local! {
-    static SOCKET_TABLE: RefCell<HandleTable<TcpSocketState>> = RefCell::new(HandleTable::new());
+    static SOCKET_TABLE: RefCell<HandleTable<TcpSocketState>> = const { RefCell::new(HandleTable::new()) };
 }
 
 fn with_sockets<F, R>(f: F) -> R

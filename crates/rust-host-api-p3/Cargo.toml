@@ -6,5 +6,6 @@ edition = "2021"
 [lib]
 
 [dependencies]
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
 wasip3 = "0.4"
 wit-bindgen = { version = "0.51", features = ["async-spawn"] }

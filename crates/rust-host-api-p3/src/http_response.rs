@@ -1,9 +1,12 @@
+extern crate alloc;
+
 use crate::handle_table::HandleTable;
 use crate::http_body;
 use wasip3::http::types::{ErrorCode, Fields, Response};
 use wit_bindgen::rt::async_support::StreamReader;
 
-use core::cell::RefCell;
+use alloc::collections::BTreeMap;
+use core::cell::{Cell, RefCell};
 
 /// State for an incoming (received) response.
 enum IncomingResponseState {
@@ -20,10 +23,15 @@ struct OutgoingResponseParts {
 }
 
 thread_local! {
-    static INCOMING_RESP_TABLE: RefCell<HandleTable<IncomingResponseState>> = RefCell::new(HandleTable::new());
-    static OUTGOING_RESP_TABLE: RefCell<HandleTable<OutgoingResponseParts>> = RefCell::new(HandleTable::new());
-    /// The pending Response to be returned from the async handler.
-    static PENDING_RESPONSE: RefCell<Option<Result<Response, ErrorCode>>> = RefCell::new(None);
+    static INCOMING_RESP_TABLE: RefCell<HandleTable<IncomingResponseState>> = const { RefCell::new(HandleTable::new()) };
+    static OUTGOING_RESP_TABLE: RefCell<HandleTable<OutgoingResponseParts>> = const { RefCell::new(HandleTable::new()) };
+    /// Per-request pending responses, keyed by the request handle that was
+    /// passed to `starling_begin_request`. Each concurrent handler stores
+    /// and retrieves its own response independently.
+    static PENDING_RESPONSES: RefCell<BTreeMap<i32, Result<Response, ErrorCode>>> = const { RefCell::new(BTreeMap::new()) };
+    /// Set by C++ before calling host_api_outgoing_response_send to identify
+    /// which request the response belongs to.
+    static RESPONSE_TARGET_HANDLE: Cell<i32> = const { Cell::new(-1) };
 }
 
 fn with_incoming_resp<F, R>(f: F) -> R
@@ -86,8 +94,7 @@ pub extern "C" fn host_api_incoming_response_body(handle: i32) -> i32 {
                 let (error_writer, error_reader) =
                     wasip3::wit_future::new::<Result<(), ErrorCode>>(|| Ok(()));
 
-                let (body_reader, _trailers_reader) =
-                    Response::consume_body(resp, error_reader);
+                let (body_reader, _trailers_reader) = Response::consume_body(resp, error_reader);
 
                 // We can drop the error writer (no errors to signal).
                 drop(error_writer);
@@ -154,6 +161,22 @@ pub extern "C" fn host_api_outgoing_response_body(handle: i32) -> i32 {
     http_body::insert_outgoing_body(body_writer)
 }
 
+/// Set the target request handle for the next response send.
+/// Called by C++ just before host_api_outgoing_response_send.
+#[no_mangle]
+pub extern "C" fn host_api_set_response_request_handle(request_handle: i32) {
+    RESPONSE_TARGET_HANDLE.with(|cell| cell.set(request_handle));
+}
+
+/// Read (and reset) the current response target request handle.
+fn current_request_handle() -> i32 {
+    RESPONSE_TARGET_HANDLE.with(|cell| {
+        let h = cell.get();
+        cell.set(-1);
+        h
+    })
+}
+
 /// Send an outgoing response.
 /// In WASIp3, this builds the `Response` object from parts and stores it
 /// as the pending response for the async handler to return.
@@ -161,9 +184,7 @@ pub extern "C" fn host_api_outgoing_response_body(handle: i32) -> i32 {
 /// Returns true on success.
 #[no_mangle]
 pub extern "C" fn host_api_outgoing_response_send(handle: i32) -> bool {
-    let parts = with_outgoing_resp(|t| {
-        t.remove(handle).expect("invalid outgoing response handle")
-    });
+    let parts = with_outgoing_resp(|t| t.remove(handle).expect("invalid outgoing response handle"));
 
     // Get the headers (take ownership).
     let headers = match crate::http_headers::remove_headers(parts.headers_handle) {
@@ -179,23 +200,34 @@ pub extern "C" fn host_api_outgoing_response_send(handle: i32) -> bool {
     drop(trailers_writer);
 
     // Build the Response.
-    let (response, _send_result) =
-        Response::new(headers, parts.body_reader, trailers_reader);
+    let (response, _send_result) = Response::new(headers, parts.body_reader, trailers_reader);
 
     // Set the status code.
     let _ = response.set_status_code(parts.status);
 
-    // Store as pending for the handler to return.
-    PENDING_RESPONSE.with(|cell| {
-        *cell.borrow_mut() = Some(Ok(response));
+    // Store as pending for this request.
+    let request_handle = current_request_handle();
+    PENDING_RESPONSES.with(|cell| {
+        cell.borrow_mut().insert(request_handle, Ok(response));
     });
 
     true
 }
 
-/// Take the pending response (called by exports handler after starling_handle_request).
-pub(crate) fn take_pending_response() -> Option<Result<Response, ErrorCode>> {
-    PENDING_RESPONSE.with(|cell| cell.borrow_mut().take())
+/// Take the pending response for a specific request handle.
+pub(crate) fn take_pending_response(request_handle: i32) -> Option<Result<Response, ErrorCode>> {
+    PENDING_RESPONSES.with(|cell| cell.borrow_mut().remove(&request_handle))
+}
+
+/// Check if a response has been stored for the given request handle.
+pub(crate) fn has_pending_response(request_handle: i32) -> bool {
+    PENDING_RESPONSES.with(|cell| cell.borrow().contains_key(&request_handle))
+}
+
+/// Check if a response has been stored for the given request handle (FFI).
+#[no_mangle]
+pub extern "C" fn host_api_has_pending_response(request_handle: i32) -> bool {
+    has_pending_response(request_handle)
 }
 
 /// Drop an outgoing response handle without sending.

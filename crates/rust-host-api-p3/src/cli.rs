@@ -1,4 +1,4 @@
-/// FFI wrappers for `wasip3::cli::environment`.
+//! FFI wrappers for `wasip3::cli::environment`.
 
 /// Get the number of CLI arguments.
 #[no_mangle]

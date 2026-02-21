@@ -28,10 +28,14 @@ extern "C" bool starling_begin_request(int32_t request_handle) {
       std::make_unique<host_api::RustHandleState>(request_handle));
 
   // Dispatch the fetch event (but don't run the event loop).
-  return begin_incoming_request(request);
+  if (!begin_incoming_request(request, request_handle)) {
+    return false;
+  }
+  return true;
 }
 
 /// Called from Rust async handler after the event loop completes.
 extern "C" bool starling_finish_request(bool event_loop_success) {
-  return finish_incoming_request(event_loop_success);
+  bool result = finish_incoming_request(event_loop_success);
+  return result;
 }

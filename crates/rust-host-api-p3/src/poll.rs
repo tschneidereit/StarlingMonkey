@@ -16,7 +16,7 @@ pub(crate) enum WaiterKind {
 }
 
 thread_local! {
-    static WAITER_TABLE: RefCell<HandleTable<WaiterKind>> = RefCell::new(HandleTable::new());
+    static WAITER_TABLE: RefCell<HandleTable<WaiterKind>> = const { RefCell::new(HandleTable::new()) };
 }
 
 fn with_waiters<F, R>(f: F) -> R
@@ -50,10 +50,18 @@ pub(crate) fn register_future_response_waiter(handle: i32) -> i32 {
 pub(crate) fn get_waiter_kind(handle: i32) -> Option<WaiterKind> {
     with_waiters(|t| {
         t.get(handle).map(|w| match w {
-            WaiterKind::Timer { deadline } => WaiterKind::Timer { deadline: *deadline },
-            WaiterKind::IncomingBodyReady { body_handle } => WaiterKind::IncomingBodyReady { body_handle: *body_handle },
-            WaiterKind::OutgoingBodyReady { body_handle } => WaiterKind::OutgoingBodyReady { body_handle: *body_handle },
-            WaiterKind::FutureResponseReady { handle } => WaiterKind::FutureResponseReady { handle: *handle },
+            WaiterKind::Timer { deadline } => WaiterKind::Timer {
+                deadline: *deadline,
+            },
+            WaiterKind::IncomingBodyReady { body_handle } => WaiterKind::IncomingBodyReady {
+                body_handle: *body_handle,
+            },
+            WaiterKind::OutgoingBodyReady { body_handle } => WaiterKind::OutgoingBodyReady {
+                body_handle: *body_handle,
+            },
+            WaiterKind::FutureResponseReady { handle } => {
+                WaiterKind::FutureResponseReady { handle: *handle }
+            }
         })
     })
 }
