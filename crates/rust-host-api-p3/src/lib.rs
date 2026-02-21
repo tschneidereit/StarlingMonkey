@@ -10,6 +10,7 @@ mod http_response;
 mod poll;
 mod random;
 mod sockets;
+mod task_queue;
 
 // We use `-nostartfiles` to omit crt1-reactor.o and provide our own
 // `_initialize` that calls `run_ctors_once()` instead of `__wasm_call_ctors`

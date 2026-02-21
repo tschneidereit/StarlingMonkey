@@ -52,5 +52,5 @@ add_rust_lib(multipart "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-multipart" "\"ca
 if (DEFINED RUST_HOST_API_CRATE)
     add_rust_lib(${RUST_HOST_API_CRATE} "${RUST_HOST_API_CRATE_PATH}")
 else()
-    add_rust_lib(rust-host-api "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-host-api")
+    add_rust_lib(rust-host-api "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-host-api-p3")
 endif()

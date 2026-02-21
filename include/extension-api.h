@@ -189,6 +189,8 @@ using TaskCompletionCallback = bool (*)(JSContext* cx, HandleObject receiver);
 class AsyncTask : public js::RefCounted<AsyncTask>, public mozilla::SupportsWeakPtr {
 protected:
   PollableHandle handle_ = -1;
+  /// Unique task id assigned by the Rust task queue when this task is registered.
+  int32_t task_id_ = -1;
 
 public:
   AsyncTask() = default;
@@ -212,12 +214,12 @@ public:
     return 0;
   }
 
-  virtual void trace(JSTracer *trc) = 0;
+  /// Get the Rust-side task_id for this task.
+  [[nodiscard]] int32_t task_id() const { return task_id_; }
+  /// Set the Rust-side task_id (called by EventLoop::queue_async_task).
+  void set_task_id(int32_t id) { task_id_ = id; }
 
-  /**
-   * Select for the next available ready task, providing the oldest ready first.
-   */
-  static size_t select(std::vector<RefPtr<AsyncTask>> &handles);
+  virtual void trace(JSTracer *trc) = 0;
 };
 
 } // namespace api

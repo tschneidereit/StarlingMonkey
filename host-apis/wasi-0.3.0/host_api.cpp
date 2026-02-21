@@ -10,7 +10,6 @@
 extern "C" {
 
 // poll.rs
-size_t host_api_poll(const int32_t *handles, size_t count);
 void host_api_pollable_block(int32_t handle);
 void host_api_pollable_drop(int32_t handle);
 
@@ -136,42 +135,6 @@ void host_api_string_free(uint8_t *ptr, size_t len);
 
 static int32_t get_handle(host_api::HandleState *state) {
   return static_cast<host_api::RustHandleState *>(state)->handle();
-}
-
-// =====================================================================
-// MonotonicClock subscribe helper for immediately-ready pollable
-// =====================================================================
-static std::optional<int32_t> immediately_ready_handle;
-
-// =====================================================================
-// poll
-// =====================================================================
-
-size_t api::AsyncTask::select(std::vector<RefPtr<AsyncTask>> &tasks) {
-  auto count = tasks.size();
-  std::vector<int32_t> handles;
-
-  for (size_t idx = 0; idx < count; ++idx) {
-    auto task = tasks.at(idx);
-    auto id = task->id();
-
-    if (id == IMMEDIATE_TASK_HANDLE) {
-      if (!handles.empty()) {
-        if (!immediately_ready_handle) {
-          immediately_ready_handle = host_api_monotonic_clock_subscribe(0, false);
-        }
-        handles.push_back(*immediately_ready_handle);
-        size_t ready_index = host_api_poll(handles.data(), handles.size());
-        if (ready_index <= handles.size() - 1) {
-          return ready_index;
-        }
-      }
-      return idx;
-    }
-    handles.push_back(id);
-  }
-
-  return host_api_poll(handles.data(), handles.size());
 }
 
 namespace host_api {
@@ -984,19 +947,6 @@ void HttpIncomingRequest::set_handler(RequestHandler handler) {
 
 void block_on_pollable_handle(PollableHandle handle) {
   host_api_pollable_block(handle);
-}
-
-/// Called from Rust exports module when an incoming HTTP request arrives.
-extern "C" bool starling_handle_request(int32_t request_handle) {
-  extern bool init_from_environment();
-  if (!REQUEST_HANDLER) {
-    init_from_environment();
-  }
-  MOZ_ASSERT(REQUEST_HANDLER);
-
-  auto *request =
-      new HttpIncomingRequest(std::make_unique<RustHandleState>(request_handle));
-  return REQUEST_HANDLER(request);
 }
 
 /// Called from Rust exports module for CLI run.

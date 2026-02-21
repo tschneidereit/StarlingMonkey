@@ -19,7 +19,7 @@
 
 extern "C" __attribute__((weak)) void host_api_set_response_request_handle(int32_t request_handle);
 extern "C" __attribute__((weak)) bool host_api_has_pending_response(int32_t request_handle);
-extern "C" void starling_event_loop_set_current_request(int32_t request_handle);
+extern "C" void host_api_set_current_request(int32_t request_handle);
 
 using builtins::web::event::Event;
 using builtins::web::event::EventTarget;
@@ -77,7 +77,7 @@ void pop_fetch_event_context() {
   STREAMING_BODY = ctx.saved_streaming_body;
   CURRENT_REQUEST_HANDLE = ctx.saved_request_handle;
   if (CURRENT_REQUEST_HANDLE >= 0) {
-    starling_event_loop_set_current_request(CURRENT_REQUEST_HANDLE);
+    host_api_set_current_request(CURRENT_REQUEST_HANDLE);
   }
   fetch_event_context_stack.pop_back();
 }
@@ -93,13 +93,13 @@ struct ScopedRequestHandle {
     saved_handle = CURRENT_REQUEST_HANDLE;
     CURRENT_REQUEST_HANDLE = handle;
     if (handle >= 0) {
-      starling_event_loop_set_current_request(handle);
+      host_api_set_current_request(handle);
     }
   }
   ~ScopedRequestHandle() {
     CURRENT_REQUEST_HANDLE = saved_handle;
     if (saved_handle >= 0) {
-      starling_event_loop_set_current_request(saved_handle);
+      host_api_set_current_request(saved_handle);
     }
   }
 };
@@ -615,7 +615,7 @@ bool begin_incoming_request(host_api::HttpIncomingRequest *request, int32_t requ
   // Set the request handle for this context.
   CURRENT_REQUEST_HANDLE = request_handle;
   if (request_handle >= 0) {
-    starling_event_loop_set_current_request(request_handle);
+    host_api_set_current_request(request_handle);
   }
 
   // Create a fresh Request for this context (don't reuse the outer request's object).
