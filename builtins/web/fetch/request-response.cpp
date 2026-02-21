@@ -2744,7 +2744,9 @@ JSObject *Response::create_incoming(JSContext *cx, host_api::HttpIncomingRespons
   JS::SetReservedSlot(self, static_cast<uint32_t>(Slots::Status), JS::Int32Value(status));
   set_status_message_from_code(cx, self, status);
 
-  if (!(status == 204 || status == 205 || status == 304)) {
+  if (status == 204 || status == 205 || status == 304) {
+    // Null-body statuses: don't expose a body to JS.
+  } else {
     JS::SetReservedSlot(self, static_cast<uint32_t>(Slots::HasBody), JS::TrueValue());
   }
 

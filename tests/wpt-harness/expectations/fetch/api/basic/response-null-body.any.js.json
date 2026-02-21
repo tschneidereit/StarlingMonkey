@@ -12,10 +12,10 @@
     "status": "PASS"
   },
   "Response.body is null for responses with status=205 (method=POST)": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "Response.body is null for responses with status=205 (method=OPTIONS)": {
-    "status": "FAIL"
+    "status": "PASS"
   },
   "Response.body is null for responses with status=304 (method=GET)": {
     "status": "FAIL"

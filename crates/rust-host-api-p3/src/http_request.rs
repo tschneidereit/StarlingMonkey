@@ -3,7 +3,7 @@ use crate::http_body;
 use std::future::Future;
 use std::pin::Pin;
 use wasip3::http::types::{ErrorCode, Fields, Method, Request, Response, Scheme};
-use wit_bindgen::rt::async_support::{FutureReader, FutureWriter, StreamWriter};
+use wit_bindgen::rt::async_support::{FutureReader, FutureWriter, StreamReader, StreamWriter};
 
 use core::cell::RefCell;
 
@@ -24,12 +24,25 @@ thread_local! {
 }
 
 /// Parts of an outgoing request before it's sent.
+/// Request::new is deferred to send() time so we can pass None for the body
+/// when no body is needed (GET, HEAD, etc.), avoiding unnecessary chunked
+/// transfer encoding that poisons HTTP/1.1 keep-alive connections.
 struct OutgoingRequestParts {
-    request: Request,
-    /// The writer for the body stream (we write body data here).
-    body_writer: Option<StreamWriter<u8>>,
-    /// The FutureReader for the transmission result.
-    _send_result: Option<FutureReader<Result<(), ErrorCode>>>,
+    method: Method,
+    scheme: Option<Scheme>,
+    authority: Option<String>,
+    path_with_query: Option<String>,
+    headers_handle: i32,
+    /// Body stream reader, only present if outgoing_request_body() was called.
+    body_reader: Option<StreamReader<u8>>,
+}
+
+impl Drop for OutgoingRequestParts {
+    fn drop(&mut self) {
+        if self.headers_handle >= 0 {
+            let _ = crate::http_headers::remove_headers(self.headers_handle);
+        }
+    }
 }
 
 struct FutureResponseState {
@@ -39,6 +52,9 @@ struct FutureResponseState {
     response: Option<Response>,
     /// Set to true if the send failed.
     error: bool,
+    /// The body-error FutureReader from Request::new.
+    /// Must stay alive until the send completes to avoid wasmtime errors.
+    _body_result: Option<FutureReader<Result<(), ErrorCode>>>,
 }
 
 fn with_incoming_req<F, R>(f: F) -> R
@@ -254,25 +270,6 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
     let method_str =
         core::str::from_utf8_unchecked(core::slice::from_raw_parts(method_ptr, method_len));
 
-    // Take ownership of the Fields from the headers table.
-    let headers =
-        crate::http_headers::remove_headers(headers_handle).expect("invalid headers handle");
-
-    // Create a body stream for the request.
-    // wit_stream::new returns (StreamWriter, StreamReader).
-    let (body_writer, body_reader) = wasip3::wit_stream::new::<u8>();
-
-    // Create trailers future (no trailers).
-    // wit_future::new returns (FutureWriter, FutureReader).
-    // Drop the writer immediately; the reader will return the default Ok(None).
-    let (trailers_writer, trailers_reader) =
-        wasip3::wit_future::new::<Result<Option<Fields>, ErrorCode>>(|| Ok(None));
-    drop(trailers_writer);
-
-    // Create the request.
-    let (req, send_result) = Request::new(headers, Some(body_reader), trailers_reader, None);
-
-    // Set method.
     let method = match method_str {
         "GET" => Method::Get,
         "HEAD" => Method::Head,
@@ -285,9 +282,8 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
         "PATCH" => Method::Patch,
         _ => Method::Other(method_str.to_string()),
     };
-    let _ = req.set_method(&method);
 
-    if has_url {
+    let (scheme, authority, path_with_query) = if has_url {
         let scheme_str =
             core::str::from_utf8_unchecked(core::slice::from_raw_parts(scheme_ptr, scheme_len));
         let scheme = match scheme_str {
@@ -295,23 +291,24 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
             "https" | "https:" => Scheme::Https,
             s => Scheme::Other(s.to_string()),
         };
-        let _ = req.set_scheme(Some(&scheme));
-
         let authority = core::str::from_utf8_unchecked(core::slice::from_raw_parts(
             authority_ptr,
             authority_len,
         ));
-        let _ = req.set_authority(Some(authority));
-
         let path = core::str::from_utf8_unchecked(core::slice::from_raw_parts(path_ptr, path_len));
-        let _ = req.set_path_with_query(Some(path));
-    }
+        (Some(scheme), Some(authority.to_string()), Some(path.to_string()))
+    } else {
+        (None, None, None)
+    };
 
     with_outgoing_req(|t| {
         t.insert(OutgoingRequestParts {
-            request: req,
-            body_writer: Some(body_writer),
-            _send_result: Some(send_result),
+            method,
+            scheme,
+            authority,
+            path_with_query,
+            headers_handle,
+            body_reader: None,
         })
     })
 }
@@ -321,22 +318,22 @@ pub unsafe extern "C" fn host_api_outgoing_request_make(
 pub extern "C" fn host_api_outgoing_request_headers(handle: i32) -> i32 {
     with_outgoing_req(|t| {
         let parts = t.get(handle).expect("invalid outgoing request handle");
-        let fields = parts.request.get_headers();
-        crate::http_headers::insert_headers(fields)
+        crate::http_headers::clone_headers(parts.headers_handle)
     })
 }
 
 /// Get the body from an outgoing request.
-/// Returns an outgoing body handle, or -1 on error.
+/// Creates the body stream on first call. Returns an outgoing body handle, or -1 on error.
 #[no_mangle]
 pub extern "C" fn host_api_outgoing_request_body(handle: i32) -> i32 {
     with_outgoing_req(|t| {
         let parts = t.get_mut(handle).expect("invalid outgoing request handle");
-        if let Some(writer) = parts.body_writer.take() {
-            http_body::insert_outgoing_body(writer)
-        } else {
-            -1 // body already taken
+        if parts.body_reader.is_some() {
+            return -1; // body already created
         }
+        let (body_writer, body_reader) = wasip3::wit_stream::new::<u8>();
+        parts.body_reader = Some(body_reader);
+        http_body::insert_outgoing_body(body_writer)
     })
 }
 
@@ -348,20 +345,47 @@ pub extern "C" fn host_api_outgoing_request_body(handle: i32) -> i32 {
 /// the state when it completes.
 #[no_mangle]
 pub extern "C" fn host_api_outgoing_request_send(handle: i32) -> i32 {
-    let parts = with_outgoing_req(|t| t.remove(handle).expect("invalid outgoing request handle"));
+    let mut parts = with_outgoing_req(|t| t.remove(handle).expect("invalid outgoing request handle"));
 
-    // Drop body writer if still held (closes the empty stream for GET requests).
-    drop(parts.body_writer);
+    // Take headers from the table (prevent double-free in Drop).
+    let headers = crate::http_headers::remove_headers(parts.headers_handle)
+        .expect("invalid headers handle");
+    parts.headers_handle = -1;
 
-    let send_fut = Box::pin(wasip3::http::client::send(parts.request));
+    // Body: Some(reader) only if outgoing_request_body() was called.
+    // For bodyless methods (GET, HEAD, etc.), body is None so wasmtime
+    // won't add Transfer-Encoding: chunked.
+    let body = parts.body_reader.take();
 
-    with_future_resp(|t| {
+    // Create trailers future (no trailers).
+    let (trailers_writer, trailers_reader) =
+        wasip3::wit_future::new::<Result<Option<Fields>, ErrorCode>>(|| Ok(None));
+    drop(trailers_writer);
+
+    // Create the request now, with the correct body option.
+    let (req, send_result) = Request::new(headers, body, trailers_reader, None);
+    let _ = req.set_method(&parts.method);
+    if let Some(scheme) = &parts.scheme {
+        let _ = req.set_scheme(Some(scheme));
+    }
+    if let Some(authority) = &parts.authority {
+        let _ = req.set_authority(Some(authority));
+    }
+    if let Some(path) = &parts.path_with_query {
+        let _ = req.set_path_with_query(Some(path));
+    }
+
+    let send_fut = Box::pin(wasip3::http::client::send(req));
+
+    let fh = with_future_resp(|t| {
         t.insert(FutureResponseState {
             send_future: Some(send_fut),
             response: None,
             error: false,
+            _body_result: Some(send_result),
         })
-    })
+    });
+    fh
 }
 
 // === Future Incoming Response ===

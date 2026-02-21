@@ -181,6 +181,40 @@ impl Drop for SendFutureGuard {
     }
 }
 
+/// Guard that wraps an in-flight body prefetch future. If dropped before
+/// the read completes (another future won in `select_all`), the prefetch
+/// future is saved for re-polling on the next iteration instead of being
+/// cancelled — cancelling a WASI stream-read subtask corrupts wasmtime's
+/// handle table.
+struct PrefetchGuard {
+    body_handle: i32,
+    task_id: i32,
+    future: Option<crate::http_body::PrefetchFuture>,
+}
+
+impl Future for PrefetchGuard {
+    type Output = i32;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<i32> {
+        let this = self.get_mut();
+        match this.future.as_mut().unwrap().as_mut().poll(cx) {
+            Poll::Ready(_) => {
+                this.future = None;
+                Poll::Ready(this.task_id)
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+impl Drop for PrefetchGuard {
+    fn drop(&mut self) {
+        if let Some(fut) = self.future.take() {
+            crate::http_body::save_prefetch_future(self.body_handle, fut);
+        }
+    }
+}
+
 /// Await whichever pending task becomes ready first.
 ///
 /// Takes a snapshot of the Rust task queue and builds futures for each.
@@ -209,10 +243,16 @@ async fn await_any_task(request_handle: i32) -> i32 {
                     if crate::http_body::has_incoming_data(*body_handle) {
                         return snap.task_id;
                     }
+                    let body_handle = *body_handle;
                     let task_id = snap.task_id;
-                    futs.push(Box::pin(async move {
-                        crate::http_body::prefetch_incoming_body(*body_handle).await;
-                        task_id
+                    let prefetch_fut = crate::http_body::take_prefetch_future(body_handle)
+                        .unwrap_or_else(|| {
+                            Box::pin(crate::http_body::prefetch_incoming_body(body_handle))
+                        });
+                    futs.push(Box::pin(PrefetchGuard {
+                        body_handle,
+                        task_id,
+                        future: Some(prefetch_fut),
                     }));
                 }
                 WaiterKind::FutureResponseReady { handle: fh } => {

@@ -1,10 +1,15 @@
 extern crate alloc;
 
 use crate::handle_table::HandleTable;
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+use core::cell::RefCell;
+use core::future::Future;
+use core::pin::Pin;
 use wit_bindgen::rt::async_support::{StreamReader, StreamWriter};
 
-use core::cell::RefCell;
+/// A boxed, pinned future that resolves when a body prefetch completes.
+pub(crate) type PrefetchFuture = Pin<Box<dyn Future<Output = bool>>>;
 
 /// State for an incoming body (response or request body being read).
 /// In WASIp3, the body is a StreamReader<u8>. Data is pre-fetched by the
@@ -30,6 +35,10 @@ struct OutgoingBodyState {
 thread_local! {
     static INCOMING_BODY_TABLE: RefCell<HandleTable<IncomingBodyState>> = const { RefCell::new(HandleTable::new()) };
     static OUTGOING_BODY_TABLE: RefCell<HandleTable<OutgoingBodyState>> = const { RefCell::new(HandleTable::new()) };
+    /// Saved in-flight prefetch futures, keyed by body handle.
+    /// When a PrefetchGuard is dropped (lost a select_all race), the future
+    /// is saved here instead of being cancelled.
+    static PENDING_PREFETCHES: RefCell<BTreeMap<i32, PrefetchFuture>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 fn with_incoming<F, R>(f: F) -> R
@@ -127,6 +136,20 @@ pub(crate) async fn prefetch_incoming_body(body_handle: i32) -> bool {
     } else {
         true // No reader or already consumed
     }
+}
+
+/// Take a saved prefetch future for re-polling (if one was saved by a
+/// PrefetchGuard that lost a select_all race).
+pub(crate) fn take_prefetch_future(body_handle: i32) -> Option<PrefetchFuture> {
+    PENDING_PREFETCHES.with(|p| p.borrow_mut().remove(&body_handle))
+}
+
+/// Save an in-flight prefetch future so it can be re-polled on the next
+/// event loop iteration instead of being cancelled.
+pub(crate) fn save_prefetch_future(body_handle: i32, fut: PrefetchFuture) {
+    PENDING_PREFETCHES.with(|p| {
+        p.borrow_mut().insert(body_handle, fut);
+    });
 }
 
 /// Check if an incoming body has pre-fetched data available or has reached EOF.
