@@ -8,6 +8,7 @@ let LogLevel = {
   Quiet: 0,
   Verbose: 1,
   VeryVerbose: 2,
+  VeryVeryVerbose: 3,
 };
 
 function relativePath(path) {
@@ -42,9 +43,14 @@ const config = {
     sectionErrorTemplate: relativePath("results-section-error.template.html"),
   },
   interactive: false,
-  skipSlowTests: false,
+  skipSlowTests: true,
   logLevel: LogLevel.Quiet,
 };
+
+const report = {
+  slowTests: [],
+  failingTests: [],
+}
 
 const ArgParsers = {
   "--runtime": {
@@ -171,7 +177,6 @@ async function run() {
     console.log(`Listening on http://localhost:${config.server.port}`);
   } else {
     let {testPaths, totalCount } = getTests(config.tests.pattern);
-    let pathLength = testPaths.reduce((length, path) => Math.max(path.length, length), 0);
 
     console.log(`Running ${testPaths.length} of ${totalCount} tests ...\n`);
 
@@ -180,8 +185,12 @@ async function run() {
 
     let stats = await runTests(testPaths, wasmtime,
       (testPath, results, stats) => {
-        console.log(`${testPath.padEnd(pathLength)} ${formatStats(stats)}`);
-        if (config.tests.updateExpectations && stats.unexpectedFail + stats.unexpectedPass + stats.missing > 0) {
+        let pass = stats.unexpectedFail + stats.unexpectedPass + stats.missing === 0;
+        if (!pass) {
+          report.failingTests.push({ path: testPath, stats: { ...stats } });
+        }
+        console.log(`${pass ? "PASS" : "FAIL"}: ${testPath} ${formatStats(stats)}`);
+        if (config.tests.updateExpectations && !pass) {
           let expectPath = path.join(config.tests.expectations, testPath + ".json");
           console.log(`writing changed expectations to ${expectPath}`);
           let expectations = {};
@@ -200,8 +209,8 @@ async function run() {
         let expectPath = path.join(config.tests.expectations, testPath + ".json");
         let exists = existsSync(expectPath);
         if (exists) {
-          console.log(`UNEXPECTED ERROR: ${testPath} (${stats.duration}ms)
-  MESSAGE: ${error.message}
+          report.failingTests.push({ path: testPath, stats: { ...stats } });
+          console.log(`UNEXPECTED ERROR: ${testPath} (${stats.duration}ms) MESSAGE: ${error.message}
   STACK:
   ${error.stack.split('\n').join('\n  ')}`);
           if (config.tests.updateExpectations) {
@@ -217,7 +226,24 @@ async function run() {
       }
     );
 
-    console.log(`\n${"Done. Stats:".padEnd(pathLength)} ${formatStats(stats)}`);
+    if (report.slowTests.length > 0) {
+      console.log(`\nSlow tests:`);
+      for (let test of report.slowTests) {
+        console.log(`  ${test.path} (${test.duration}ms)`);
+      }
+    }
+    if (report.failingTests.length > 0) {
+      console.log(`\nFailing tests:`);
+      try {
+        for (let test of report.failingTests) {
+          console.log(`  ${test.path} ${formatStats(test.stats)}`);
+        }
+      } catch (e) {
+        console.log(`  ${test.path} (failed to format stats with error: ${e})`);
+      }
+    }
+
+    console.log(`\DONE. Stats: ${formatStats(stats)}`);
 
     if (config.tests.updateExpectations) {
       console.log(`Expectations updated: ${expectationsUpdated}`);
@@ -231,10 +257,7 @@ async function run() {
 }
 
 function formatStats(stats) {
-  return `${padStart(stats.pass, 4)} / ${padStart(stats.count, 4)} (${padStart("+" + stats.unexpectedPass, 5)}, ${padStart("-" + (stats.unexpectedFail), 5)}, ${padStart("?" + (stats.missing), 5)}) passing in ${padStart(stats.duration, 4)}ms`;
-}
-function padStart(value, length) {
-  return (value + "").padStart(length);
+  return `${stats.pass}/${stats.count} (${"+" + stats.unexpectedPass}, ${"-" + (stats.unexpectedFail)}, ${"?" + (stats.missing)}) ${stats.duration}ms`;
 }
 
 async function ensureWptServer(config, logLevel) {
@@ -335,9 +358,11 @@ async function startWasmtime(runtime, addr, logLevel) {
   let backtrace = "";
   let backtrace_re = /Error \{\s+context: "error while executing at wasm backtrace:(.+?)",\s+source: (.+?)/s;
   wasmtime.stderr.on("data", data => {
-    if (logLevel >= LogLevel.VeryVerbose) {
-      console.log(`wasmtime stderr: ${stripTrailingNewline(data)}`);
+    if (/^stderr \[[0-9]+\] ::\s*\n?$/.test(data) || /Using a DEBUG build/.test(data)) {
+      // Don't log empty lines or debug build warnings
+      return;
     }
+
     if (backtrace.length > 0 || data.includes("error while executing at wasm backtrace:")) {
       backtrace += data;
       let match = backtrace.match(backtrace_re);
@@ -345,16 +370,21 @@ async function startWasmtime(runtime, addr, logLevel) {
         backtrace = "";
         let bt = match[1].split('\\n').join('\n');
         bt = bt.replace(/at \/.+?\js\/src\//g, "at js/src/");
-        console.error(`wasmtime stderr: Content panic with stack:${bt}\n\nreason: ${match[2]}\n`);
+        console.error(`wasmtime content panic with stack:${bt}\n\nreason: ${match[2]}\n`);
       }
-    } else {
-      console.error(`wasmtime stderr: ${stripTrailingNewline(data)}`);
+    } else if (logLevel >= LogLevel.VeryVerbose) {
+      console.log(`wasmtime "${stripTrailingNewline(data)}"`);
     }
   });
 
   if (logLevel >= LogLevel.VeryVerbose) {
     wasmtime.stdout.on("data", data => {
-      console.log(`wasmtime stdout: ${stripTrailingNewline(data)}`);
+      if (config.logLevel < LogLevel.VeryVeryVerbose) {
+        if (/Log: running test/.test(data)) {
+          return;
+        }
+      }
+      console.log(`wasmtime ${stripTrailingNewline(data)}`);
     });
   }
 
@@ -423,25 +453,23 @@ async function runTests(testPaths, wasmtime, resultCallback, errorCallback) {
     }
 
     let expectations = getExpectedResults(path);
-    let t1 = Date.now();
     let response, body;
-    try {
-      if (config.logLevel >= LogLevel.VeryVerbose) {
-        console.log(`Sending request to ${wasmtime.host}${path}`);
-      }
-    } catch (e) {
-      shutdown(`Error while running test ${path}: ${e}`);
+    if (config.logLevel >= LogLevel.VeryVeryVerbose) {
+      console.log(`Sending request to ${wasmtime.host}${path}`);
     }
+
     let stats = {
       count: 0,
       pass: 0,
       missing: 0,
       unexpectedPass: 0,
       unexpectedFail: 0,
-      duration: Date.now() - t1,
+      duration: 0,
     };
-    totalStats.duration += stats.duration;
+
     let results;
+    let error;
+    let t1 = Date.now();
     try {
       response = await fetch(`${wasmtime.host}${path}`);
       body = await response.text();
@@ -463,14 +491,12 @@ async function runTests(testPaths, wasmtime, resultCallback, errorCallback) {
           stats.pass++;
           if (!expectation || expectation.status === 'FAIL') {
             result.expected = false;
-            console.log(`${expectation ? "UNEXPECTED" : "NEW"} PASS
-            NAME:    ${result.name}`);
+            console.log(`${expectation ? "UNEXPECTED" : "NEW"} PASS. NAME: "${result.name}"`);
             stats.unexpectedPass++;
           }
         } else if (!expectation || expectation.status === 'PASS') {
           result.expected = false;
-          console.log(`${expectation ? "UNEXPECTED" : "NEW"} FAIL
-  NAME:    ${result.name}
+          console.log(`${expectation ? "UNEXPECTED" : "NEW"} FAIL. NAME: "${result.name}"
   MESSAGE: ${result.message}`);
           stats.unexpectedFail++;
         }
@@ -479,28 +505,36 @@ async function runTests(testPaths, wasmtime, resultCallback, errorCallback) {
       for (let [name, expectation] of Object.entries(expectations)) {
         if (!expectation.did_run) {
           stats.missing++;
-          console.log(`MISSING TEST
-  NAME:    ${name}
-  EXPECTED RESULT: ${expectation.status}`);
+          console.log(`MISSING TEST "${name}", EXPECTED RESULT: ${expectation.status}`);
         }
       }
 
+    } catch (e) {
+      error = e;
+      if (!results) {
+        error = new Error(`\nMISSING TEST RESULTS: ${path}\nParsing test results as JSON failed. Output was:\n  ${body}`);
+        stats.missing += Math.max(Object.keys(expectations).length, 1);
+      }
+      if (config.logLevel >= LogLevel.Verbose) {
+        console.log(`Error running file ${path}: ${error.message}, stack:\n${error.stack}`);
+      }
+    } finally {
+      stats.duration = Date.now() - t1;
+
+      totalStats.duration += stats.duration;
       totalStats.count += stats.count;
       totalStats.pass += stats.pass;
       totalStats.missing += stats.missing;
       totalStats.unexpectedPass += stats.unexpectedPass;
       totalStats.unexpectedFail += stats.unexpectedFail;
-
-      await resultCallback(path, results, stats);
-    } catch (e) {
-      if (!results) {
-        e = new Error(`\nMISSING TEST RESULTS: ${path}\nParsing test results as JSON failed. Output was:\n  ${body}`);
-        totalStats.missing += Math.max(Object.keys(expectations).length, 1);
+      if (config.skipSlowTests && stats.duration > 2000) {
+        report.slowTests.push({ path, duration: stats.duration });
       }
-      if (config.logLevel >= LogLevel.Verbose) {
-        console.log(`Error running file ${path}: ${e.message}, stack:\n${e.stack}`);
+      if (error) {
+        await errorCallback(path, error, stats);
+      } else {
+        await resultCallback(path, results, stats);
       }
-      await errorCallback(path, e, stats);
     }
   }
 

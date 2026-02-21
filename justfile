@@ -1,7 +1,7 @@
 ncpus := num_cpus()
 justdir := justfile_directory()
 mode := 'debug'
-builddir := justdir / 'cmake-build-' + mode
+builddir := justdir / 'cmake-build-p3-' + mode
 wpt_root := justdir / 'deps' / 'wpt-source'
 reconfigure := 'false'
 
@@ -70,8 +70,9 @@ test regex="": (build "integration-test-server") (build "wpt-runtime")
 
 # Run web platform test suite
 [group('wpt')]
-wpt-test filter="": (build "wpt-runtime")
-    WPT_FILTER={{ filter }} ctest --test-dir {{ builddir }} -R wpt --verbose
+[arg("external-wpt", long)]
+wpt-test filter="" external-wpt="false": (build "wpt-runtime")
+    WPT_FLAGS="--external-wpt-server={{external-wpt}}" WPT_FILTER={{ filter }} ctest --test-dir {{ builddir }} -R wpt --verbose
 
 # Update web platform test expectations
 [group('wpt')]
