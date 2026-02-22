@@ -14,6 +14,9 @@ fn main() {
         sm_lib.display()
     );
 
+    // Find wasi-sdk for C++ compilation when targeting wasm32.
+    let wasi_sdk = find_wasi_sdk();
+
     // Compile the C++ shim files.
     let shim_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("shim");
 
@@ -53,6 +56,14 @@ fn main() {
         .flag("-mthread-model")
         .flag("single");
 
+    // If we have wasi-sdk, configure the compiler to use it.
+    if let Some(ref wasi_sdk_dir) = wasi_sdk {
+        let clangxx = wasi_sdk_dir.join("bin").join("clang++");
+        if clangxx.exists() {
+            build.compiler(&clangxx);
+        }
+    }
+
     // Include SM's config header in all compilations
     if confdefs.exists() {
         build.flag(&format!("-include{}", confdefs.display()));
@@ -79,10 +90,16 @@ fn main() {
         sm_include.display()
     );
 
+    // Expose wasi-sdk path to downstream crates.
+    if let Some(ref wasi_sdk_dir) = wasi_sdk {
+        println!("cargo:wasi_sdk={}", wasi_sdk_dir.display());
+    }
+
     // Rerun if shim sources change.
     println!("cargo:rerun-if-changed=shim");
     println!("cargo:rerun-if-env-changed=SPIDERMONKEY_DIR");
     println!("cargo:rerun-if-env-changed=SPIDERMONKEY_BINARIES");
+    println!("cargo:rerun-if-env-changed=WASI_SDK_DIR");
 }
 
 /// Locate the SpiderMonkey build artifacts directory.
@@ -130,6 +147,22 @@ fn find_spidermonkey() -> PathBuf {
         }
     }
 
+    // Also check deps/cpm_cache/spidermonkey-*
+    let cpm_cache = workspace_root.join("deps").join("cpm_cache");
+    for prefix in &["spidermonkey-release", "spidermonkey-debug"] {
+        let dir = cpm_cache.join(prefix);
+        if dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&dir) {
+                for entry in entries.flatten() {
+                    let candidate = entry.path();
+                    if candidate.join("libspidermonkey.a").exists() {
+                        return candidate;
+                    }
+                }
+            }
+        }
+    }
+
     eprintln!(
         "WARNING: Could not auto-detect SpiderMonkey location. \
          Set SPIDERMONKEY_DIR to the directory containing libspidermonkey.a."
@@ -137,4 +170,35 @@ fn find_spidermonkey() -> PathBuf {
 
     // Return a placeholder path that will fail the assertion in main().
     workspace_root.join("deps").join("spidermonkey")
+}
+
+/// Locate the wasi-sdk installation.
+///
+/// Checks in order:
+/// 1. `WASI_SDK_DIR` env var
+/// 2. Well-known paths in deps/cpm_cache/wasi-sdk/
+fn find_wasi_sdk() -> Option<PathBuf> {
+    if let Ok(dir) = env::var("WASI_SDK_DIR") {
+        let p = PathBuf::from(dir);
+        if p.join("bin").join("clang++").exists() {
+            return Some(p);
+        }
+    }
+
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
+
+    let wasi_sdk_cache = workspace_root.join("deps").join("cpm_cache").join("wasi-sdk");
+    if wasi_sdk_cache.exists() {
+        if let Ok(entries) = std::fs::read_dir(&wasi_sdk_cache) {
+            for entry in entries.flatten() {
+                let candidate = entry.path();
+                if candidate.join("bin").join("clang++").exists() {
+                    return Some(candidate);
+                }
+            }
+        }
+    }
+
+    None
 }

@@ -13,7 +13,7 @@
 #include "js/TypeDecls.h"
 #include "js/Utility.h"
 
-#include "../crates/rust-url/rust-url.h"
+#include "../crates/starling-url/rust-url.h"
 
 using std::optional;
 using std::string_view;

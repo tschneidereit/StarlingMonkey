@@ -317,10 +317,10 @@ extern "C" {
     );
 
     /// Get the state of a promise (pending/fulfilled/rejected).
-    pub fn sm_get_promise_state(promise: *mut JSObject) -> u32;
+    pub fn sm_get_promise_state(cx: *mut JSContext, promise: *mut JSObject) -> u32;
 
-    /// Get the result value of a settled promise.
-    pub fn sm_get_promise_result(promise: *mut JSObject) -> JSVal;
+    /// Get the result value of a settled promise (as raw bits).
+    pub fn sm_get_promise_result(cx: *mut JSContext, promise: *mut JSObject) -> u64;
 
     /// Create a new promise object.
     pub fn sm_new_promise(cx: *mut JSContext) -> *mut JSObject;

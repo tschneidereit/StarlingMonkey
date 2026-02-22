@@ -28,11 +28,6 @@ public:
   static void decr_event_loop_interest();
 
   /**
-   * Select on the next async tasks
-   */
-  static bool process_async_tasks(api::Engine *engine, double timeout);
-
-  /**
    * Queue a new async task.
    */
   static void queue_async_task(const RefPtr<api::AsyncTask>& task);

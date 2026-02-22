@@ -141,6 +141,11 @@ extern "C" bool starling_event_loop_has_exception() {
   return JS_IsExceptionPending(EVENT_LOOP_ENGINE->cx());
 }
 
+/// Used by Rust engine.rs starling_engine_has_pending_async_tasks.
+extern "C" bool starling_cpp_has_pending_async_tasks() {
+  return !queue.get().tasks.empty();
+}
+
 /// Find a task by task_id, remove it from the GC-traced vector, and run it.
 /// Returns 1 on success, 0 if task run failed, -1 if not found.
 extern "C" int32_t starling_run_task(int32_t task_id) {
@@ -154,4 +159,74 @@ extern "C" int32_t starling_run_task(int32_t task_id) {
     }
   }
   return -1;
+}
+
+// =====================================================================
+// api::Engine method implementations (out-of-line from extension-api.h)
+//
+// These methods are declared in the Engine class but defined here because
+// they need access to EventLoop internals or Rust FFI for script loading.
+// =====================================================================
+
+// Rust FFI for script operations (defined in starling-runtime script_loader.rs)
+extern "C" {
+bool starling_engine_eval_toplevel_path(const uint8_t *path, uint32_t path_len,
+                                        uint64_t *out_result);
+bool starling_engine_eval_toplevel_source(const uint8_t *source, uint32_t source_len,
+                                          const uint8_t *path, uint32_t path_len,
+                                          uint64_t *out_result);
+bool starling_engine_run_init_script();
+void starling_engine_finish_pre_init();
+}
+
+void api::Engine::queue_async_task(const RefPtr<api::AsyncTask>& task) {
+  core::EventLoop::queue_async_task(task);
+}
+
+bool api::Engine::cancel_async_task(const RefPtr<api::AsyncTask>& task) {
+  return core::EventLoop::cancel_async_task(this, task);
+}
+
+bool api::Engine::run_event_loop() {
+  return core::EventLoop::run_event_loop(this, 0);
+}
+
+bool api::Engine::eval_toplevel(std::string_view path, MutableHandleValue result) {
+  uint64_t raw_result = 0;
+  bool ok = starling_engine_eval_toplevel_path(
+      reinterpret_cast<const uint8_t *>(path.data()),
+      static_cast<uint32_t>(path.size()),
+      &raw_result);
+  if (ok) {
+    result.set(JS::Value::fromRawBits(raw_result));
+  }
+  return ok;
+}
+
+bool api::Engine::eval_toplevel(JS::SourceText<mozilla::Utf8Unit> &source,
+                                std::string_view path,
+                                MutableHandleValue result) {
+  // For now, extract the source text and pass through Rust FFI.
+  // This loses the SourceText wrapper, but the Rust side can re-create it.
+  auto chars = source.get();
+  auto len = source.length();
+  uint64_t raw_result = 0;
+  bool ok = starling_engine_eval_toplevel_source(
+      reinterpret_cast<const uint8_t *>(chars),
+      static_cast<uint32_t>(len),
+      reinterpret_cast<const uint8_t *>(path.data()),
+      static_cast<uint32_t>(path.size()),
+      &raw_result);
+  if (ok) {
+    result.set(JS::Value::fromRawBits(raw_result));
+  }
+  return ok;
+}
+
+bool api::Engine::run_initialization_script() {
+  return starling_engine_run_init_script();
+}
+
+void api::Engine::finish_pre_initialization() {
+  starling_engine_finish_pre_init();
 }

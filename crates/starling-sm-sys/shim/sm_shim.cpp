@@ -15,6 +15,7 @@
 #include "js/Object.h"
 #include "js/ForOfIterator.h"
 #include "js/PropertyAndElement.h"
+#include "js/Conversions.h"
 #include "jsfriendapi.h"
 
 #include <cstdlib>
@@ -491,12 +492,14 @@ void sm_set_promise_rejection_tracker(
         nullptr);
 }
 
-uint32_t sm_get_promise_state(JSObject *promise) {
-    return static_cast<uint32_t>(JS::GetPromiseState(promise));
+uint32_t sm_get_promise_state(JSContext *cx, JSObject *promise) {
+    JS::RootedObject rpromise(cx, promise);
+    return static_cast<uint32_t>(JS::GetPromiseState(rpromise));
 }
 
-JS::Value sm_get_promise_result(JSObject *promise) {
-    return JS::GetPromiseResult(promise);
+uint64_t sm_get_promise_result(JSContext *cx, JSObject *promise) {
+    JS::RootedObject rpromise(cx, promise);
+    return JS::GetPromiseResult(rpromise).asRawBits();
 }
 
 JSObject *sm_new_promise(JSContext *cx) {
@@ -527,7 +530,8 @@ void sm_gc(JSContext *cx) {
 }
 
 bool sm_run_jobs(JSContext *cx) {
-    return js::RunJobs(cx);
+    js::RunJobs(cx);
+    return true;
 }
 
 void sm_add_extra_gc_roots_tracer(
@@ -732,7 +736,7 @@ bool sm_get_own_property_names(
 ) {
     JS::RootedObject robj(cx, obj);
     JS::Rooted<JS::IdVector> ids(cx, JS::IdVector(cx));
-    if (!JS::GetPropertyKeys(cx, robj, JSITER_OWNONLY, &ids)) {
+    if (!JS_Enumerate(cx, robj, &ids)) {
         return false;
     }
 

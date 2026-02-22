@@ -17,4 +17,4 @@ target_include_directories(host_api PUBLIC ${HOST_API}/include)
 
 # Tell build-crates.cmake which Rust crate to use
 set(RUST_HOST_API_CRATE "rust-host-api-p3")
-set(RUST_HOST_API_CRATE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-host-api-p3")
+set(RUST_HOST_API_CRATE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-host-api")

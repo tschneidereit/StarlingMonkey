@@ -27,8 +27,8 @@ static INITIALIZED: AtomicBool = AtomicBool::new(false);
 pub unsafe extern "C" fn starling_wizer_init() {
     // Read args from stdin (one line)
     let config = match EngineConfig::from_stdin() {
-        Some(c) => c,
-        None => EngineConfig::default(),
+        Ok(c) => c,
+        Err(_) => EngineConfig::default(),
     };
 
     // Force pre-initialization mode
@@ -65,7 +65,10 @@ pub unsafe extern "C" fn starling_init_from_environment() -> bool {
         return true;
     }
 
-    let config = EngineConfig::from_env().unwrap_or_default();
+    let config = match EngineConfig::from_env() {
+        Ok(c) => c,
+        Err(_) => EngineConfig::default(),
+    };
 
     match Engine::new(config) {
         Ok(engine) => {
@@ -93,7 +96,13 @@ pub unsafe extern "C" fn starling_cli_run_init() -> bool {
         return true;
     }
 
-    let config = EngineConfig::from_args();
+    let config = match EngineConfig::from_args(std::env::args()) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("StarlingMonkey CLI config error: {e}");
+            return false;
+        }
+    };
 
     match Engine::new(config) {
         Ok(engine) => {

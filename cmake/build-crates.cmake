@@ -35,22 +35,22 @@ function(add_rust_lib name path)
 endfunction()
 
 # These two crates are needed by SpiderMonkey:
-add_rust_lib(rust-encoding "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-encoding")
-add_rust_lib(rust-hooks "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-hooks")
+add_rust_lib(rust-encoding "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-encoding")
+add_rust_lib(rust-hooks "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-hooks")
 
 # The rust-hooks crate needs a supporting CPP file
-add_library(rust-hooks-wrappers STATIC "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-hooks/src/wrappers.cpp")
+add_library(rust-hooks-wrappers STATIC "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-hooks/src/wrappers.cpp")
 target_link_libraries(rust-hooks-wrappers PRIVATE spidermonkey)
 add_library(rust-crates STATIC ${CMAKE_CURRENT_BINARY_DIR}/null.cpp)
 target_link_libraries(rust-crates PRIVATE rust_staticlib rust-hooks-wrappers)
 
 # Add crates as needed here:
-add_rust_lib(rust-url "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-url")
-add_rust_lib(multipart "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-multipart" "\"capi\", \"simd\"")
+add_rust_lib(rust-url "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-url")
+add_rust_lib(multipart "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-multipart" "\"capi\", \"simd\"")
 
 # The host API Rust crate is selected by the host_api.cmake for the chosen implementation.
 if (DEFINED RUST_HOST_API_CRATE)
     add_rust_lib(${RUST_HOST_API_CRATE} "${RUST_HOST_API_CRATE_PATH}")
 else()
-    add_rust_lib(rust-host-api "${CMAKE_CURRENT_SOURCE_DIR}/crates/rust-host-api-p3")
+    add_rust_lib(rust-host-api "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-host-api")
 endif()

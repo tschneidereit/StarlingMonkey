@@ -4,6 +4,7 @@ mode := 'debug'
 builddir := justdir / 'cmake-build-p3-' + mode
 wpt_root := justdir / 'deps' / 'wpt-source'
 reconfigure := 'false'
+target_dir := justdir / 'target' / 'wasm32-wasip2' / mode
 
 alias b := build
 alias t := test
@@ -15,10 +16,27 @@ alias fmt := format
 default:
     @echo 'Default mode {{ mode }}'
     @echo 'Default build directory {{ builddir }}'
+    @echo 'Default cargo target dir {{ target_dir }}'
     @just --list
 
-# Build specified target or all otherwise
-build target="all" *flags:
+# ── Cargo-centric build (new) ──────────────────────────────────────
+
+# Build the starling wasm binary via Cargo
+build *flags:
+    cargo build {{ if mode == "release" { "--release" } else { "" } }} {{ flags }}
+
+# Build a specific crate
+build-crate crate *flags:
+    cargo build -p {{ crate }} {{ if mode == "release" { "--release" } else { "" } }} {{ flags }}
+
+# Clean Cargo build artifacts
+clean:
+    cargo clean
+
+# ── CMake legacy build (for builtins development) ──────────────────
+
+# Build specified target via CMake (for builtins/host-api C++ development)
+cmake-build target="all" *flags:
     #!/usr/bin/env bash
     set -euo pipefail
     echo 'Setting build directory to {{ builddir }}, build type {{ mode }}'
@@ -33,8 +51,8 @@ build target="all" *flags:
     # Build target
     cmake --build {{ builddir }} --parallel {{ ncpus }} {{ if target == "" { "" } else { "--target " + target } }}
 
-# Run clean target
-clean:
+# Run CMake clean target
+cmake-clean:
     cmake --build {{ builddir }} --target clean
 
 [private]
@@ -42,18 +60,18 @@ clean:
 do_clean:
     rm -rf {{ builddir }}
 
-# Remove build directory
+# Remove CMake build directory
 clean-all: && do_clean
     @echo "This will remove {{builddir}}"
 
 # Run clang-tidy
-lint: (build "clang-tidy")
+lint: (cmake-build "clang-tidy")
 
 # Run clang-tidy and apply offered fixes
-lint-fix: (build "clang-tidy-fix")
+lint-fix: (cmake-build "clang-tidy-fix")
 
-# Componentize js script
-componentize script="" outfile="starling.wasm": build
+# Componentize js script (uses cmake-generated componentize.sh for now)
+componentize script="" outfile="starling.wasm": (cmake-build "starling-raw.wasm")
     {{ builddir }}/componentize.sh {{ script }} -o {{ outfile }}
 
 # Componentize and serve script with wasmtime
@@ -65,13 +83,13 @@ format *ARGS:
     {{ justdir }}/scripts/clang-format.sh {{ ARGS }}
 
 # Run integration test
-test regex="": (build "integration-test-server") (build "wpt-runtime")
+test regex="": (cmake-build "integration-test-server") (cmake-build "wpt-runtime")
     ctest --test-dir {{ builddir }} -j {{ ncpus }} --output-on-failure {{ if regex == "" { regex } else { "-R " + regex } }}
 
 # Run web platform test suite
 [group('wpt')]
 [arg("external-wpt", long)]
-wpt-test filter="" external-wpt="false": (build "wpt-runtime")
+wpt-test filter="" external-wpt="false": (cmake-build "wpt-runtime")
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{ builddir }}
@@ -80,7 +98,7 @@ wpt-test filter="" external-wpt="false": (build "wpt-runtime")
 # Update web platform test expectations
 [group('wpt')]
 [arg("external-wpt", long)]
-wpt-update filter="" external-wpt="false": (build "wpt-runtime")
+wpt-update filter="" external-wpt="false": (cmake-build "wpt-runtime")
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{ builddir }}
@@ -88,7 +106,7 @@ wpt-update filter="" external-wpt="false": (build "wpt-runtime")
 
 # Run wpt server
 [group('wpt')]
-wpt-server: (build "wpt-runtime")
+wpt-server: (cmake-build "wpt-runtime")
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{ builddir }}

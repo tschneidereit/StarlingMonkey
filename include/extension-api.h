@@ -1,7 +1,29 @@
 #ifndef EXTENSION_API_H
 #define EXTENSION_API_H
-#include <vector>
 
+/**
+ * extension-api.h — Builtin compatibility layer (Phase 4).
+ *
+ * This header provides the same public interface as the original extension-api.h,
+ * but all Engine methods delegate to Rust via extern "C" FFI.
+ *
+ * C++ builtins include this header unchanged and call the same methods they
+ * always have. Under the hood, those methods forward to Rust-owned state in
+ * starling-runtime/src/engine.rs.
+ *
+ * What stays in C++:
+ *   - AsyncTask class (builtins subclass it; GC tracing needs C++ SM API)
+ *   - Event loop task storage (PersistentRooted GC tracing)
+ *   - builtin.h (pure C++ SM template metaprogramming)
+ *
+ * What moves to Rust:
+ *   - Engine lifecycle, config, state
+ *   - Script loading, module resolution
+ *   - Promise rejection tracking
+ *   - String encoding/decoding
+ */
+
+#include <vector>
 #include "builtin.h"
 #include "jsapi.h"
 #include "mozilla/WeakPtr.h"
@@ -24,168 +46,237 @@ using PollableHandle = int32_t;
 constexpr PollableHandle INVALID_POLLABLE_HANDLE = -1;
 constexpr PollableHandle IMMEDIATE_TASK_HANDLE = -2;
 
+// ── Rust FFI declarations ────────────────────────────────────────────────────
+//
+// These symbols are defined in starling-runtime (Rust) and linked into the
+// final wasm binary.
+
+extern "C" {
+void *starling_engine_get_cx();
+void *starling_engine_get_global();
+void *starling_engine_get_init_global();
+uint8_t starling_engine_get_state();
+bool starling_engine_debug_logging();
+bool starling_engine_debugging_enabled();
+bool starling_engine_wpt_mode();
+void starling_engine_abort(const uint8_t *reason, uint32_t reason_len);
+uint64_t starling_engine_get_script_value();
+bool starling_engine_define_builtin_module(const uint8_t *id, uint32_t id_len, uint64_t value);
+const uint8_t *starling_engine_init_location(uint32_t *out_len);
+bool starling_engine_dump_value(uint64_t val);
+bool starling_engine_print_stack();
+void starling_engine_dump_pending_exception(const uint8_t *desc, uint32_t desc_len);
+bool starling_engine_has_unhandled_rejections();
+void starling_engine_report_unhandled_rejections();
+void starling_engine_clear_unhandled_rejections();
+bool starling_engine_has_pending_async_tasks();
+void starling_engine_finish_pre_init();
+}
+
+// Event loop FFI (defined in event_loop.cpp, calls through to Rust)
+extern "C" {
+int32_t host_api_register_task(int32_t waiter_handle);
+void host_api_cancel_task(int32_t task_id);
+void host_api_incr_interest();
+void host_api_decr_interest();
+}
+
 namespace api {
 
 class AsyncTask;
 
-struct EngineConfig {
-  mozilla::Maybe<std::string> content_script_path = mozilla::Nothing();
-  mozilla::Maybe<std::string> content_script = mozilla::Nothing();
-  mozilla::Maybe<std::string> path_prefix = mozilla::Nothing();
-  mozilla::Maybe<std::string> init_location = mozilla::Nothing();
-  bool module_mode = true;
-
-  /**
-   * Path to the script to evaluate before the content script.
-   *
-   * This script is evaluated in a separate global and has access to functions not
-   * available to content. It can be used to set up the environment for the content
-   * script, e.g. by registering builtin modules or adding global properties.
-   */
-  mozilla::Maybe<std::string> initializer_script_path = mozilla::Nothing();
-
-  /**
-   * Whether to evaluate the top-level script in pre-initialization mode or not.
-   *
-   * During pre-initialization, functionality that depends on WASIp2 is unavailable.
-   */
-  bool pre_initialize = false;
-  bool verbose = false;
-
-  /**
-   * Whether to enable the script debugger. If this is enabled, the runtime will
-   * check for the DEBUGGER_PORT environment variable and try to connect to that
-   * port on localhost if it's set. If that succeeds, it expects the host to send
-   * a script to use as the debugger, using the SpiderMonkey Debugger API.
-   */
-  bool debugging = false;
-
-  /**
-   * Whether to enable Web Platform Test mode. Specifically, this means installing a
-   * few global properties required to make WPT work, that wouldn't be made available
-   * to content.
-   */
-  bool wpt_mode = false;
-
-  EngineConfig() = default;
+enum class EngineState : uint8_t {
+  Uninitialized = 0,
+  EngineInitializing = 1,
+  ScriptPreInitializing = 2,
+  Initialized = 3,
+  Aborted = 4,
 };
 
-enum class EngineState : uint8_t { Uninitialized, EngineInitializing, ScriptPreInitializing, Initialized, Aborted };
-
+/**
+ * Engine — thin FFI wrapper class.
+ *
+ * All methods delegate to Rust-owned state. The Engine class itself holds no
+ * significant state; it exists solely to preserve the existing C++ API surface
+ * for builtins.
+ *
+ * Historical note: Engine used to own the JSContext, globals, and config
+ * directly. Now those live in Rust's Engine struct, and this class provides
+ * accessor methods that call through FFI.
+ */
 class Engine {
-  std::unique_ptr<EngineConfig> config_;
-  EngineState state_ = EngineState::Uninitialized;
-
 public:
-  explicit Engine(std::unique_ptr<EngineConfig> config);
-  static Engine *get(JSContext *cx);
+  /// Get the Engine* from a JSContext (stored as context private data).
+  static Engine *get(JSContext *cx) {
+    return static_cast<Engine *>(JS_GetContextPrivate(cx));
+  }
 
-  static JSContext *cx();
-  static HandleObject global();
-  EngineState state();
-  bool debugging_enabled();
-  bool wpt_mode();
-  const mozilla::Maybe<std::string> &init_location() const;
+  /// Get the JSContext.
+  static JSContext *cx() {
+    return static_cast<JSContext *>(starling_engine_get_cx());
+  }
 
-  void finish_pre_initialization();
+  /// Get the content global object.
+  static HandleObject global() {
+    // The Rust side holds a PersistentRooted. We return a HandleObject
+    // by constructing one from the raw pointer.
+    // NOTE: This relies on HandleObject being a thin pointer wrapper,
+    // which is true for SpiderMonkey's Handle types when the pointer
+    // points to a PersistentRooted's storage.
+    static JS::PersistentRootedObject global_;
+    JSObject *raw = static_cast<JSObject *>(starling_engine_get_global());
+    if (!global_.initialized()) {
+      global_.init(cx(), raw);
+    } else {
+      global_ = raw;
+    }
+    return global_;
+  }
 
-  /**
-   * Define a new builtin module
-   *
-   * The enumerable properties of the builtin object are used to construct
-   * a synthetic module namespace for the module.
-   *
-   * The enumeration and getters are called only on the first import of
-   * the builtin, so that lazy getters can be used to lazily initialize
-   * builtins.
-   *
-   * Once loaded, the instance is cached and reused as a singleton.
-   */
-  bool define_builtin_module(const char *id, HandleValue builtin);
+  /// Get the initializer script's global.
+  static HandleObject init_script_global() {
+    static JS::PersistentRootedObject init_global_;
+    JSObject *raw = static_cast<JSObject *>(starling_engine_get_init_global());
+    if (!init_global_.initialized()) {
+      init_global_.init(cx(), raw);
+    } else {
+      init_global_ = raw;
+    }
+    return init_global_;
+  }
 
-  /**
-   * Treat the top-level script as a module or classic JS script.
-   *
-   * By default, the engine treats the top-level script as a module.
-   * Since not all content can be run as a module, this method allows
-   * changing this default, and will impact all subsequent top-level
-   * evaluations.
-   */
-  bool eval_toplevel(std::string_view, MutableHandleValue result);
+  EngineState state() {
+    return static_cast<EngineState>(starling_engine_get_state());
+  }
+
+  bool debugging_enabled() {
+    return starling_engine_debugging_enabled();
+  }
+
+  bool wpt_mode() {
+    return starling_engine_wpt_mode();
+  }
+
+  const mozilla::Maybe<std::string> &init_location() const {
+    // Cache the value from Rust to return a stable reference.
+    static mozilla::Maybe<std::string> cached = mozilla::Nothing();
+    uint32_t len = 0;
+    const uint8_t *ptr = starling_engine_init_location(&len);
+    if (ptr && len > 0) {
+      cached = mozilla::Some(std::string(reinterpret_cast<const char *>(ptr), len));
+    } else {
+      cached = mozilla::Nothing();
+    }
+    return cached;
+  }
+
+  void finish_pre_initialization() {
+    starling_engine_finish_pre_init();
+  }
+
+  bool define_builtin_module(const char *id, HandleValue builtin) {
+    return starling_engine_define_builtin_module(
+        reinterpret_cast<const uint8_t *>(id),
+        strlen(id),
+        builtin.asRawBits());
+  }
+
+  bool eval_toplevel(std::string_view path, MutableHandleValue result);
   bool eval_toplevel(JS::SourceText<mozilla::Utf8Unit> &source, std::string_view path,
                      MutableHandleValue result);
-
-  /**
-   * Run the script set using the `-i | --initializer-script-path` option.
-   *
-   * This script runs in a separate global, and has access to functions not
-   * available to content. Notably, that includes the ability to define
-   * builtin modules, using the `defineBuiltinModule` function.
-   */
   bool run_initialization_script();
 
-  /**
-   * Returns the global the initialization script runs in.
-   */
-  static HandleObject init_script_global();
-
-  /**
-   * Run the async event loop as long as there's interest registered in keeping it running.
-   *
-   * Each turn of the event loop consists of three steps:
-   * 1. Run reactions to all promises that have been resolves/rejected.
-   * 2. Check if there's any interest registered in continuing to wait for async tasks, and
-   *    terminate the loop if not.
-   * 3. Wait for the next async tasks and execute their reactions
-   *
-   * Interest or loss of interest in keeping the event loop running can be signaled using the
-   * `Engine::incr_event_loop_interest` and `Engine::decr_event_loop_interest` methods.
-   *
-   * Every call to incr_event_loop_interest must be followed by an eventual call to
-   * decr_event_loop_interest, for the event loop to complete. Otherwise, if no async tasks remain
-   * pending while there's still interest in the event loop, an error will be reported.
-   */
+  /// Run the event loop (synchronous fallback for pre-init; async loop in Rust for p3).
   bool run_event_loop();
 
-  /**
-   * Add an event loop interest to track
-   */
-  static void incr_event_loop_interest();
+  static void incr_event_loop_interest() {
+    host_api_incr_interest();
+  }
 
-  /**
-   * Remove an event loop interest to track
-   * The last decrementer marks the event loop as complete to finish
-   */
-  static void decr_event_loop_interest();
+  static void decr_event_loop_interest() {
+    host_api_decr_interest();
+  }
 
-  /**
-   * Get the JS value associated with the top-level script execution -
-   * the last expression for a script, or the module namespace for a module.
-   */
-  static HandleValue script_value();
+  static HandleValue script_value() {
+    static JS::PersistentRootedValue script_val_;
+    uint64_t raw = starling_engine_get_script_value();
+    JS::Value v = JS::Value::fromRawBits(raw);
+    if (!script_val_.initialized()) {
+      script_val_.init(cx(), v);
+    } else {
+      script_val_ = v;
+    }
+    return script_val_;
+  }
 
-  static bool has_pending_async_tasks();
+  static bool has_pending_async_tasks() {
+    return starling_engine_has_pending_async_tasks();
+  }
+
   static void queue_async_task(const RefPtr<AsyncTask>& task);
+
   bool cancel_async_task(const RefPtr<AsyncTask>& task);
 
-  static bool has_unhandled_promise_rejections();
-  void report_unhandled_promise_rejections();
-  static void clear_unhandled_promise_rejections();
+  static bool has_unhandled_promise_rejections() {
+    return starling_engine_has_unhandled_rejections();
+  }
 
-  void abort(const char *reason);
+  void report_unhandled_promise_rejections() {
+    starling_engine_report_unhandled_rejections();
+  }
 
-  static bool debug_logging_enabled();
+  static void clear_unhandled_promise_rejections() {
+    starling_engine_clear_unhandled_rejections();
+  }
 
-  static bool dump_value(JS::Value val, FILE *fp = stdout);
-  static bool print_stack(FILE *fp);
-  static void dump_error(HandleValue error, FILE *fp = stderr);
-  static void dump_pending_exception(const char *description = "", FILE *fp = stderr);
-  static void dump_promise_rejection(HandleValue reason, HandleObject promise, FILE *fp = stderr);
+  void abort(const char *reason) {
+    starling_engine_abort(
+        reinterpret_cast<const uint8_t *>(reason),
+        strlen(reason));
+  }
+
+  static bool debug_logging_enabled() {
+    return starling_engine_debug_logging();
+  }
+
+  static bool dump_value(JS::Value val, FILE *fp = stdout) {
+    return starling_engine_dump_value(val.asRawBits());
+  }
+
+  static bool print_stack(FILE *fp = stderr) {
+    return starling_engine_print_stack();
+  }
+
+  static void dump_error(HandleValue error, FILE *fp = stderr) {
+    // For now, dump the value as-is. Full error formatting is TODO.
+    dump_value(error, fp);
+  }
+
+  static void dump_pending_exception(const char *description = "", FILE *fp = stderr) {
+    starling_engine_dump_pending_exception(
+        reinterpret_cast<const uint8_t *>(description),
+        strlen(description));
+  }
+
+  static void dump_promise_rejection(HandleValue reason, HandleObject promise, FILE *fp = stderr) {
+    // Dump the rejection reason. Full stack formatting is TODO.
+    dump_value(reason, fp);
+  }
 };
 
 
 using TaskCompletionCallback = bool (*)(JSContext* cx, HandleObject receiver);
 
+/**
+ * AsyncTask — base class for async operations.
+ *
+ * This class stays in C++ because:
+ * 1. Builtins subclass it (TimerTask, BodyFutureTask, etc.)
+ * 2. GC tracing requires C++ SpiderMonkey API (JSTracer)
+ * 3. RefCounted + SupportsWeakPtr are C++ reference-counting primitives
+ *
+ * The task_id_ links to the Rust task queue (set by EventLoop::queue_async_task).
+ */
 class AsyncTask : public js::RefCounted<AsyncTask>, public mozilla::SupportsWeakPtr {
 protected:
   PollableHandle handle_ = -1;
