@@ -29,7 +29,8 @@ corrosion_import_crate(
 function(add_rust_lib name path)
     add_library(${name} INTERFACE)
     target_include_directories(${name} INTERFACE "${path}")
-    file(APPEND $CACHE{RUST_STATICLIB_TOML} "${name} = { path = \"${path}\", features = [${ARGN}] }\n")
+    get_filename_component(pkg_name "${path}" NAME)
+    file(APPEND $CACHE{RUST_STATICLIB_TOML} "${name} = { path = \"${path}\", package = \"${pkg_name}\", features = [${ARGN}] }\n")
     string(REPLACE "-" "_" name ${name})
     file(APPEND $CACHE{RUST_STATICLIB_RS} "pub use ${name};\n")
 endfunction()
@@ -47,6 +48,9 @@ target_link_libraries(rust-crates PRIVATE rust_staticlib rust-hooks-wrappers)
 # Add crates as needed here:
 add_rust_lib(rust-url "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-url")
 add_rust_lib(multipart "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-multipart" "\"capi\", \"simd\"")
+
+# The runtime crate provides engine, script loader, entry points, and config.
+add_rust_lib(starling-runtime "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-runtime")
 
 # The host API Rust crate is selected by the host_api.cmake for the chosen implementation.
 if (DEFINED RUST_HOST_API_CRATE)

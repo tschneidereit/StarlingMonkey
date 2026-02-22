@@ -73,6 +73,12 @@ bool starling_engine_has_pending_async_tasks();
 void starling_engine_finish_pre_init();
 }
 
+// SM shim functions for error formatting (defined in sm_shim.cpp)
+extern "C" {
+void sm_dump_error(JSContext *cx, uint64_t error_bits);
+void sm_dump_promise_rejection(JSContext *cx, uint64_t reason_bits, JSObject *promise);
+}
+
 // Event loop FFI (defined in event_loop.cpp, calls through to Rust)
 extern "C" {
 int32_t host_api_register_task(int32_t waiter_handle);
@@ -248,8 +254,7 @@ public:
   }
 
   static void dump_error(HandleValue error, FILE *fp = stderr) {
-    // For now, dump the value as-is. Full error formatting is TODO.
-    dump_value(error, fp);
+    sm_dump_error(cx(), error.get().asRawBits());
   }
 
   static void dump_pending_exception(const char *description = "", FILE *fp = stderr) {
@@ -259,8 +264,7 @@ public:
   }
 
   static void dump_promise_rejection(HandleValue reason, HandleObject promise, FILE *fp = stderr) {
-    // Dump the rejection reason. Full stack formatting is TODO.
-    dump_value(reason, fp);
+    sm_dump_promise_rejection(cx(), reason.get().asRawBits(), promise.get());
   }
 };
 

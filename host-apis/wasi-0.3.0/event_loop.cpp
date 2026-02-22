@@ -16,6 +16,7 @@
 #include "host_api.h"
 #include "jsapi.h"
 #include "jsfriendapi.h"
+#include "js/SourceText.h"
 
 #include <vector>
 
@@ -246,8 +247,4 @@ bool api::Engine::eval_toplevel(JS::SourceText<mozilla::Utf8Unit> &source,
 
 bool api::Engine::run_initialization_script() {
   return starling_engine_run_init_script();
-}
-
-void api::Engine::finish_pre_initialization() {
-  starling_engine_finish_pre_init();
 }

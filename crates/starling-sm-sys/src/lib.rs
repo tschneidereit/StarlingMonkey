@@ -152,6 +152,30 @@ extern "C" {
         filename_len: u32,
     ) -> i32;
 
+    /// Compile a module, set its private info, and cache in the registry map.
+    /// All intermediate GC things are properly rooted in C++.
+    /// Returns a persistent root handle to the module object, or -1 on failure.
+    pub fn sm_compile_and_register_module(
+        cx: *mut JSContext,
+        source: *const u8,
+        source_len: u32,
+        display_path: *const u8,
+        display_path_len: u32,
+        resolved_path: *const u8,
+        resolved_path_len: u32,
+        registry_handle: i32,
+    ) -> i32;
+
+    /// Set module private to {id: id_val} and cache in registry map.
+    /// All intermediate GC things are properly rooted in C++.
+    /// Returns the module's persistent root handle, or -1 on failure.
+    pub fn sm_register_module(
+        cx: *mut JSContext,
+        module_handle: i32,
+        id_val: JSVal,
+        registry_handle: i32,
+    ) -> i32;
+
     /// Link a compiled module (resolve imports).
     pub fn sm_module_link(cx: *mut JSContext, module_handle: i32) -> bool;
 
@@ -382,6 +406,17 @@ extern "C" {
     /// The caller must free the returned buffer with sm_free().
     /// Returns null if no stack is available.
     pub fn sm_capture_stack_string(cx: *mut JSContext, out_len: *mut u32) -> *mut u8;
+
+    /// Dump an error value to stderr with message, stack, and cause chain.
+    pub fn sm_dump_error(cx: *mut JSContext, error_bits: u64);
+
+    /// Dump a promise rejection reason to stderr with fallback to promise
+    /// resolution site stack.
+    pub fn sm_dump_promise_rejection(
+        cx: *mut JSContext,
+        reason_bits: u64,
+        promise: *mut JSObject,
+    );
 }
 
 // ── MapObject operations (for module registry) ───────────────────────────────
@@ -486,6 +521,39 @@ extern "C" {
     /// Allocate a persistent root for a JSObject, returning a handle.
     /// Returns -1 if obj is null.
     pub fn sm_alloc_persistent_root(cx: *mut JSContext, obj: *mut JSObject) -> i32;
+}
+
+// ── Stack rooting (placement new into Rust-allocated storage) ────────────────
+//
+// These operate on SM's Rooted<T> directly: the Rust caller allocates
+// properly-sized+aligned storage on its stack, passes a pointer to C++ which
+// does placement-new (init) and explicit destructor call (drop).
+// While alive, the root is on SM's root stack so the GC can trace & update it.
+
+extern "C" {
+    // Rooted<JSObject*>
+    pub fn sm_rooted_object_size() -> u32;
+    pub fn sm_rooted_object_align() -> u32;
+    pub fn sm_root_object_init(cx: *mut JSContext, storage: *mut c_void, initial: *mut JSObject);
+    pub fn sm_root_object_get(storage: *const c_void) -> *mut JSObject;
+    pub fn sm_root_object_set(storage: *mut c_void, value: *mut JSObject);
+    pub fn sm_root_object_drop(storage: *mut c_void);
+
+    // Rooted<JS::Value>
+    pub fn sm_rooted_value_size() -> u32;
+    pub fn sm_rooted_value_align() -> u32;
+    pub fn sm_root_value_init(cx: *mut JSContext, storage: *mut c_void, initial_bits: JSVal);
+    pub fn sm_root_value_get(storage: *const c_void) -> JSVal;
+    pub fn sm_root_value_set(storage: *mut c_void, val_bits: JSVal);
+    pub fn sm_root_value_drop(storage: *mut c_void);
+
+    // Rooted<JSString*>
+    pub fn sm_rooted_string_size() -> u32;
+    pub fn sm_rooted_string_align() -> u32;
+    pub fn sm_root_string_init(cx: *mut JSContext, storage: *mut c_void, initial: *mut JSString);
+    pub fn sm_root_string_get(storage: *const c_void) -> *mut JSString;
+    pub fn sm_root_string_set(storage: *mut c_void, value: *mut JSString);
+    pub fn sm_root_string_drop(storage: *mut c_void);
 }
 
 // ── Property key enumeration ─────────────────────────────────────────────────

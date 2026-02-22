@@ -9,7 +9,6 @@
 #include "../url.h"
 #include "../worker-location.h"
 
-#include <allocator.h>
 #include <debugger.h>
 #include <js/SourceText.h>
 

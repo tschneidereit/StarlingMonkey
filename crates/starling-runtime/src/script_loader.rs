@@ -118,7 +118,11 @@ impl ScriptLoader {
         })
     }
 
-    /// Compile source into a module, set its private metadata, and cache it.
+    /// Compile source into a module, set its private metadata, and cache it
+    /// in the module registry.
+    ///
+    /// Delegates to a C++ shim (`sm_compile_and_register_module`) that keeps
+    /// all intermediate GC things properly rooted via `Rooted<>`.
     ///
     /// Returns the persistent root handle for the module, or -1 on failure.
     fn compile_and_cache_module(
@@ -129,40 +133,18 @@ impl ScriptLoader {
         let cx = self.cx;
         let display_path = self.strip_prefix(resolved_path);
 
-        let module_handle = unsafe {
-            sm::sm_compile_module(
+        unsafe {
+            sm::sm_compile_and_register_module(
                 cx,
                 source.as_ptr(),
                 source.len() as u32,
                 display_path.as_ptr(),
                 display_path.len() as u32,
+                resolved_path.as_ptr(),
+                resolved_path.len() as u32,
+                self.module_registry_handle,
             )
-        };
-        if module_handle < 0 {
-            return -1;
         }
-
-        let module_obj = unsafe { sm::sm_get_persistent_rooted(module_handle) };
-        if module_obj.is_null() {
-            return -1;
-        }
-
-        // Create info object {id: resolved_path} as module private
-        if !set_module_info(cx, module_obj, resolved_path) {
-            return -1;
-        }
-
-        // Cache in registry keyed by resolved path
-        let key = unsafe {
-            sm::sm_new_string_utf8(cx, resolved_path.as_ptr(), resolved_path.len() as u32)
-        };
-        if !key.is_null() {
-            let key_val = unsafe { sm::sm_string_value(key) };
-            let module_val = unsafe { sm::sm_object_value(module_obj) };
-            unsafe { sm::sm_map_set(cx, self.module_registry_handle, key_val, module_val) };
-        }
-
-        module_handle
     }
 
     /// Get or compile a module for a specifier + resolved path.
@@ -175,21 +157,27 @@ impl ScriptLoader {
     ) -> i32 {
         let cx = self.cx;
 
-        // Check cache first
-        let key = unsafe {
+        // Check cache first — root the key string so it survives any GC
+        // triggered by sm_map_get or other SM API calls.
+        let key_raw = unsafe {
             sm::sm_new_string_utf8(cx, resolved_path.as_ptr(), resolved_path.len() as u32)
         };
-        if key.is_null() {
+        if key_raw.is_null() {
             return -1;
         }
-        let key_val = unsafe { sm::sm_string_value(key) };
+        rooted_string!(in(cx) let key = key_raw);
+        let key_val = unsafe { sm::sm_string_value(key.get()) };
 
-        let mut cached_val: sm::JSVal = sm::JSVAL_UNDEFINED;
-        if unsafe { sm::sm_map_get(cx, self.module_registry_handle, key_val, &mut cached_val) }
-            && unsafe { !sm::sm_value_is_undefined(cached_val) }
+        // Root the lookup result value so the module object pointer
+        // stays valid even if a minor GC promotes nursery objects.
+        rooted_value!(in(cx) let mut cached_val = sm::JSVAL_UNDEFINED);
+        let mut cached_raw: sm::JSVal = sm::JSVAL_UNDEFINED;
+        if unsafe { sm::sm_map_get(cx, self.module_registry_handle, key_val, &mut cached_raw) }
+            && unsafe { !sm::sm_value_is_undefined(cached_raw) }
         {
+            cached_val.set(cached_raw);
             // Already compiled — return a persistent root for the cached object
-            let obj = unsafe { sm::sm_value_to_object(cached_val) };
+            let obj = unsafe { sm::sm_value_to_object(cached_val.get()) };
             if !obj.is_null() {
                 return unsafe { sm::sm_alloc_persistent_root(cx, obj) };
             }
@@ -224,23 +212,29 @@ impl ScriptLoader {
     ) -> i32 {
         let cx = self.cx;
 
+        // Root the builtin object — sm_map_get below can trigger GC which
+        // would leave the raw builtin_obj pointer stale.
+        rooted_object!(in(cx) let builtin_rooted = builtin_obj);
+
         // Check if already cached
         let id_val = unsafe { sm::sm_string_value(id_str) };
-        let mut cached_val: sm::JSVal = sm::JSVAL_UNDEFINED;
-        if unsafe { sm::sm_map_get(cx, self.module_registry_handle, id_val, &mut cached_val) }
-            && unsafe { !sm::sm_value_is_undefined(cached_val) }
+        rooted_value!(in(cx) let mut cached_val = sm::JSVAL_UNDEFINED);
+        let mut cached_raw: sm::JSVal = sm::JSVAL_UNDEFINED;
+        if unsafe { sm::sm_map_get(cx, self.module_registry_handle, id_val, &mut cached_raw) }
+            && unsafe { !sm::sm_value_is_undefined(cached_raw) }
         {
-            let obj = unsafe { sm::sm_value_to_object(cached_val) };
+            cached_val.set(cached_raw);
+            let obj = unsafe { sm::sm_value_to_object(cached_val.get()) };
             if !obj.is_null() {
                 return unsafe { sm::sm_alloc_persistent_root(cx, obj) };
             }
         }
 
-        // Enumerate the builtin object's properties
+        // Enumerate the builtin object's properties — use rooted pointer
         let mut prop_strings: *mut *mut sm::JSString = core::ptr::null_mut();
         let mut prop_count: u32 = 0;
         if !unsafe {
-            sm::sm_get_own_property_names(cx, builtin_obj, &mut prop_strings, &mut prop_count)
+            sm::sm_get_own_property_names(cx, builtin_rooted.get(), &mut prop_strings, &mut prop_count)
         } {
             return -1;
         }
@@ -305,37 +299,11 @@ impl ScriptLoader {
             return -1;
         }
 
-        let module_obj = unsafe { sm::sm_get_persistent_rooted(module_handle) };
-        if module_obj.is_null() {
-            return -1;
+        // Set module private and cache in registry — done in C++ with proper
+        // Rooted<> for all intermediate GC things.
+        unsafe {
+            sm::sm_register_module(cx, module_handle, id_val, self.module_registry_handle)
         }
-
-        // Set module private to an info object {id: builtin_id}
-        let info = unsafe { sm::sm_new_plain_object(cx) };
-        if info.is_null() {
-            return -1;
-        }
-        let id_name = b"id\0";
-        if !unsafe {
-            sm::sm_define_property_value(
-                cx,
-                info,
-                id_name.as_ptr(),
-                2,
-                id_val,
-                0x1, // JSPROP_ENUMERATE
-            )
-        } {
-            return -1;
-        }
-        let info_val = unsafe { sm::sm_object_value(info) };
-        unsafe { sm::sm_set_module_private(module_obj, info_val) };
-
-        // Cache in registry
-        let module_val = unsafe { sm::sm_object_value(module_obj) };
-        unsafe { sm::sm_map_set(cx, self.module_registry_handle, id_val, module_val) };
-
-        module_handle
     }
 
     /// Evaluate the top-level script.
@@ -379,7 +347,8 @@ impl ScriptLoader {
             return Err("Failed to link module");
         }
 
-        // Shrinking GC before evaluation during pre-init
+        // Shrinking GC before evaluation during pre-init — compacts the heap
+        // to reduce pages touched post-deploy.
         let engine_state = unsafe { crate::engine::Engine::get().state() };
         if engine_state == crate::engine::EngineState::ScriptPreInitializing {
             unsafe {
@@ -524,44 +493,6 @@ fn file_exists(path: &str) -> bool {
     std::fs::metadata(path).is_ok()
 }
 
-/// Set the module private to an info object `{id: resolved_path}`.
-fn set_module_info(
-    cx: *mut sm::JSContext,
-    module_obj: *mut sm::JSObject,
-    resolved_path: &str,
-) -> bool {
-    let info = unsafe { sm::sm_new_plain_object(cx) };
-    if info.is_null() {
-        return false;
-    }
-
-    let path_str = unsafe {
-        sm::sm_new_string_utf8(cx, resolved_path.as_ptr(), resolved_path.len() as u32)
-    };
-    if path_str.is_null() {
-        return false;
-    }
-
-    let path_val = unsafe { sm::sm_string_value(path_str) };
-    let id_name = b"id\0";
-    if !unsafe {
-        sm::sm_define_property_value(
-            cx,
-            info,
-            id_name.as_ptr(),
-            2, // "id" length
-            path_val,
-            0x1, // JSPROP_ENUMERATE
-        )
-    } {
-        return false;
-    }
-
-    let info_val = unsafe { sm::sm_object_value(info) };
-    unsafe { sm::sm_set_module_private(module_obj, info_val) };
-    true
-}
-
 // ── Module hooks ─────────────────────────────────────────────────────────────
 
 /// Module resolve hook — called by SpiderMonkey when it encounters an import.
@@ -577,6 +508,11 @@ unsafe extern "C" fn module_resolve_hook(
         Some(l) => l,
         None => return -1,
     };
+
+    // Root the referencing private value — it's a copy of the JSVal from
+    // the C++ lambda's HandleValue. SM API calls below can trigger GC which
+    // would leave this copy stale if the contained object moves.
+    rooted_value!(in(cx) let private_rooted = referencing_private);
 
     // Get specifier as UTF-8
     let mut spec_len: u32 = 0;
@@ -597,17 +533,20 @@ unsafe extern "C" fn module_resolve_hook(
 
     // Check if it's a builtin module
     let specifier_val = sm::sm_string_value(specifier);
-    let mut builtin_val: sm::JSVal = sm::JSVAL_UNDEFINED;
-    if sm::sm_map_get(cx, loader.builtin_modules_handle, specifier_val, &mut builtin_val)
-        && !sm::sm_value_is_undefined(builtin_val)
+    rooted_value!(in(cx) let mut builtin_val = sm::JSVAL_UNDEFINED);
+    let mut builtin_raw: sm::JSVal = sm::JSVAL_UNDEFINED;
+    if sm::sm_map_get(cx, loader.builtin_modules_handle, specifier_val, &mut builtin_raw)
+        && !sm::sm_value_is_undefined(builtin_raw)
     {
+        builtin_val.set(builtin_raw);
         sm::sm_free(spec_bytes as *mut c_void);
-        let builtin_obj = sm::sm_value_to_object(builtin_val);
+        let builtin_obj = sm::sm_value_to_object(builtin_val.get());
         return loader.get_builtin_module(specifier, builtin_obj);
     }
 
     // Get the referencing module's path from its private value
-    let parent_path = get_module_path(cx, referencing_private);
+    // Use the rooted copy to ensure the object pointer is up-to-date.
+    let parent_path = get_module_path(cx, private_rooted.get());
 
     // Resolve the specifier relative to the parent path
     let spec_owned = spec_str.to_string();
@@ -625,14 +564,16 @@ unsafe fn get_module_path(cx: *mut sm::JSContext, private_val: sm::JSVal) -> Str
     if !sm::sm_value_is_object(private_val) {
         return String::from("./");
     }
-    let info_obj = sm::sm_value_to_object(private_val);
-    if info_obj.is_null() {
+    // Root the info object so it survives any GC triggered by sm_get_property.
+    let info_raw = sm::sm_value_to_object(private_val);
+    if info_raw.is_null() {
         return String::from("./");
     }
+    rooted_object!(in(cx) let info_obj = info_raw);
 
     let id_name = b"id\0";
     let mut id_val: sm::JSVal = sm::JSVAL_UNDEFINED;
-    if !sm::sm_get_property(cx, info_obj, id_name.as_ptr(), 2, &mut id_val) {
+    if !sm::sm_get_property(cx, info_obj.get(), id_name.as_ptr(), 2, &mut id_val) {
         return String::from("./");
     }
     if !sm::sm_value_is_string(id_val) {
@@ -669,34 +610,43 @@ unsafe extern "C" fn module_metadata_hook(
         None => return false,
     };
 
+    // Root the module private and meta object across SM API calls.
+    rooted_value!(in(cx) let private_rooted = module_private);
+    rooted_object!(in(cx) let meta_rooted = meta_object);
+
     // Get the module's id from private
-    if !sm::sm_value_is_object(module_private) {
+    if !sm::sm_value_is_object(private_rooted.get()) {
         return false;
     }
-    let info_obj = sm::sm_value_to_object(module_private);
-    if info_obj.is_null() {
+    let info_raw = sm::sm_value_to_object(private_rooted.get());
+    if info_raw.is_null() {
         return false;
     }
+    rooted_object!(in(cx) let info_obj = info_raw);
 
     let id_name = b"id\0";
-    let mut id_val: sm::JSVal = sm::JSVAL_UNDEFINED;
-    if !sm::sm_get_property(cx, info_obj, id_name.as_ptr(), 2, &mut id_val) {
+    rooted_value!(in(cx) let mut id_val = sm::JSVAL_UNDEFINED);
+    let mut id_raw: sm::JSVal = sm::JSVAL_UNDEFINED;
+    if !sm::sm_get_property(cx, info_obj.get(), id_name.as_ptr(), 2, &mut id_raw) {
         return false;
     }
-    if !sm::sm_value_is_string(id_val) {
+    id_val.set(id_raw);
+    if !sm::sm_value_is_string(id_val.get()) {
         return false;
     }
 
     // Check if this module's id matches a builtin module
-    let mut builtin_val: sm::JSVal = sm::JSVAL_UNDEFINED;
-    if !sm::sm_map_get(cx, loader.builtin_modules_handle, id_val, &mut builtin_val) {
+    rooted_value!(in(cx) let mut builtin_val = sm::JSVAL_UNDEFINED);
+    let mut builtin_raw: sm::JSVal = sm::JSVAL_UNDEFINED;
+    if !sm::sm_map_get(cx, loader.builtin_modules_handle, id_val.get(), &mut builtin_raw) {
         return false;
     }
-    if sm::sm_value_is_undefined(builtin_val) {
+    builtin_val.set(builtin_raw);
+    if sm::sm_value_is_undefined(builtin_val.get()) {
         return false;
     }
 
     // Set import.meta.builtin = <the builtin object>
     let prop_name = b"builtin\0";
-    sm::sm_set_property(cx, meta_object, prop_name.as_ptr(), 7, builtin_val)
+    sm::sm_set_property(cx, meta_rooted.get(), prop_name.as_ptr(), 7, builtin_val.get())
 }

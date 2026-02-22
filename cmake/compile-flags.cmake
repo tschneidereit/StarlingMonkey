@@ -25,6 +25,7 @@ if (HOST_API MATCHES "wasi-0\\.3")
         "\"-Wl,--export=[callback][async-lift]wasi:http/handler@0.3.0-rc-2026-01-06#handle\""
         "\"-Wl,--export=[async-lift]wasi:cli/run@0.3.0-rc-2026-01-06#run\""
         "\"-Wl,--export=[callback][async-lift]wasi:cli/run@0.3.0-rc-2026-01-06#run\""
+        "-Wl,--export=cabi_realloc"
     )
 else()
     list(APPEND CMAKE_EXE_LINKER_FLAGS

@@ -3,7 +3,7 @@ use crate::http_body;
 use std::future::Future;
 use std::pin::Pin;
 use wasip3::http::types::{ErrorCode, Fields, Method, Request, Response, Scheme};
-use wit_bindgen::rt::async_support::{FutureReader, FutureWriter, StreamReader, StreamWriter};
+use wit_bindgen::rt::async_support::{FutureReader, FutureWriter, StreamReader};
 
 use core::cell::RefCell;
 

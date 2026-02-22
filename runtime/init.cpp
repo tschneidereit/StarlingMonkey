@@ -8,6 +8,7 @@
  *   3. Weak main() stub for WASI reactor model
  */
 
+#include <cerrno>
 #include <ctime>
 #include <cstdlib>
 #include <wasi/api.h>

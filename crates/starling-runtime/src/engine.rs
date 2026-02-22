@@ -76,12 +76,14 @@ impl Engine {
             return Err("Failed to create JSContext");
         }
 
-        if !unsafe { sm::sm_init_self_hosted_code(cx) } {
-            return Err("Failed to init self-hosted code");
-        }
-
+        // UseInternalJobQueues must be called BEFORE InitSelfHostedCode.
+        // Self-hosted code may use promises, which require the job queue.
         if !unsafe { sm::sm_use_internal_job_queues(cx) } {
             return Err("Failed to init internal job queues");
+        }
+
+        if !unsafe { sm::sm_init_self_hosted_code(cx) } {
+            return Err("Failed to init self-hosted code");
         }
 
         // Enable Portable Baseline Interpreter if configured via env
@@ -95,8 +97,12 @@ impl Engine {
             return Err("Failed to create content global");
         }
 
-        // Fix Math.random to use WASI random instead of SM's PRNG
+        // Enter the content global's realm — must be in-realm before any
+        // allocations (fix_math_random, NewSetObject) or SM's GC will trap.
         let content_global = unsafe { sm::sm_get_persistent_rooted(content_global_handle) };
+        let _old_realm = unsafe { sm::sm_enter_realm(cx, content_global) };
+
+        // Fix Math.random to use WASI random instead of SM's PRNG
         if !unsafe { sm::sm_fix_math_random(cx, content_global, Some(math_random_wasi)) } {
             return Err("Failed to fix Math.random");
         }
@@ -125,16 +131,14 @@ impl Engine {
             ENGINE = &mut *engine;
         }
 
-        // Enter the content global's realm
-        let _old_realm = unsafe { sm::sm_enter_realm(cx, content_global) };
-
         // Set up promise rejection tracking
         unsafe {
             sm::sm_set_promise_rejection_tracker(cx, Some(rejection_tracker), core::ptr::null_mut());
         }
 
         // Create the script loader
-        let script_loader = ScriptLoader::new(cx)?;
+        let mut script_loader = ScriptLoader::new(cx)?;
+        script_loader.set_path_prefix(engine.config.path_prefix.clone());
         engine.script_loader = Some(script_loader);
 
         // Create the initializer global (same compartment as content)
@@ -196,6 +200,11 @@ impl Engine {
         }
 
         Ok(engine)
+    }
+
+    /// Check if the engine has been initialized (e.g., by wizer).
+    pub fn is_initialized() -> bool {
+        unsafe { !ENGINE.is_null() }
     }
 
     /// Get the engine singleton. Only valid after init.
@@ -406,27 +415,29 @@ impl Engine {
         let module_mode = self.config.module_mode();
         let content_global = self.global();
 
-        // Take the script loader temporarily to get &mut access
-        let mut loader = match self.script_loader.take() {
+        // Use as_mut() so the loader stays in self — module resolve hooks
+        // call Engine::get().script_loader() and need to find Some(_).
+        let loader = match self.script_loader.as_mut() {
             Some(l) => l,
             None => return false,
         };
 
         let result = loader.eval_top_level_script(source, path, module_mode, content_global);
 
-        // Put it back
-        self.script_loader = Some(loader);
-
         let script_val = match result {
             Ok(val) => val,
-            Err(e) => {
-                eprintln!("Failed to evaluate script: {e}");
+            Err(_e) => {
+                eprintln!("Exception while evaluating top-level script");
                 if unsafe { sm::sm_is_exception_pending(cx) } {
                     unsafe { sm::sm_print_pending_exception(cx) };
                 }
                 return false;
             }
         };
+
+        // Root the script value (typically the module eval promise) across
+        // the sync event loop, which can trigger GC.
+        rooted_value!(in(cx) let script_val_rooted = script_val);
 
         // Store the script value as a persistent root
         // For modules, this is the namespace object. For scripts, typically undefined.
@@ -453,14 +464,18 @@ impl Engine {
         // Run the synchronous event loop (for pre-init / immediate tasks)
         self.run_sync_event_loop();
 
-        // Check for TLA (top-level await) rejection
-        if module_mode && unsafe { sm::sm_value_is_object(script_val) } {
-            let promise_obj = unsafe { sm::sm_value_to_object(script_val) };
+        // Check for TLA (top-level await) rejection — use the rooted value
+        // since GC may have run during the sync event loop.
+        if module_mode && unsafe { sm::sm_value_is_object(script_val_rooted.get()) } {
+            let promise_obj = unsafe { sm::sm_value_to_object(script_val_rooted.get()) };
             if !promise_obj.is_null() {
-                let state = unsafe { sm::sm_get_promise_state(cx, promise_obj) };
+                rooted_object!(in(cx) let promise_rooted = promise_obj);
+                let state = unsafe { sm::sm_get_promise_state(cx, promise_rooted.get()) };
                 if state == sm::PROMISE_STATE_REJECTED {
-                    let result_bits = unsafe { sm::sm_get_promise_result(cx, promise_obj) };
+                    let result_bits = unsafe { sm::sm_get_promise_result(cx, promise_rooted.get()) };
                     unsafe { sm::sm_set_pending_exception(cx, result_bits) };
+                    eprintln!("Exception while evaluating top-level script");
+                    unsafe { sm::sm_print_pending_exception(cx) };
                     return false;
                 }
             }

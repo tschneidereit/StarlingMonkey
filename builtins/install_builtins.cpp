@@ -7,7 +7,7 @@
 #include "builtins.incl"
 #undef NS_DEF
 
-bool install_builtins(api::Engine *engine) {
+extern "C" bool install_builtins(api::Engine *engine) {
 #define NS_DEF(ns)                                                                                 \
   if (!ns::install(engine))                                                                        \
     return false;

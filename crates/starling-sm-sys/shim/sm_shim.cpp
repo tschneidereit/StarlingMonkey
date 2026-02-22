@@ -112,11 +112,10 @@ void *sm_get_context_private(JSContext *cx) {
 
 // ── Globals & realms ─────────────────────────────────────────────────────────
 
-static JSClassOps g_global_class_ops = {};
 static JSClass g_global_class = {
     "global",
     JSCLASS_GLOBAL_FLAGS,
-    &g_global_class_ops
+    &JS::DefaultGlobalClassOps
 };
 
 extern "C" {
@@ -241,6 +240,94 @@ int32_t sm_compile_module(
     if (!module) return -1;
 
     return alloc_persistent_root(cx, module);
+}
+
+/// Compile a module, set its private info `{id: resolved_path}`, and cache it
+/// in the module registry map. All intermediate GC things are properly rooted.
+///
+/// Returns the persistent root handle for the module, or -1 on failure.
+int32_t sm_compile_and_register_module(
+    JSContext *cx,
+    const uint8_t *source, uint32_t source_len,
+    const uint8_t *display_path, uint32_t display_path_len,
+    const uint8_t *resolved_path, uint32_t resolved_path_len,
+    int32_t registry_handle
+) {
+    JS::SourceText<mozilla::Utf8Unit> srcBuf;
+    if (!srcBuf.init(cx, reinterpret_cast<const char*>(source), source_len,
+                     JS::SourceOwnership::Borrowed)) {
+        return -1;
+    }
+
+    std::string dpath(reinterpret_cast<const char*>(display_path), display_path_len);
+    JS::CompileOptions opts(cx);
+    opts.setFileAndLine(dpath.c_str(), 1);
+
+    JS::RootedObject module(cx, JS::CompileModule(cx, opts, srcBuf));
+    if (!module) return -1;
+
+    // Create info object {id: resolved_path} as module private
+    JS::RootedObject info(cx, JS_NewPlainObject(cx));
+    if (!info) return -1;
+
+    JS::RootedString path_str(cx, JS_NewStringCopyN(cx,
+        reinterpret_cast<const char*>(resolved_path), resolved_path_len));
+    if (!path_str) return -1;
+
+    JS::RootedValue path_val(cx, JS::StringValue(path_str));
+    if (!JS_DefineProperty(cx, info, "id", path_val, JSPROP_ENUMERATE)) {
+        return -1;
+    }
+
+    JS::SetModulePrivate(module, JS::ObjectValue(*info));
+
+    // Cache in registry map keyed by resolved path
+    JSObject *registry = sm_get_persistent_rooted(registry_handle);
+    if (!registry) return -1;
+    JS::RootedObject rregistry(cx, registry);
+    JS::RootedValue key_val(cx, JS::StringValue(path_str));
+    JS::RootedValue module_val(cx, JS::ObjectValue(*module));
+    if (!JS::MapSet(cx, rregistry, key_val, module_val)) {
+        return -1;
+    }
+
+    return alloc_persistent_root(cx, module);
+}
+
+/// Set module private to {id: id_str} and cache in registry map. All
+/// intermediate GC things are properly rooted.
+/// Returns the module's persistent root handle, or -1 on failure.
+int32_t sm_register_module(
+    JSContext *cx,
+    int32_t module_handle,
+    JS::Value id_val,
+    int32_t registry_handle
+) {
+    JSObject *module_raw = sm_get_persistent_rooted(module_handle);
+    if (!module_raw) return -1;
+    JS::RootedObject module(cx, module_raw);
+
+    // Create info object {id: ...} as module private
+    JS::RootedObject info(cx, JS_NewPlainObject(cx));
+    if (!info) return -1;
+
+    JS::RootedValue rid(cx, id_val);
+    if (!JS_DefineProperty(cx, info, "id", rid, JSPROP_ENUMERATE)) {
+        return -1;
+    }
+
+    JS::SetModulePrivate(module, JS::ObjectValue(*info));
+
+    // Cache in registry map
+    JSObject *registry = sm_get_persistent_rooted(registry_handle);
+    if (!registry) return -1;
+    JS::RootedObject rregistry(cx, registry);
+    JS::RootedValue module_val(cx, JS::ObjectValue(*module));
+    if (!JS::MapSet(cx, rregistry, rid, module_val)) {
+        return -1;
+    }
+
+    return module_handle;
 }
 
 bool sm_module_link(JSContext *cx, int32_t module_handle) {
@@ -626,6 +713,107 @@ uint8_t *sm_capture_stack_string(JSContext *cx, uint32_t *out_len) {
     return buf;
 }
 
+// ── Error formatting ─────────────────────────────────────────────────────────
+
+// Internal: dump an error value with message, stack, and cause chain.
+// Mutually recursive with print_cause.
+static void dump_error_impl(JSContext *cx, JS::HandleValue error,
+                            bool *has_stack, FILE *fp);
+
+static void print_stack_obj(JSContext *cx, JS::HandleObject stack, FILE *fp) {
+    JS::RootedString stackStr(cx);
+    if (!JS::BuildStackString(cx, nullptr, stack, &stackStr, 2)) {
+        return;
+    }
+    JS::UniqueChars chars = JS_EncodeStringToUTF8(cx, stackStr);
+    if (chars) {
+        fprintf(fp, "%s\n", chars.get());
+    }
+}
+
+static void print_cause(JSContext *cx, JS::HandleValue error, FILE *fp) {
+    if (!error.isObject()) return;
+    JS::RootedObject err(cx, &error.toObject());
+    bool has_cause = false;
+    if (!JS_HasProperty(cx, err, "cause", &has_cause) || !has_cause) return;
+
+    JS::RootedValue cause_val(cx);
+    if (!JS_GetProperty(cx, err, "cause", &cause_val)) return;
+
+    fprintf(fp, "Caused by: ");
+    bool has_stack = false;
+    dump_error_impl(cx, cause_val, &has_stack, fp);
+}
+
+static void dump_error_impl(JSContext *cx, JS::HandleValue error,
+                            bool *has_stack, FILE *fp) {
+    bool reported = false;
+    JS::RootedObject stack(cx);
+
+    if (error.isObject()) {
+        JS::RootedObject err(cx, &error.toObject());
+        JSErrorReport *report = JS_ErrorFromException(cx, err);
+        if (report) {
+            fprintf(fp, "%s\n", report->message().c_str());
+            reported = true;
+        }
+        stack = JS::ExceptionStackOrNull(err);
+    }
+
+    // If the rejection reason isn't an Error object, dump value as-is.
+    if (!reported) {
+        JS::RootedString str(cx, JS_ValueToSource(cx, error));
+        if (str) {
+            JS::UniqueChars chars = JS_EncodeStringToUTF8(cx, str);
+            if (chars) {
+                fprintf(fp, "%s\n", chars.get());
+            }
+        }
+    }
+
+    if (stack) {
+        *has_stack = true;
+        fprintf(fp, "Stack:\n");
+        print_stack_obj(cx, stack, fp);
+    } else {
+        *has_stack = false;
+    }
+
+    print_cause(cx, error, fp);
+}
+
+/// Dump an error value to stderr with message, stack, and cause chain.
+/// This is the extern "C" entry point for the Rust side.
+void sm_dump_error(JSContext *cx, uint64_t error_bits) {
+    JS::Value val;
+    memcpy(&val, &error_bits, sizeof(val));
+    JS::RootedValue error(cx, val);
+    bool has_stack = false;
+    dump_error_impl(cx, error, &has_stack, stderr);
+    fflush(stderr);
+}
+
+/// Dump a promise rejection reason to stderr, with fallback to promise
+/// resolution site stack if the reason itself has no stack.
+void sm_dump_promise_rejection(JSContext *cx, uint64_t reason_bits,
+                               JSObject *promise_raw) {
+    JS::Value val;
+    memcpy(&val, &reason_bits, sizeof(val));
+    JS::RootedValue reason(cx, val);
+    bool has_stack = false;
+    dump_error_impl(cx, reason, &has_stack, stderr);
+
+    if (!has_stack) {
+        JS::RootedObject promise(cx, promise_raw);
+        JS::RootedObject stack(cx, JS::GetPromiseResolutionSite(promise));
+        if (stack) {
+            fprintf(stderr, "Stack:\n");
+            print_stack_obj(cx, stack, stderr);
+        }
+    }
+    fflush(stderr);
+}
+
 } // extern "C"
 
 // ── MapObject operations ─────────────────────────────────────────────────────
@@ -888,6 +1076,94 @@ bool sm_get_own_property_names(
     *out_strings = strings;
     *out_count = count;
     return true;
+}
+
+} // extern "C"
+
+// ── Stack rooting via placement new ──────────────────────────────────────────
+//
+// These functions let Rust create/destroy SM's Rooted<T> in Rust-allocated
+// memory. Rooted<T> pushes itself onto the context's root stack on
+// construction and pops on destruction, so GC can trace & update all roots.
+
+// Verify Rooted<T> sizes at compile time (wasm32: pointer = 4 bytes).
+static_assert(sizeof(JS::Rooted<JSObject*>) == 3 * sizeof(void*),
+    "Rooted<JSObject*> layout mismatch — expected 3 pointers (stack, prev, ptr)");
+static_assert(sizeof(JS::Rooted<JSString*>) == 3 * sizeof(void*),
+    "Rooted<JSString*> layout mismatch — expected 3 pointers");
+static_assert(sizeof(JS::Rooted<JS::Value>) == 2 * sizeof(void*) + sizeof(JS::Value),
+    "Rooted<Value> layout mismatch — expected 2 pointers + Value");
+
+extern "C" {
+
+// ── Rooted<JSObject*> ───────────────────────────────────────────────────────
+
+uint32_t sm_rooted_object_size()  { return sizeof(JS::Rooted<JSObject*>); }
+uint32_t sm_rooted_object_align() { return alignof(JS::Rooted<JSObject*>); }
+
+void sm_root_object_init(JSContext *cx, void *storage, JSObject *initial) {
+    new (storage) JS::Rooted<JSObject*>(cx, initial);
+}
+
+JSObject *sm_root_object_get(const void *storage) {
+    return static_cast<const JS::Rooted<JSObject*>*>(storage)->get();
+}
+
+void sm_root_object_set(void *storage, JSObject *value) {
+    static_cast<JS::Rooted<JSObject*>*>(storage)->set(value);
+}
+
+void sm_root_object_drop(void *storage) {
+    static_cast<JS::Rooted<JSObject*>*>(storage)->~Rooted();
+}
+
+// ── Rooted<JS::Value> ───────────────────────────────────────────────────────
+
+uint32_t sm_rooted_value_size()  { return sizeof(JS::Rooted<JS::Value>); }
+uint32_t sm_rooted_value_align() { return alignof(JS::Rooted<JS::Value>); }
+
+void sm_root_value_init(JSContext *cx, void *storage, uint64_t initial_bits) {
+    JS::Value val;
+    memcpy(&val, &initial_bits, sizeof(val));
+    new (storage) JS::Rooted<JS::Value>(cx, val);
+}
+
+uint64_t sm_root_value_get(const void *storage) {
+    JS::Value val = static_cast<const JS::Rooted<JS::Value>*>(storage)->get();
+    uint64_t bits;
+    memcpy(&bits, &val, sizeof(bits));
+    return bits;
+}
+
+void sm_root_value_set(void *storage, uint64_t val_bits) {
+    JS::Value val;
+    memcpy(&val, &val_bits, sizeof(val));
+    static_cast<JS::Rooted<JS::Value>*>(storage)->set(val);
+}
+
+void sm_root_value_drop(void *storage) {
+    static_cast<JS::Rooted<JS::Value>*>(storage)->~Rooted();
+}
+
+// ── Rooted<JSString*> ───────────────────────────────────────────────────────
+
+uint32_t sm_rooted_string_size()  { return sizeof(JS::Rooted<JSString*>); }
+uint32_t sm_rooted_string_align() { return alignof(JS::Rooted<JSString*>); }
+
+void sm_root_string_init(JSContext *cx, void *storage, JSString *initial) {
+    new (storage) JS::Rooted<JSString*>(cx, initial);
+}
+
+JSString *sm_root_string_get(const void *storage) {
+    return static_cast<const JS::Rooted<JSString*>*>(storage)->get();
+}
+
+void sm_root_string_set(void *storage, JSString *value) {
+    static_cast<JS::Rooted<JSString*>*>(storage)->set(value);
+}
+
+void sm_root_string_drop(void *storage) {
+    static_cast<JS::Rooted<JSString*>*>(storage)->~Rooted();
 }
 
 } // extern "C"

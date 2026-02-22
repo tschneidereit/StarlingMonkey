@@ -16,6 +16,8 @@
 
 pub mod allocator;
 pub mod config;
+#[macro_use]
+pub mod rooting;
 pub mod engine;
 pub mod entry;
 pub mod script_loader;

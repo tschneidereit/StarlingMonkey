@@ -3,7 +3,7 @@
 //! Replaces `runtime/js.cpp`. Provides wizer pre-initialization, CLI run,
 //! lazy init from environment, and clock offset handling for wizer resume.
 
-use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::config::EngineConfig;
 use crate::engine::Engine;
@@ -12,8 +12,6 @@ use crate::engine::Engine;
 /// monotonicity across wizer snapshot resumptions.
 static MONO_CLOCK_OFFSET: AtomicU64 = AtomicU64::new(0);
 
-/// Whether the engine has been initialized.
-static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 extern "C" {
     /// WASI clock API
@@ -58,10 +56,10 @@ pub unsafe extern "C" fn starling_wizer_init() {
             engine.finish_pre_initialization();
             // Leak the engine — wizer will snapshot the memory
             let _ = Box::into_raw(engine);
-            INITIALIZED.store(true, Ordering::SeqCst);
         }
         Err(e) => {
             eprintln!("StarlingMonkey wizer init failed: {e}");
+            std::process::exit(1);
         }
     }
 
@@ -82,8 +80,8 @@ pub unsafe extern "C" fn starling_wizer_init() {
 /// Called from C++ request handler and other entry points.
 #[no_mangle]
 pub unsafe extern "C" fn starling_init_from_environment() -> bool {
-    if INITIALIZED.load(Ordering::SeqCst) {
-        return true;
+    if Engine::is_initialized() {
+        return true;  // Already initialized (e.g., by wizer)
     }
 
     let config = match EngineConfig::from_env() {
@@ -95,7 +93,6 @@ pub unsafe extern "C" fn starling_init_from_environment() -> bool {
         Ok(engine) => {
             // Leak the engine — it lives for the process lifetime
             let _ = Box::into_raw(engine);
-            INITIALIZED.store(true, Ordering::SeqCst);
             true
         }
         Err(e) => {
@@ -121,7 +118,7 @@ pub unsafe extern "C" fn init_from_environment() -> bool {
 /// Called from C++ `starling_cli_run` in host_api.cpp.
 #[no_mangle]
 pub unsafe extern "C" fn starling_cli_run_init() -> bool {
-    if INITIALIZED.load(Ordering::SeqCst) {
+    if Engine::is_initialized() {
         return true;
     }
 
@@ -136,7 +133,6 @@ pub unsafe extern "C" fn starling_cli_run_init() -> bool {
     match Engine::new(config) {
         Ok(engine) => {
             let _ = Box::into_raw(engine);
-            INITIALIZED.store(true, Ordering::SeqCst);
             true
         }
         Err(e) => {
