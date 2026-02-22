@@ -1,0 +1,10 @@
+[package]
+name = "starling-sm-sys"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SpiderMonkey C++ FFI bindings for the StarlingMonkey runtime"
+links = "spidermonkey"
+
+[build-dependencies]
+cc = { workspace = true }

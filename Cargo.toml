@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/starling",
+    "crates/starling-runtime",
+    "crates/starling-sm-sys",
+    "crates/starling-builtins",
+    "crates/starling-host-api",
+    "crates/starling-url",
+    "crates/starling-encoding",
+    "crates/starling-hooks",
+    "crates/starling-multipart",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0 WITH LLVM-exception"
+
+[workspace.dependencies]
+# Internal crates
+starling-runtime = { path = "crates/starling-runtime" }
+starling-host-api = { path = "crates/starling-host-api" }
+starling-sm-sys = { path = "crates/starling-sm-sys" }
+starling-builtins = { path = "crates/starling-builtins" }
+starling-url = { path = "crates/starling-url" }
+starling-encoding = { path = "crates/starling-encoding" }
+starling-hooks = { path = "crates/starling-hooks" }
+starling-multipart = { path = "crates/starling-multipart" }
+
+# External dependencies
+clap = { version = "4", features = ["derive"] }
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+wasip3 = "0.4"
+wit-bindgen = { version = "0.51", features = ["async-spawn"] }
+cc = "1"
+
+[profile.release]
+lto = true
+panic = "abort"
+opt-level = "s"
+
+[profile.dev]
+panic = "abort"

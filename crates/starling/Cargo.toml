@@ -1,0 +1,45 @@
+[package]
+name = "starling"
+version = "0.1.0"
+edition = "2021"
+description = "StarlingMonkey — SpiderMonkey-based JS runtime targeting WebAssembly (WASIp3)"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = ["builtins-full", "debugger"]
+builtins-full = ["starling-builtins/full"]
+debugger = ["starling-runtime/debugger"]
+
+# Individual builtin feature forwarding
+base64 = ["starling-builtins/base64"]
+blob = ["starling-builtins/blob"]
+console = ["starling-builtins/console"]
+crypto = ["starling-builtins/crypto"]
+dom-exception = ["starling-builtins/dom-exception"]
+event = ["starling-builtins/event"]
+abort = ["starling-builtins/abort"]
+fetch = ["starling-builtins/fetch"]
+fetch-event = ["starling-builtins/fetch-event"]
+file = ["starling-builtins/file"]
+form-data = ["starling-builtins/form-data"]
+global-self = ["starling-builtins/global-self"]
+performance = ["starling-builtins/performance"]
+queue-microtask = ["starling-builtins/queue-microtask"]
+streams = ["starling-builtins/streams"]
+structured-clone = ["starling-builtins/structured-clone"]
+text-codec = ["starling-builtins/text-codec"]
+timers = ["starling-builtins/timers"]
+url = ["starling-builtins/url"]
+worker-location = ["starling-builtins/worker-location"]
+
+[dependencies]
+starling-runtime = { workspace = true }
+starling-host-api = { workspace = true }
+starling-builtins = { workspace = true }
+starling-sm-sys = { workspace = true }
+starling-encoding = { workspace = true }
+starling-hooks = { workspace = true }
+starling-url = { workspace = true }
+starling-multipart = { workspace = true, features = ["capi", "simd"] }

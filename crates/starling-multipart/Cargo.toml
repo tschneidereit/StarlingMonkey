@@ -1,9 +1,5 @@
-[workspace]
-resolver = "2"
-members = ["fuzz"]
-
 [package]
-name = "multipart"
+name = "starling-multipart"
 version = "0.1.0"
 edition = "2021"
 

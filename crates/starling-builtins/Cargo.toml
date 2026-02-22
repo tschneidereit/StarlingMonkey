@@ -1,0 +1,41 @@
+[package]
+name = "starling-builtins"
+version = "0.1.0"
+edition = "2021"
+description = "C++ builtins for StarlingMonkey, compiled via CMake sub-build"
+build = "build.rs"
+
+[features]
+default = ["full"]
+full = [
+    "base64", "blob", "console", "crypto", "dom-exception", "event",
+    "abort", "fetch", "fetch-event", "file", "form-data",
+    "global-self", "performance", "queue-microtask", "streams",
+    "structured-clone", "text-codec", "timers", "url", "worker-location",
+]
+base64 = []
+blob = []
+console = []
+crypto = []
+dom-exception = []
+event = []
+abort = []
+fetch = []
+fetch-event = ["fetch"]
+file = ["blob"]
+form-data = []
+global-self = []
+performance = []
+queue-microtask = []
+streams = []
+structured-clone = []
+text-codec = []
+timers = []
+url = []
+worker-location = []
+
+[build-dependencies]
+cc = { workspace = true }
+
+[dependencies]
+starling-sm-sys = { workspace = true }

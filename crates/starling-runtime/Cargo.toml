@@ -1,0 +1,15 @@
+[package]
+name = "starling-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "StarlingMonkey JS runtime core — engine, module loader, config, and entry points"
+
+[dependencies]
+starling-sm-sys = { workspace = true }
+starling-host-api = { workspace = true }
+clap = { workspace = true }
+
+[features]
+default = []
+debugger = []

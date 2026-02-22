@@ -1,8 +1,8 @@
 [package]
-name = "rust-hooks"
+name = "starling-hooks"
 version = "0.1.0"
 edition = "2021"
-description = "A library for managing git hooks in Rust, copied from Gecko"
+description = "SpiderMonkey panic/crash hooks, copied from Gecko"
 license = "MPL-2.0"
 
 [dependencies]

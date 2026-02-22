@@ -1,5 +1,5 @@
 [package]
-name = "rust-encoding"
+name = "starling-encoding"
 version = "0.1.0"
 edition = "2021"
 description = "Character encoding library used by SpiderMonkey and web builtins"
