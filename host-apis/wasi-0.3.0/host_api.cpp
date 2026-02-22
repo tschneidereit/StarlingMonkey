@@ -949,10 +949,4 @@ void block_on_pollable_handle(PollableHandle handle) {
   host_api_pollable_block(handle);
 }
 
-/// Called from Rust exports module for CLI run.
-extern "C" bool starling_cli_run() {
-  extern bool exports_wasi_cli_run_run();
-  return exports_wasi_cli_run_run();
-}
-
 } // namespace host_api

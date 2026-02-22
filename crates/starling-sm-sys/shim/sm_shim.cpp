@@ -123,6 +123,7 @@ extern "C" {
 
 int32_t sm_new_global(JSContext *cx) {
     JS::RealmOptions options;
+    options.creationOptions().setStreamsEnabled(true);
     JS::RootedObject global(cx, JS_NewGlobalObject(cx, &g_global_class, nullptr,
                                                     JS::FireOnNewGlobalHook, options));
     if (!global) return -1;
@@ -722,6 +723,132 @@ void sm_set_clear(JSContext *cx, int32_t set_handle) {
     if (!set) return;
     JS::RootedObject rset(cx, set);
     JS::SetClear(cx, rset);
+}
+
+uint32_t sm_set_size(JSContext *cx, int32_t set_handle) {
+    JSObject *set = sm_get_persistent_rooted(set_handle);
+    if (!set) return 0;
+    JS::RootedObject rset(cx, set);
+    return JS::SetSize(cx, rset);
+}
+
+} // extern "C"
+
+// ── Exception setting ────────────────────────────────────────────────────────
+
+extern "C" {
+
+void sm_set_pending_exception(JSContext *cx, JS::Value val) {
+    JS::RootedValue rval(cx, val);
+    JS_SetPendingException(cx, rval);
+}
+
+} // extern "C"
+
+// ── Global creation variants ─────────────────────────────────────────────────
+
+extern "C" {
+
+/// Create a new global in the same compartment as an existing global.
+/// Enables streams and does NOT fire OnNewGlobalHook.
+/// Returns a persistent root handle or -1 on failure.
+int32_t sm_new_global_same_compartment(JSContext *cx, JSObject *existing_global) {
+    JS::RealmOptions options;
+    options.creationOptions()
+        .setStreamsEnabled(true)
+        .setExistingCompartment(existing_global);
+
+    static JSClass global_class = {
+        "global",
+        JSCLASS_GLOBAL_FLAGS,
+        &JS::DefaultGlobalClassOps
+    };
+
+    JS::RootedObject global(cx, JS_NewGlobalObject(cx, &global_class, nullptr,
+                                                    JS::DontFireOnNewGlobalHook, options));
+    if (!global) return -1;
+
+    JSAutoRealm ar(cx, global);
+    if (!JS::InitRealmStandardClasses(cx)) return -1;
+
+    return alloc_persistent_root(cx, global);
+}
+
+} // extern "C"
+
+// ── GC extensions ────────────────────────────────────────────────────────────
+
+extern "C" {
+
+/// Run a shrinking GC (used after script compilation during pre-init).
+void sm_gc_shrink(JSContext *cx) {
+    JS::PrepareForFullGC(cx);
+    JS::NonIncrementalGC(cx, JS::GCOptions::Shrink, JS::GCReason::API);
+}
+
+/// Reset the Math.random seed (used after wizer pre-initialization).
+void sm_reset_math_random_seed(JSContext *cx) {
+    js::ResetMathRandomSeed(cx);
+}
+
+} // extern "C"
+
+// ── Math.random fix (use WASI randomness) ────────────────────────────────────
+
+extern "C" {
+
+/// Fix Math.random on a global to use WASI random instead of SM's PRNG.
+/// This is important for deterministic wizer snapshots and server randomness.
+bool sm_fix_math_random(JSContext *cx, JSObject *global,
+                        bool (*random_fn)(JSContext*, unsigned, JS::Value*)) {
+    JS::RootedObject rglobal(cx, global);
+    JSAutoRealm ar(cx, rglobal);
+
+    JS::RootedValue math_val(cx);
+    if (!JS_GetProperty(cx, rglobal, "Math", &math_val)) return false;
+    JS::RootedObject math(cx, &math_val.toObject());
+
+    const JSFunctionSpec funs[] = {
+        JS_FN("random", random_fn, 0, 0),
+        JS_FS_END
+    };
+    return JS_DefineFunctions(cx, math, funs);
+}
+
+} // extern "C"
+
+// ── JS CallArgs helpers (for Rust native functions) ──────────────────────────
+
+extern "C" {
+
+/// Get an argument value from a JS native function's vp.
+JS::Value sm_call_args_get(uint32_t argc, JS::Value *vp, uint32_t index) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    return args.get(index);
+}
+
+/// Set the return value of a JS native function to undefined.
+void sm_call_args_rval_set_undefined(uint32_t argc, JS::Value *vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    args.rval().setUndefined();
+}
+
+/// Set the return value of a JS native function.
+void sm_call_args_rval_set(uint32_t argc, JS::Value *vp, JS::Value val) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    args.rval().set(val);
+}
+
+/// Create a plain JS object.
+JSObject *sm_new_plain_object(JSContext *cx) {
+    return JS_NewPlainObject(cx);
+}
+
+/// Allocate a persistent root for a JSObject, returning a handle.
+/// This is the public version of alloc_persistent_root.
+int32_t sm_alloc_persistent_root(JSContext *cx, JSObject *obj) {
+    if (!obj) return -1;
+    return alloc_persistent_root(cx, obj);
 }
 
 } // extern "C"

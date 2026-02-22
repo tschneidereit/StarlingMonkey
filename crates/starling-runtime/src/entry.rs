@@ -15,6 +15,24 @@ static MONO_CLOCK_OFFSET: AtomicU64 = AtomicU64::new(0);
 /// Whether the engine has been initialized.
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
+extern "C" {
+    /// WASI clock API
+    fn __wasi_clock_time_get(
+        clock_id: u32,
+        precision: u64,
+        time: *mut u64,
+    ) -> u16;
+
+    /// Deinitialize wasi-libc's cached environment
+    fn __wasilibc_deinitialize_environ();
+
+    /// Set the C-side mono_clock_offset (in init.cpp) for clock_gettime override.
+    fn starling_set_mono_clock_offset(offset: u64);
+}
+
+/// WASI clock IDs
+const CLOCKID_MONOTONIC: u32 = 1;
+
 /// Wizer pre-initialization entry point.
 ///
 /// Reads args from stdin, creates and initializes the engine in
@@ -50,6 +68,9 @@ pub unsafe extern "C" fn starling_wizer_init() {
     // Record the current monotonic time so we can ensure monotonicity
     // after wizer resume.
     update_mono_clock_offset();
+
+    // Deinitialize cached environ so it gets re-read after wizer resume.
+    __wasilibc_deinitialize_environ();
 }
 
 /// Initialize the runtime lazily from the environment.
@@ -58,7 +79,7 @@ pub unsafe extern "C" fn starling_wizer_init() {
 /// initialized (e.g., by wizer).
 ///
 /// # Safety
-/// Called from C++ request handler.
+/// Called from C++ request handler and other entry points.
 #[no_mangle]
 pub unsafe extern "C" fn starling_init_from_environment() -> bool {
     if INITIALIZED.load(Ordering::SeqCst) {
@@ -84,12 +105,20 @@ pub unsafe extern "C" fn starling_init_from_environment() -> bool {
     }
 }
 
-/// CLI run entry point.
+/// Direct extern "C" symbol called from C++ init.cpp `init_from_environment()`.
+/// This is the same as starling_init_from_environment but with the name the
+/// C++ request_handler.cpp expects.
+#[no_mangle]
+pub unsafe extern "C" fn init_from_environment() -> bool {
+    starling_init_from_environment()
+}
+
+/// CLI run entry point — called from host_api.cpp `starling_cli_run()`.
 ///
 /// Parses WASI CLI arguments to configure the engine.
 ///
 /// # Safety
-/// Called from C++ `exports_wasi_cli_run_run`.
+/// Called from C++ `starling_cli_run` in host_api.cpp.
 #[no_mangle]
 pub unsafe extern "C" fn starling_cli_run_init() -> bool {
     if INITIALIZED.load(Ordering::SeqCst) {
@@ -117,6 +146,21 @@ pub unsafe extern "C" fn starling_cli_run_init() -> bool {
     }
 }
 
+/// Direct extern "C" symbol for the WASI cli/run export.
+/// Called from host_api.cpp starling_cli_run → exports_wasi_cli_run_run chain.
+/// This cuts out one hop: starling_cli_run can just call this directly.
+#[no_mangle]
+pub unsafe extern "C" fn starling_cli_run() -> bool {
+    starling_cli_run_init()
+}
+
+/// Direct extern "C" symbol for the wasi:cli/run#run export.
+/// Called by the component model runtime.
+#[no_mangle]
+pub unsafe extern "C" fn exports_wasi_cli_run_run() -> bool {
+    starling_cli_run_init()
+}
+
 /// Get the monotonic clock offset.
 ///
 /// This is added to `CLOCK_MONOTONIC` readings to maintain monotonicity
@@ -127,14 +171,14 @@ pub fn mono_clock_offset() -> u64 {
 
 /// Update the monotonic clock offset after wizer snapshot.
 fn update_mono_clock_offset() {
-    // Read current monotonic time via WASI
-    // In the final build, this calls the WASI clock_time_get import.
-    // For now, store 0 — the actual WASI call will be wired up when
-    // the full build is functional.
-    // TODO: Wire up wasi:clocks/monotonic-clock.now() call
-    let _current = 0u64;
-    let prev = MONO_CLOCK_OFFSET.load(Ordering::Relaxed);
-    if _current > prev {
-        MONO_CLOCK_OFFSET.store(_current, Ordering::Relaxed);
+    let mut t: u64 = 0;
+    let err = unsafe { __wasi_clock_time_get(CLOCKID_MONOTONIC, 1, &mut t) };
+    if err == 0 {
+        let prev = MONO_CLOCK_OFFSET.load(Ordering::Relaxed);
+        if t > prev {
+            MONO_CLOCK_OFFSET.store(t, Ordering::Relaxed);
+        }
+        // Also update the C-side offset used by the clock_gettime override.
+        unsafe { starling_set_mono_clock_offset(MONO_CLOCK_OFFSET.load(Ordering::Relaxed)) };
     }
 }

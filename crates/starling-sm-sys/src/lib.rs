@@ -423,6 +423,69 @@ extern "C" {
 
     /// Clear all entries from a set.
     pub fn sm_set_clear(cx: *mut JSContext, set_handle: i32);
+
+    /// Get the number of entries in a set.
+    pub fn sm_set_size(cx: *mut JSContext, set_handle: i32) -> u32;
+}
+
+// ── Exception setting ────────────────────────────────────────────────────────
+
+extern "C" {
+    /// Set a pending exception on the context.
+    pub fn sm_set_pending_exception(cx: *mut JSContext, val: JSVal);
+}
+
+// ── Global creation variants ─────────────────────────────────────────────────
+
+extern "C" {
+    /// Create a new global in the same compartment as an existing global.
+    /// Enables streams and does NOT fire OnNewGlobalHook.
+    /// Returns a persistent root handle or -1 on failure.
+    pub fn sm_new_global_same_compartment(
+        cx: *mut JSContext,
+        existing_global: *mut JSObject,
+    ) -> i32;
+}
+
+// ── GC extensions ────────────────────────────────────────────────────────────
+
+extern "C" {
+    /// Run a shrinking GC (used after script compilation during pre-init).
+    pub fn sm_gc_shrink(cx: *mut JSContext);
+
+    /// Reset the Math.random seed (used after wizer pre-initialization).
+    pub fn sm_reset_math_random_seed(cx: *mut JSContext);
+
+    /// Fix Math.random on a global to use a custom random function.
+    pub fn sm_fix_math_random(
+        cx: *mut JSContext,
+        global: *mut JSObject,
+        random_fn: Option<unsafe extern "C" fn(*mut JSContext, u32, *mut JSVal) -> bool>,
+    ) -> bool;
+}
+
+// ── JS CallArgs helpers (for Rust native functions) ──────────────────────────
+
+extern "C" {
+    /// Get an argument value from a JS native function's vp.
+    pub fn sm_call_args_get(argc: u32, vp: *mut JSVal, index: u32) -> JSVal;
+
+    /// Set the return value of a JS native function to undefined.
+    pub fn sm_call_args_rval_set_undefined(argc: u32, vp: *mut JSVal);
+
+    /// Set the return value of a JS native function.
+    pub fn sm_call_args_rval_set(argc: u32, vp: *mut JSVal, val: JSVal);
+}
+
+// ── Object creation ──────────────────────────────────────────────────────────
+
+extern "C" {
+    /// Create a plain JS object (JS_NewPlainObject).
+    pub fn sm_new_plain_object(cx: *mut JSContext) -> *mut JSObject;
+
+    /// Allocate a persistent root for a JSObject, returning a handle.
+    /// Returns -1 if obj is null.
+    pub fn sm_alloc_persistent_root(cx: *mut JSContext, obj: *mut JSObject) -> i32;
 }
 
 // ── Property key enumeration ─────────────────────────────────────────────────

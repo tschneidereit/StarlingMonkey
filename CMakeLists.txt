@@ -57,13 +57,10 @@ include("builtins")
 include("tests/wpt-harness/wpt.cmake")
 
 set(SOURCES
-    runtime/js.cpp
-    runtime/allocator.cpp
+    runtime/init.cpp
     runtime/encode.cpp
     runtime/decode.cpp
-    runtime/engine.cpp
     runtime/builtin.cpp
-    runtime/script_loader.cpp
     runtime/debugger.cpp
 )
 

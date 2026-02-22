@@ -1,7 +1,7 @@
 //! ES module loading and resolution.
 //!
-//! Replaces `runtime/script_loader.cpp`. Handles module compilation, caching,
-//! path resolution, and builtin module synthesis.
+//! Full Rust port of `runtime/script_loader.cpp`. Handles module compilation,
+//! caching, path resolution, builtin module synthesis, and file loading.
 
 use core::ffi::c_void;
 use starling_sm_sys as sm;
@@ -16,6 +16,12 @@ pub struct ScriptLoader {
     module_registry_handle: i32,
     /// Persistent root handle for the builtin modules map.
     builtin_modules_handle: i32,
+    /// Whether to evaluate scripts as ES modules (true) or classic scripts (false).
+    module_mode: bool,
+    /// Base path for resolving the first script load.
+    base_path: String,
+    /// Optional path prefix to strip from file names for nicer stack traces.
+    path_prefix: Option<String>,
 }
 
 impl ScriptLoader {
@@ -35,6 +41,9 @@ impl ScriptLoader {
             cx,
             module_registry_handle,
             builtin_modules_handle,
+            module_mode: true,
+            base_path: String::new(),
+            path_prefix: None,
         };
 
         // Register module resolve/metadata hooks
@@ -44,6 +53,11 @@ impl ScriptLoader {
         }
 
         Ok(loader)
+    }
+
+    /// Set the path prefix to strip from filenames in stack traces.
+    pub fn set_path_prefix(&mut self, prefix: Option<String>) {
+        self.path_prefix = prefix;
     }
 
     /// Register a builtin module (e.g., from a C++ builtin's install() function).
@@ -58,12 +72,278 @@ impl ScriptLoader {
         unsafe { sm::sm_map_set(self.cx, self.builtin_modules_handle, key_val, value) }
     }
 
+    /// Set whether to use ES module mode.
+    pub fn set_module_mode(&mut self, module_mode: bool) {
+        self.module_mode = module_mode;
+    }
+
+    /// Get whether module mode is enabled.
+    pub fn module_mode(&self) -> bool {
+        self.module_mode
+    }
+
+    /// Strip the path prefix for nicer display in stack traces.
+    fn strip_prefix<'a>(&self, resolved_path: &'a str) -> &'a str {
+        if let Some(ref prefix) = self.path_prefix {
+            resolved_path.strip_prefix(prefix.as_str()).unwrap_or(resolved_path)
+        } else {
+            resolved_path
+        }
+    }
+
+    /// Load a script file. On the first call, determines the base path from
+    /// the given path. Subsequent loads resolve relative to that base.
+    pub fn load_script(&mut self, path: &str) -> Result<Vec<u8>, String> {
+        let resolved = if self.base_path.is_empty() {
+            // First load — extract base path
+            if let Some(pos) = path.rfind('/') {
+                self.base_path = path[..pos + 1].to_string();
+            } else {
+                self.base_path = "./".to_string();
+            }
+            path.to_string()
+        } else {
+            resolve_path(path, &self.base_path)
+        };
+        self.load_resolved_script(path, &resolved)
+    }
+
+    /// Load a script from a resolved file path.
+    fn load_resolved_script(&self, specifier: &str, resolved_path: &str) -> Result<Vec<u8>, String> {
+        std::fs::read(resolved_path).map_err(|e| {
+            format!(
+                "Error loading module \"{}\" (resolved path \"{}\"): {}",
+                specifier, resolved_path, e
+            )
+        })
+    }
+
+    /// Compile source into a module, set its private metadata, and cache it.
+    ///
+    /// Returns the persistent root handle for the module, or -1 on failure.
+    fn compile_and_cache_module(
+        &self,
+        source: &[u8],
+        resolved_path: &str,
+    ) -> i32 {
+        let cx = self.cx;
+        let display_path = self.strip_prefix(resolved_path);
+
+        let module_handle = unsafe {
+            sm::sm_compile_module(
+                cx,
+                source.as_ptr(),
+                source.len() as u32,
+                display_path.as_ptr(),
+                display_path.len() as u32,
+            )
+        };
+        if module_handle < 0 {
+            return -1;
+        }
+
+        let module_obj = unsafe { sm::sm_get_persistent_rooted(module_handle) };
+        if module_obj.is_null() {
+            return -1;
+        }
+
+        // Create info object {id: resolved_path} as module private
+        if !set_module_info(cx, module_obj, resolved_path) {
+            return -1;
+        }
+
+        // Cache in registry keyed by resolved path
+        let key = unsafe {
+            sm::sm_new_string_utf8(cx, resolved_path.as_ptr(), resolved_path.len() as u32)
+        };
+        if !key.is_null() {
+            let key_val = unsafe { sm::sm_string_value(key) };
+            let module_val = unsafe { sm::sm_object_value(module_obj) };
+            unsafe { sm::sm_map_set(cx, self.module_registry_handle, key_val, module_val) };
+        }
+
+        module_handle
+    }
+
+    /// Get or compile a module for a specifier + resolved path.
+    ///
+    /// Returns the persistent root handle for the module, or -1.
+    fn get_or_compile_module(
+        &self,
+        specifier: &str,
+        resolved_path: &str,
+    ) -> i32 {
+        let cx = self.cx;
+
+        // Check cache first
+        let key = unsafe {
+            sm::sm_new_string_utf8(cx, resolved_path.as_ptr(), resolved_path.len() as u32)
+        };
+        if key.is_null() {
+            return -1;
+        }
+        let key_val = unsafe { sm::sm_string_value(key) };
+
+        let mut cached_val: sm::JSVal = sm::JSVAL_UNDEFINED;
+        if unsafe { sm::sm_map_get(cx, self.module_registry_handle, key_val, &mut cached_val) }
+            && unsafe { !sm::sm_value_is_undefined(cached_val) }
+        {
+            // Already compiled — return a persistent root for the cached object
+            let obj = unsafe { sm::sm_value_to_object(cached_val) };
+            if !obj.is_null() {
+                return unsafe { sm::sm_alloc_persistent_root(cx, obj) };
+            }
+        }
+
+        // Not cached — load and compile
+        let source = match self.load_resolved_script(specifier, resolved_path) {
+            Ok(s) => s,
+            Err(e) => {
+                // Throw a JS error
+                let msg = format!("{e}\0");
+                unsafe { sm::sm_report_error(cx, msg.as_ptr(), msg.len() as u32 - 1) };
+                return -1;
+            }
+        };
+
+        self.compile_and_cache_module(&source, resolved_path)
+    }
+
+    /// Create a builtin module shim that re-exports all properties of a
+    /// builtin object via `import.meta.builtin`.
+    ///
+    /// Generates source like:
+    /// ```js
+    /// const { 'prop1': e0, 'prop2': e1 } = import.meta.builtin;
+    /// export { e0 as 'prop1', e1 as 'prop2' }
+    /// ```
+    fn get_builtin_module(
+        &self,
+        id_str: *mut sm::JSString,
+        builtin_obj: *mut sm::JSObject,
+    ) -> i32 {
+        let cx = self.cx;
+
+        // Check if already cached
+        let id_val = unsafe { sm::sm_string_value(id_str) };
+        let mut cached_val: sm::JSVal = sm::JSVAL_UNDEFINED;
+        if unsafe { sm::sm_map_get(cx, self.module_registry_handle, id_val, &mut cached_val) }
+            && unsafe { !sm::sm_value_is_undefined(cached_val) }
+        {
+            let obj = unsafe { sm::sm_value_to_object(cached_val) };
+            if !obj.is_null() {
+                return unsafe { sm::sm_alloc_persistent_root(cx, obj) };
+            }
+        }
+
+        // Enumerate the builtin object's properties
+        let mut prop_strings: *mut *mut sm::JSString = core::ptr::null_mut();
+        let mut prop_count: u32 = 0;
+        if !unsafe {
+            sm::sm_get_own_property_names(cx, builtin_obj, &mut prop_strings, &mut prop_count)
+        } {
+            return -1;
+        }
+
+        // Build the shim module source
+        let mut code = String::from("const { ");
+        let mut export_code = String::new();
+
+        for i in 0..prop_count {
+            let prop_str = unsafe { *prop_strings.add(i as usize) };
+            let mut prop_len: u32 = 0;
+            let prop_bytes = unsafe { sm::sm_encode_string_to_utf8(cx, prop_str, &mut prop_len) };
+            if prop_bytes.is_null() {
+                unsafe { sm::sm_free(prop_strings as *mut c_void) };
+                return -1;
+            }
+            let prop_name = unsafe {
+                core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+                    prop_bytes,
+                    prop_len as usize,
+                ))
+            };
+
+            if i > 0 {
+                code.push_str(", ");
+                export_code.push_str(", ");
+            }
+
+            // Destructuring: 'propName': eN
+            code.push('\'');
+            code.push_str(prop_name);
+            code.push_str("': e");
+            code.push_str(&i.to_string());
+
+            // Export: eN as 'propName'
+            export_code.push('e');
+            export_code.push_str(&i.to_string());
+            export_code.push_str(" as '");
+            export_code.push_str(prop_name);
+            export_code.push('\'');
+
+            unsafe { sm::sm_free(prop_bytes as *mut c_void) };
+        }
+        unsafe { sm::sm_free(prop_strings as *mut c_void) };
+
+        code.push_str(" } = import.meta.builtin;\nexport { ");
+        code.push_str(&export_code);
+        code.push_str(" }\n");
+
+        // Compile the shim module
+        let filename = b"<internal>";
+        let module_handle = unsafe {
+            sm::sm_compile_module(
+                cx,
+                code.as_ptr(),
+                code.len() as u32,
+                filename.as_ptr(),
+                filename.len() as u32,
+            )
+        };
+        if module_handle < 0 {
+            return -1;
+        }
+
+        let module_obj = unsafe { sm::sm_get_persistent_rooted(module_handle) };
+        if module_obj.is_null() {
+            return -1;
+        }
+
+        // Set module private to an info object {id: builtin_id}
+        let info = unsafe { sm::sm_new_plain_object(cx) };
+        if info.is_null() {
+            return -1;
+        }
+        let id_name = b"id\0";
+        if !unsafe {
+            sm::sm_define_property_value(
+                cx,
+                info,
+                id_name.as_ptr(),
+                2,
+                id_val,
+                0x1, // JSPROP_ENUMERATE
+            )
+        } {
+            return -1;
+        }
+        let info_val = unsafe { sm::sm_object_value(info) };
+        unsafe { sm::sm_set_module_private(module_obj, info_val) };
+
+        // Cache in registry
+        let module_val = unsafe { sm::sm_object_value(module_obj) };
+        unsafe { sm::sm_map_set(cx, self.module_registry_handle, id_val, module_val) };
+
+        module_handle
+    }
+
     /// Evaluate the top-level script.
     ///
-    /// If `module_mode` is true, compiles and evaluates as an ES module.
-    /// Otherwise, compiles and evaluates as a classic script.
+    /// If `module_mode` is true, compiles as an ES module, links, evaluates,
+    /// and returns the evaluation promise. Otherwise evaluates as a classic script.
     pub fn eval_top_level_script(
-        &self,
+        &mut self,
         source: &[u8],
         path: &str,
         module_mode: bool,
@@ -76,48 +356,39 @@ impl ScriptLoader {
         }
     }
 
-    fn eval_as_module(&self, source: &[u8], path: &str) -> Result<sm::JSVal, &'static str> {
-        let module_handle = unsafe {
-            sm::sm_compile_module(
-                self.cx,
-                source.as_ptr(),
-                source.len() as u32,
-                path.as_ptr(),
-                path.len() as u32,
-            )
-        };
+    fn eval_as_module(&mut self, source: &[u8], path: &str) -> Result<sm::JSVal, &'static str> {
+        let cx = self.cx;
+
+        // Set base_path from the first load if not set
+        if self.base_path.is_empty() {
+            if let Some(pos) = path.rfind('/') {
+                self.base_path = path[..pos + 1].to_string();
+            } else {
+                self.base_path = "./".to_string();
+            }
+        }
+
+        // Compile the module
+        let module_handle = self.compile_and_cache_module(source, path);
         if module_handle < 0 {
             return Err("Failed to compile module");
         }
 
-        // Cache in registry
-        let key = unsafe {
-            sm::sm_new_string_utf8(self.cx, path.as_ptr(), path.len() as u32)
-        };
-        if !key.is_null() {
-            let key_val = unsafe { sm::sm_string_value(key) };
-            let module_obj = unsafe { sm::sm_get_persistent_rooted(module_handle) };
-            if !module_obj.is_null() {
-                let module_val = unsafe { sm::sm_object_value(module_obj) };
-                unsafe { sm::sm_map_set(self.cx, self.module_registry_handle, key_val, module_val) };
-            }
-        }
-
-        // Set module private to the path (for resolve hook)
-        let path_str = unsafe {
-            sm::sm_new_string_utf8(self.cx, path.as_ptr(), path.len() as u32)
-        };
-        if !path_str.is_null() {
-            let module_obj = unsafe { sm::sm_get_persistent_rooted(module_handle) };
-            let private_val = unsafe { sm::sm_string_value(path_str) };
-            unsafe { sm::sm_set_module_private(module_obj, private_val) };
-        }
-
-        if !unsafe { sm::sm_module_link(self.cx, module_handle) } {
+        // Link the module (resolve imports)
+        if !unsafe { sm::sm_module_link(cx, module_handle) } {
             return Err("Failed to link module");
         }
 
-        let eval_promise_handle = unsafe { sm::sm_module_evaluate(self.cx, module_handle) };
+        // Shrinking GC before evaluation during pre-init
+        let engine_state = unsafe { crate::engine::Engine::get().state() };
+        if engine_state == crate::engine::EngineState::ScriptPreInitializing {
+            unsafe {
+                sm::sm_gc_shrink(cx);
+            }
+        }
+
+        // Evaluate the module (returns the evaluation promise)
+        let eval_promise_handle = unsafe { sm::sm_module_evaluate(cx, module_handle) };
         if eval_promise_handle < 0 {
             return Err("Failed to evaluate module");
         }
@@ -132,6 +403,7 @@ impl ScriptLoader {
         path: &str,
         global: *mut sm::JSObject,
     ) -> Result<sm::JSVal, &'static str> {
+        let display_path = self.strip_prefix(path);
         let mut result: sm::JSVal = sm::JSVAL_UNDEFINED;
         let ok = unsafe {
             sm::sm_evaluate_script(
@@ -139,8 +411,8 @@ impl ScriptLoader {
                 global,
                 source.as_ptr(),
                 source.len() as u32,
-                path.as_ptr(),
-                path.len() as u32,
+                display_path.as_ptr(),
+                display_path.len() as u32,
                 &mut result,
             )
         };
@@ -148,29 +420,6 @@ impl ScriptLoader {
             return Err("Failed to evaluate script");
         }
         Ok(result)
-    }
-
-    /// Resolve a module specifier relative to a referencing module's path.
-    pub fn resolve_path(specifier: &str, referencing_path: &str) -> String {
-        if specifier.starts_with("./") || specifier.starts_with("../") {
-            // Relative path — resolve against parent directory
-            let base = if let Some(pos) = referencing_path.rfind('/') {
-                &referencing_path[..pos + 1]
-            } else {
-                "./"
-            };
-            let mut resolved = format!("{base}{specifier}");
-            // Normalize path (collapse . and ..)
-            resolved = normalize_path(&resolved);
-            // Auto-append .js if missing
-            if !resolved.contains('.') || resolved.ends_with('/') {
-                resolved.push_str(".js");
-            }
-            resolved
-        } else {
-            // Bare specifier — could be a builtin module name
-            specifier.to_string()
-        }
     }
 }
 
@@ -185,42 +434,149 @@ impl Drop for ScriptLoader {
     }
 }
 
-/// Normalize a path by resolving `.` and `..` components.
-fn normalize_path(path: &str) -> String {
-    let mut parts: Vec<&str> = Vec::new();
-    for part in path.split('/') {
-        match part {
-            "." | "" => {}
-            ".." => {
-                parts.pop();
-            }
-            _ => parts.push(part),
-        }
-    }
-    let mut result = parts.join("/");
+// ── Path resolution ──────────────────────────────────────────────────────────
+
+/// Resolve a file path relative to a base path, handling `.` and `..` segments.
+///
+/// Faithful port of the C++ `resolve_path` function.
+fn resolve_path(path: &str, base: &str) -> String {
+    // Find the directory part of the base path
+    let base_dir = if let Some(pos) = base.rfind('/') {
+        &base[..pos + 1]
+    } else {
+        ""
+    };
+
+    let mut resolved = String::with_capacity(base_dir.len() + path.len() + 1);
+
     if path.starts_with('/') {
-        result.insert(0, '/');
+        // Absolute path — ignore base
+    } else {
+        resolved.push_str(base_dir);
     }
-    if !path.starts_with('/') && !result.starts_with('.') {
-        result.insert_str(0, "./");
+
+    // Process path segments
+    let segments = path.as_bytes();
+    let mut from = 0;
+    let mut cur = 0;
+
+    while cur < segments.len() {
+        // Advance to the next '/' or end
+        while cur < segments.len() && segments[cur] != b'/' {
+            cur += 1;
+        }
+        if cur == from {
+            break;
+        }
+
+        let segment = &segments[from..cur];
+
+        if segment == b"." {
+            // Skip '.' segments
+        } else if segment == b".." {
+            // Backtrack one directory
+            if resolved.ends_with('/') {
+                resolved.pop();
+            }
+            if let Some(pos) = resolved.rfind('/') {
+                resolved.truncate(pos + 1);
+            } else {
+                resolved.clear();
+            }
+        } else {
+            // Normal segment — append it
+            resolved.push_str(core::str::from_utf8(segment).unwrap_or(""));
+            if cur < segments.len() && segments[cur] == b'/' {
+                resolved.push('/');
+            }
+        }
+
+        // Skip the '/' separator
+        if cur < segments.len() && segments[cur] == b'/' {
+            cur += 1;
+        }
+        from = cur;
     }
-    result
+
+    resolve_extension(resolved)
 }
 
-/// Global ScriptLoader pointer, set during engine init.
-static mut SCRIPT_LOADER: *mut ScriptLoader = core::ptr::null_mut();
+/// If the resolved path doesn't exist, try appending ".js".
+fn resolve_extension(resolved: String) -> String {
+    if file_exists(&resolved) {
+        return resolved;
+    }
+
+    if resolved.len() >= 3 && resolved.ends_with(".js") {
+        return resolved;
+    }
+
+    let with_ext = format!("{resolved}.js");
+    if file_exists(&with_ext) {
+        return with_ext;
+    }
+
+    resolved
+}
+
+/// Check if a file exists.
+fn file_exists(path: &str) -> bool {
+    std::fs::metadata(path).is_ok()
+}
+
+/// Set the module private to an info object `{id: resolved_path}`.
+fn set_module_info(
+    cx: *mut sm::JSContext,
+    module_obj: *mut sm::JSObject,
+    resolved_path: &str,
+) -> bool {
+    let info = unsafe { sm::sm_new_plain_object(cx) };
+    if info.is_null() {
+        return false;
+    }
+
+    let path_str = unsafe {
+        sm::sm_new_string_utf8(cx, resolved_path.as_ptr(), resolved_path.len() as u32)
+    };
+    if path_str.is_null() {
+        return false;
+    }
+
+    let path_val = unsafe { sm::sm_string_value(path_str) };
+    let id_name = b"id\0";
+    if !unsafe {
+        sm::sm_define_property_value(
+            cx,
+            info,
+            id_name.as_ptr(),
+            2, // "id" length
+            path_val,
+            0x1, // JSPROP_ENUMERATE
+        )
+    } {
+        return false;
+    }
+
+    let info_val = unsafe { sm::sm_object_value(info) };
+    unsafe { sm::sm_set_module_private(module_obj, info_val) };
+    true
+}
+
+// ── Module hooks ─────────────────────────────────────────────────────────────
 
 /// Module resolve hook — called by SpiderMonkey when it encounters an import.
 ///
-/// This is the `extern "C"` callback registered with `sm_set_module_resolve_hook`.
+/// Returns a persistent root handle for the resolved module, or -1 on failure.
 unsafe extern "C" fn module_resolve_hook(
     cx: *mut sm::JSContext,
     referencing_private: sm::JSVal,
     specifier: *mut sm::JSString,
 ) -> i32 {
-    if SCRIPT_LOADER.is_null() {
-        return -1;
-    }
+    let engine = crate::engine::Engine::get();
+    let loader = match engine.script_loader() {
+        Some(l) => l,
+        None => return -1,
+    };
 
     // Get specifier as UTF-8
     let mut spec_len: u32 = 0;
@@ -228,86 +584,119 @@ unsafe extern "C" fn module_resolve_hook(
     if spec_bytes.is_null() {
         return -1;
     }
-    let spec_str = core::str::from_utf8(core::slice::from_raw_parts(spec_bytes, spec_len as usize))
-        .unwrap_or("");
-
-    // Get referencing path from private value
-    let ref_path = if sm::sm_value_is_string(referencing_private) {
-        let ref_str = sm::sm_value_to_string(referencing_private);
-        let mut ref_len: u32 = 0;
-        let ref_bytes = sm::sm_encode_string_to_utf8(cx, ref_str, &mut ref_len);
-        if !ref_bytes.is_null() {
-            let s = core::str::from_utf8(core::slice::from_raw_parts(
-                ref_bytes,
-                ref_len as usize,
-            ))
-            .unwrap_or("./")
-            .to_string();
-            sm::sm_free(ref_bytes as *mut c_void);
-            s
-        } else {
-            "./".to_string()
+    let spec_str = match core::str::from_utf8(core::slice::from_raw_parts(
+        spec_bytes,
+        spec_len as usize,
+    )) {
+        Ok(s) => s,
+        Err(_) => {
+            sm::sm_free(spec_bytes as *mut c_void);
+            return -1;
         }
-    } else {
-        "./".to_string()
     };
 
-    let resolved = ScriptLoader::resolve_path(spec_str, &ref_path);
+    // Check if it's a builtin module
+    let specifier_val = sm::sm_string_value(specifier);
+    let mut builtin_val: sm::JSVal = sm::JSVAL_UNDEFINED;
+    if sm::sm_map_get(cx, loader.builtin_modules_handle, specifier_val, &mut builtin_val)
+        && !sm::sm_value_is_undefined(builtin_val)
+    {
+        sm::sm_free(spec_bytes as *mut c_void);
+        let builtin_obj = sm::sm_value_to_object(builtin_val);
+        return loader.get_builtin_module(specifier, builtin_obj);
+    }
+
+    // Get the referencing module's path from its private value
+    let parent_path = get_module_path(cx, referencing_private);
+
+    // Resolve the specifier relative to the parent path
+    let spec_owned = spec_str.to_string();
     sm::sm_free(spec_bytes as *mut c_void);
+    let resolved = resolve_path(&spec_owned, &parent_path);
 
-    // Check if already cached in the module registry
-    let loader = &*SCRIPT_LOADER;
-    let key = sm::sm_new_string_utf8(cx, resolved.as_ptr(), resolved.len() as u32);
-    if key.is_null() {
-        return -1;
-    }
-    let key_val = sm::sm_string_value(key);
-
-    if sm::sm_map_has(cx, loader.module_registry_handle, key_val) {
-        // Already compiled — return from cache
-        let mut cached_val: sm::JSVal = sm::JSVAL_UNDEFINED;
-        if sm::sm_map_get(cx, loader.module_registry_handle, key_val, &mut cached_val) {
-            let obj = sm::sm_value_to_object(cached_val);
-            if !obj.is_null() {
-                // We need to return a persistent root handle, but the cached object
-                // is already rooted via the map. For SM's hook, we need to return
-                // the JSObject* directly (the hook expects a handle).
-                // TODO: Revisit this — may need a temporary persistent root.
-                return -1; // placeholder
-            }
-        }
-    }
-
-    // Read the file from the filesystem
-    // TODO: Implement file reading via WASI filesystem API
-    // For now, return -1 to indicate failure
-    -1
+    // Get or compile the module
+    loader.get_or_compile_module(&spec_owned, &resolved)
 }
 
-/// Module metadata hook — populates import.meta for each module.
+/// Extract the module path from a module's private value.
 ///
-/// Sets `import.meta.builtin` to allow access to builtin modules.
-unsafe extern "C" fn module_metadata_hook(
-    _cx: *mut sm::JSContext,
-    _module_private: sm::JSVal,
-    _meta_object: *mut sm::JSObject,
-) -> bool {
-    // TODO: Populate import.meta.builtin
-    true
+/// The private is an object `{id: "path/to/module.js"}`.
+unsafe fn get_module_path(cx: *mut sm::JSContext, private_val: sm::JSVal) -> String {
+    if !sm::sm_value_is_object(private_val) {
+        return String::from("./");
+    }
+    let info_obj = sm::sm_value_to_object(private_val);
+    if info_obj.is_null() {
+        return String::from("./");
+    }
+
+    let id_name = b"id\0";
+    let mut id_val: sm::JSVal = sm::JSVAL_UNDEFINED;
+    if !sm::sm_get_property(cx, info_obj, id_name.as_ptr(), 2, &mut id_val) {
+        return String::from("./");
+    }
+    if !sm::sm_value_is_string(id_val) {
+        return String::from("./");
+    }
+
+    let id_str = sm::sm_value_to_string(id_val);
+    let mut len: u32 = 0;
+    let bytes = sm::sm_encode_string_to_utf8(cx, id_str, &mut len);
+    if bytes.is_null() {
+        return String::from("./");
+    }
+
+    let result =
+        core::str::from_utf8(core::slice::from_raw_parts(bytes, len as usize))
+            .unwrap_or("./")
+            .to_string();
+    sm::sm_free(bytes as *mut c_void);
+    result
 }
 
-// ── FFI export for C++ builtins ──────────────────────────────────────────────
-
-#[no_mangle]
-pub unsafe extern "C" fn starling_engine_define_builtin_module(
-    id: *const u8,
-    id_len: u32,
-    value: sm::JSVal,
+/// Module metadata hook — populates `import.meta` for each module.
+///
+/// For builtin modules, sets `import.meta.builtin` to the builtin object
+/// so the shim module can destructure it.
+unsafe extern "C" fn module_metadata_hook(
+    cx: *mut sm::JSContext,
+    module_private: sm::JSVal,
+    meta_object: *mut sm::JSObject,
 ) -> bool {
-    if SCRIPT_LOADER.is_null() || id.is_null() {
+    let engine = crate::engine::Engine::get();
+    let loader = match engine.script_loader() {
+        Some(l) => l,
+        None => return false,
+    };
+
+    // Get the module's id from private
+    if !sm::sm_value_is_object(module_private) {
         return false;
     }
-    let name = core::str::from_utf8(core::slice::from_raw_parts(id, id_len as usize))
-        .unwrap_or("");
-    (*SCRIPT_LOADER).define_builtin_module(name, value)
+    let info_obj = sm::sm_value_to_object(module_private);
+    if info_obj.is_null() {
+        return false;
+    }
+
+    let id_name = b"id\0";
+    let mut id_val: sm::JSVal = sm::JSVAL_UNDEFINED;
+    if !sm::sm_get_property(cx, info_obj, id_name.as_ptr(), 2, &mut id_val) {
+        return false;
+    }
+    if !sm::sm_value_is_string(id_val) {
+        return false;
+    }
+
+    // Check if this module's id matches a builtin module
+    let mut builtin_val: sm::JSVal = sm::JSVAL_UNDEFINED;
+    if !sm::sm_map_get(cx, loader.builtin_modules_handle, id_val, &mut builtin_val) {
+        return false;
+    }
+    if sm::sm_value_is_undefined(builtin_val) {
+        return false;
+    }
+
+    // Set import.meta.builtin = <the builtin object>
+    let prop_name = b"builtin\0";
+    sm::sm_set_property(cx, meta_object, prop_name.as_ptr(), 7, builtin_val)
 }

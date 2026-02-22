@@ -44,6 +44,9 @@ struct TaskQueue {
 static PersistentRooted<TaskQueue> queue;
 static api::Engine *EVENT_LOOP_ENGINE = nullptr;
 
+// Forward declaration (defined below as extern "C")
+extern "C" int32_t starling_find_and_run_immediate_task();
+
 // ── EventLoop namespace (called by builtins / engine) ──────────────
 
 namespace core {
@@ -81,6 +84,8 @@ void EventLoop::decr_event_loop_interest() {
 }
 
 // Synchronous fallback for wizer pre-initialization only.
+// The flow is now driven by Rust (engine.rs run_sync_event_loop).
+// This C++ implementation is kept as a fallback for direct C++ callers.
 bool EventLoop::run_event_loop(api::Engine *engine, double total_compute) {
   EVENT_LOOP_ENGINE = engine;
 
@@ -91,28 +96,20 @@ bool EventLoop::run_event_loop(api::Engine *engine, double total_compute) {
       return false;
     }
 
-    // During wizer, only IMMEDIATE_TASK_HANDLE tasks are created.
     auto &tasks = queue.get().tasks;
     if (tasks.empty()) {
       return true;
     }
 
-    bool found = false;
-    for (size_t i = 0; i < tasks.size(); i++) {
-      if (tasks[i].second->id() == IMMEDIATE_TASK_HANDLE) {
-        auto task = tasks[i].second;
-        auto task_id = tasks[i].first;
-        tasks.erase(tasks.begin() + i);
-        host_api_cancel_task(task_id);
-        task->run(engine);
-        found = true;
-        break;
-      }
+    // Use the same find-and-run-immediate helper that Rust calls.
+    int32_t result = starling_find_and_run_immediate_task();
+    if (result == -1) {
+      return false; // No immediate task found
     }
-
-    if (!found) {
-      return false;
+    if (result == 0) {
+      return false; // Task run failed
     }
+    // result == 1: success, loop again
   }
 }
 
@@ -120,8 +117,37 @@ void EventLoop::init(JSContext *cx) { queue.init(cx); }
 
 } // namespace core
 
+/// Initialize the event loop (called from Rust Engine::new).
+extern "C" void starling_event_loop_init(void *cx) {
+  core::EventLoop::init(static_cast<JSContext*>(cx));
+}
+
+/// Find an immediate task (IMMEDIATE_TASK_HANDLE), remove it from the queue,
+/// cancel its Rust-side registration, and run it.
+/// Returns 1 on success, 0 if task::run() failed, -1 if no immediate task found.
+extern "C" int32_t starling_find_and_run_immediate_task() {
+  MOZ_ASSERT(EVENT_LOOP_ENGINE);
+  auto &tasks = queue.get().tasks;
+  for (size_t i = 0; i < tasks.size(); i++) {
+    if (tasks[i].second->id() == IMMEDIATE_TASK_HANDLE) {
+      auto task = tasks[i].second;
+      auto task_id = tasks[i].first;
+      tasks.erase(tasks.begin() + i);
+      host_api_cancel_task(task_id);
+      return task->run(EVENT_LOOP_ENGINE) ? 1 : 0;
+    }
+  }
+  return -1;
+}
+
+/// Check whether there are any pending tasks (C++ GC-traced vector).
+extern "C" bool starling_cpp_has_pending_async_tasks() {
+  return !queue.get().tasks.empty();
+}
+
 // =====================================================================
 // Extern "C" interface for Rust async event loop driver
+// (used by starling-host-api p3 crate)
 // =====================================================================
 
 extern "C" void starling_event_loop_set_engine(void *engine) {
@@ -139,11 +165,6 @@ extern "C" void starling_event_loop_run_microtasks() {
 
 extern "C" bool starling_event_loop_has_exception() {
   return JS_IsExceptionPending(EVENT_LOOP_ENGINE->cx());
-}
-
-/// Used by Rust engine.rs starling_engine_has_pending_async_tasks.
-extern "C" bool starling_cpp_has_pending_async_tasks() {
-  return !queue.get().tasks.empty();
 }
 
 /// Find a task by task_id, remove it from the GC-traced vector, and run it.
