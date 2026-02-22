@@ -76,7 +76,7 @@ const ArgParsers = {
   },
   "--external-wpt-server": {
     help: "Don't start an instance of the WPT server internally (default: false)",
-    cmd: () => { config.wptServer.external = true; }
+    cmd: val => { config.wptServer.external = val !== "false"; }
   },
   "--expectations": {
     help: `Path to the directory containing test expectations files (default: ${config.tests.expectations}}`,

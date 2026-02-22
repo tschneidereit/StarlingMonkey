@@ -80,7 +80,7 @@
   "fetch/api/basic/request-referrer.any.js",
   "fetch/api/basic/request-upload.any.js",
   "SKIP fetch/api/basic/request-upload.h2.any.js",
-  "fetch/api/basic/response-null-body.any.js",
+  "SKIP (FLAKY, REENABLED WHEN WASMTIME PR 12635 IS RELEASED) fetch/api/basic/response-null-body.any.js",
   "fetch/api/basic/response-url.sub.any.js",
   "fetch/api/basic/scheme-about.any.js",
   "fetch/api/basic/scheme-blob.sub.any.js",

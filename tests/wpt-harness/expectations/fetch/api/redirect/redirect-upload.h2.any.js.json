@@ -6,12 +6,12 @@
     "status": "FAIL"
   },
   "Fetch upload streaming should fail on 302": {
-    "status": "PASS"
+    "status": "FAIL"
   },
   "Fetch upload streaming should fail on 307": {
     "status": "FAIL"
   },
   "Fetch upload streaming should fail on 308": {
-    "status": "PASS"
+    "status": "FAIL"
   }
 }
