@@ -23,8 +23,8 @@ pub(crate) struct TaskEntry {
     pub task_id: i32,
     /// The waiter handle from `poll.rs` (maps to a `WaiterKind`).
     pub waiter_handle: i32,
-    /// The request this task belongs to.
-    pub request_handle: i32,
+    /// The incoming event this task belongs to.
+    pub incoming_event_handle: i32,
 }
 
 /// Interest tracking state.
@@ -32,14 +32,14 @@ pub(crate) struct TaskEntry {
 struct InterestState {
     /// Global interest count.
     global: i32,
-    /// Per-request interest counts.
-    per_request: BTreeMap<i32, i32>,
-    /// The request handle currently being served (for attributing inc/dec).
-    current_request: i32,
+    /// Per-incoming-event interest counts.
+    per_incoming_event: BTreeMap<i32, i32>,
+    /// The incoming event handle currently being processed (for attributing inc/dec).
+    current_incoming_event: i32,
 }
 
 struct TaskQueueState {
-    /// All tasks from all concurrent requests, tagged by request_handle.
+    /// All tasks from all concurrent incoming events, tagged by incoming_event_handle.
     tasks: Vec<TaskEntry>,
     next_id: i32,
     interest: InterestState,
@@ -51,8 +51,8 @@ thread_local! {
         next_id: 0,
         interest: InterestState {
             global: 0,
-            per_request: BTreeMap::new(),
-            current_request: -1,
+            per_incoming_event: BTreeMap::new(),
+            current_incoming_event: -1,
         },
     }) };
 }
@@ -66,7 +66,7 @@ where
 
 // ── Task queue operations ──────────────────────────────────────────
 
-/// Register a new task, tagged with the current request. Returns a unique task_id.
+/// Register a new task, tagged with the current incoming event. Returns a unique task_id.
 pub(crate) fn register_task(waiter_handle: i32) -> i32 {
     with_state(|s| {
         let id = s.next_id;
@@ -74,7 +74,7 @@ pub(crate) fn register_task(waiter_handle: i32) -> i32 {
         s.tasks.push(TaskEntry {
             task_id: id,
             waiter_handle,
-            request_handle: s.interest.current_request,
+            incoming_event_handle: s.interest.current_incoming_event,
         });
         id
     })
@@ -103,24 +103,24 @@ pub(crate) fn remove_task(task_id: i32) -> Option<TaskEntry> {
     })
 }
 
-/// Number of pending tasks for a specific request.
-pub(crate) fn task_count_for(request_handle: i32) -> usize {
+/// Number of pending tasks for a specific incoming event.
+pub(crate) fn task_count_for(incoming_event_handle: i32) -> usize {
     with_state(|s| {
         s.tasks
             .iter()
-            .filter(|t| t.request_handle == request_handle)
+            .filter(|t| t.incoming_event_handle == incoming_event_handle)
             .count()
     })
 }
 
-/// Iterate tasks for a specific request, calling `f` for each.
+/// Iterate tasks for a specific incoming event, calling `f` for each.
 /// Returns early with `Some(R)` if `f` returns `Some`.
-pub(crate) fn find_task_for<F, R>(request_handle: i32, f: F) -> Option<R>
+pub(crate) fn find_task_for<F, R>(incoming_event_handle: i32, f: F) -> Option<R>
 where
     F: Fn(&TaskEntry) -> Option<R>,
 {
     with_state(|s| {
-        for task in s.tasks.iter().filter(|t| t.request_handle == request_handle) {
+        for task in s.tasks.iter().filter(|t| t.incoming_event_handle == incoming_event_handle) {
             if let Some(r) = f(task) {
                 return Some(r);
             }
@@ -129,17 +129,17 @@ where
     })
 }
 
-/// Collect task info for a specific request (snapshot to avoid holding borrow).
+/// Collect task info for a specific incoming event (snapshot to avoid holding borrow).
 pub(crate) struct TaskSnapshot {
     pub task_id: i32,
     pub waiter_kind: Option<WaiterKind>,
 }
 
-pub(crate) fn snapshot_tasks_for(request_handle: i32) -> Vec<TaskSnapshot> {
+pub(crate) fn snapshot_tasks_for(incoming_event_handle: i32) -> Vec<TaskSnapshot> {
     with_state(|s| {
         s.tasks
             .iter()
-            .filter(|t| t.request_handle == request_handle)
+            .filter(|t| t.incoming_event_handle == incoming_event_handle)
             .map(|t| {
                 let kind = crate::poll::get_waiter_kind(t.waiter_handle);
                 TaskSnapshot {
@@ -153,18 +153,18 @@ pub(crate) fn snapshot_tasks_for(request_handle: i32) -> Vec<TaskSnapshot> {
 
 // ── Interest tracking ──────────────────────────────────────────────
 
-pub(crate) fn set_current_request(handle: i32) {
+pub(crate) fn set_current_incoming_event(handle: i32) {
     with_state(|s| {
-        s.interest.current_request = handle;
+        s.interest.current_incoming_event = handle;
     });
 }
 
 pub(crate) fn incr_interest() {
     with_state(|s| {
         s.interest.global += 1;
-        let handle = s.interest.current_request;
+        let handle = s.interest.current_incoming_event;
         if handle >= 0 {
-            *s.interest.per_request.entry(handle).or_insert(0) += 1;
+            *s.interest.per_incoming_event.entry(handle).or_insert(0) += 1;
         }
     });
 }
@@ -173,12 +173,12 @@ pub(crate) fn decr_interest() {
     with_state(|s| {
         assert!(s.interest.global > 0, "interest underflow");
         s.interest.global -= 1;
-        let handle = s.interest.current_request;
+        let handle = s.interest.current_incoming_event;
         if handle >= 0 {
-            if let Some(count) = s.interest.per_request.get_mut(&handle) {
+            if let Some(count) = s.interest.per_incoming_event.get_mut(&handle) {
                 *count -= 1;
                 if *count <= 0 {
-                    s.interest.per_request.remove(&handle);
+                    s.interest.per_incoming_event.remove(&handle);
                 }
             }
         }
@@ -189,21 +189,21 @@ pub(crate) fn interest_complete() -> bool {
     with_state(|s| s.interest.global == 0)
 }
 
-pub(crate) fn request_interest_complete(request_handle: i32) -> bool {
+pub(crate) fn incoming_event_interest_complete(incoming_event_handle: i32) -> bool {
     with_state(|s| {
         s.interest
-            .per_request
-            .get(&request_handle)
+            .per_incoming_event
+            .get(&incoming_event_handle)
             .is_none_or(|&c| c <= 0)
     })
 }
 
-pub(crate) fn has_other_interest(request_handle: i32) -> bool {
+pub(crate) fn has_other_interest(incoming_event_handle: i32) -> bool {
     with_state(|s| {
         s.interest
-            .per_request
+            .per_incoming_event
             .iter()
-            .any(|(&h, &c)| h != request_handle && c > 0)
+            .any(|(&h, &c)| h != incoming_event_handle && c > 0)
     })
 }
 
@@ -221,20 +221,20 @@ pub extern "C" fn host_api_cancel_task(task_id: i32) {
     cancel_task(task_id);
 }
 
-/// Increment interest (attributed to the current request).
+/// Increment interest (attributed to the current incoming event).
 #[no_mangle]
 pub extern "C" fn host_api_incr_interest() {
     incr_interest();
 }
 
-/// Decrement interest (attributed to the current request).
+/// Decrement interest (attributed to the current incoming event).
 #[no_mangle]
 pub extern "C" fn host_api_decr_interest() {
     decr_interest();
 }
 
-/// Set the current request handle for interest attribution.
+/// Set the current incoming event handle for interest attribution.
 #[no_mangle]
-pub extern "C" fn host_api_set_current_request(handle: i32) {
-    set_current_request(handle);
+pub extern "C" fn host_api_set_current_incoming_event(handle: i32) {
+    set_current_incoming_event(handle);
 }

@@ -13,3 +13,4 @@ clap = { workspace = true }
 [features]
 default = []
 debugger = []
+debugmozjs = ["starling-sm-sys/debugmozjs"]

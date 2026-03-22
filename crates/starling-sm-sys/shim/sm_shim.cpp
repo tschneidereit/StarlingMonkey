@@ -62,6 +62,18 @@ bool sm_init() {
     return JS_Init();
 }
 
+bool sm_validate_value_constants(uint64_t undefined_bits, uint64_t null_bits,
+                                 uint64_t true_bits, uint64_t false_bits) {
+    JS::Value undef = JS::UndefinedValue();
+    JS::Value null = JS::NullValue();
+    JS::Value t = JS::TrueValue();
+    JS::Value f = JS::FalseValue();
+    return undef.asRawBits() == undefined_bits &&
+           null.asRawBits() == null_bits &&
+           t.asRawBits() == true_bits &&
+           f.asRawBits() == false_bits;
+}
+
 void sm_shutdown() {
     JS_ShutDown();
 }
@@ -473,6 +485,14 @@ JS::Value sm_object_value(JSObject *obj) {
 
 JS::Value sm_boolean_value(bool v) {
     return JS::BooleanValue(v);
+}
+
+JS::Value sm_undefined_value() {
+    return JS::UndefinedValue();
+}
+
+JS::Value sm_null_value() {
+    return JS::NullValue();
 }
 
 JSObject *sm_value_to_object(JS::Value val) {

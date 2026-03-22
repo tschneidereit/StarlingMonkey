@@ -45,20 +45,33 @@ pub type JSVal = u64;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-/// JS::UndefinedValue() NaN-boxed representation (wasm32 nunboxing).
-pub const JSVAL_UNDEFINED: JSVal = 0xFFFF_FFF6_8000_0000;
+/// JS::UndefinedValue() NaN-boxed representation (wasm32 NUNBOX32).
+/// NUNBOX32: tag = JSVAL_TAG_CLEAR | JSVAL_TYPE_UNDEFINED = 0xFFFFFF83, payload = 0
+pub const JSVAL_UNDEFINED: JSVal = 0xFFFF_FF83_0000_0000;
 /// JS::NullValue() NaN-boxed representation.
-pub const JSVAL_NULL: JSVal = 0xFFFF_FFF5_8000_0000;
+/// NUNBOX32: tag = JSVAL_TAG_CLEAR | JSVAL_TYPE_NULL = 0xFFFFFF84, payload = 0
+pub const JSVAL_NULL: JSVal = 0xFFFF_FF84_0000_0000;
 /// JS::TrueValue().
-pub const JSVAL_TRUE: JSVal = 0xFFFF_FFF3_0000_0001;
+/// NUNBOX32: tag = JSVAL_TAG_BOOLEAN = 0xFFFFFF82, payload = 1
+pub const JSVAL_TRUE: JSVal = 0xFFFF_FF82_0000_0001;
 /// JS::FalseValue().
-pub const JSVAL_FALSE: JSVal = 0xFFFF_FFF3_0000_0000;
+/// NUNBOX32: tag = JSVAL_TAG_BOOLEAN = 0xFFFFFF82, payload = 0
+pub const JSVAL_FALSE: JSVal = 0xFFFF_FF82_0000_0000;
 
 // ── Initialization & context ─────────────────────────────────────────────────
 
 extern "C" {
     /// Initialize the SpiderMonkey runtime. Must be called once before any other SM function.
     pub fn sm_init() -> bool;
+
+    /// Validate that Rust-side JSVal constants match the C++ Value representations.
+    /// Returns false if any constant is wrong (e.g. NUNBOX32 vs PUNBOX64 mismatch).
+    pub fn sm_validate_value_constants(
+        undefined_bits: u64,
+        null_bits: u64,
+        true_bits: u64,
+        false_bits: u64,
+    ) -> bool;
 
     /// Shut down the SpiderMonkey runtime. Call after destroying all contexts.
     pub fn sm_shutdown();
@@ -269,6 +282,12 @@ extern "C" {
 
     /// Box a bool into a JSVal.
     pub fn sm_boolean_value(v: bool) -> JSVal;
+
+    /// Return the JS::UndefinedValue() bits (correct for the current SM build).
+    pub fn sm_undefined_value() -> JSVal;
+
+    /// Return the JS::NullValue() bits (correct for the current SM build).
+    pub fn sm_null_value() -> JSVal;
 
     /// Extract an object pointer from a JSVal. Returns null if not an object.
     pub fn sm_value_to_object(val: JSVal) -> *mut JSObject;

@@ -26,7 +26,7 @@ int32_t host_api_register_task(int32_t waiter_handle);
 void host_api_cancel_task(int32_t task_id);
 void host_api_incr_interest();
 void host_api_decr_interest();
-void host_api_set_current_request(int32_t handle);
+void host_api_set_current_incoming_event(int32_t handle);
 }
 
 // ── GC-traced task storage ─────────────────────────────────────────

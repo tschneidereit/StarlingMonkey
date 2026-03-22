@@ -2,25 +2,25 @@
 target = "wasm32-wasip2"
 
 [target.wasm32-wasip2]
-rustflags = [
-    # Reactor model (no main, library-style entry)
-    "-C", "link-arg=-mexec-model=reactor",
-    "-C", "link-arg=-Wl,--no-entry",
-    # Don't link default startup files (we use _initialize via run_ctors_once)
-    "-C", "link-arg=-nostartfiles",
-    # Stack configuration
-    "-C", "link-arg=-Wl,-z,stack-size=1048576",
-    "-C", "link-arg=-Wl,--stack-first",
-    # Skip WIT component wrapping during linking (componentize.sh handles it)
-    "-C", "link-arg=-Wl,--skip-wit-component",
-    # WASI emulated libraries
-    "-C", "link-arg=-lwasi-emulated-getpid",
-    "-C", "link-arg=-lwasi-emulated-signal",
-    "-C", "link-arg=-lwasi-emulated-mman",
-    "-C", "link-arg=-lwasi-emulated-process-clocks",
-    # WASIp3 async exports
-    "-C", "link-arg=-Wl,--export=[async-lift]wasi:http/handler@0.3.0-rc-2026-01-06#handle",
-    "-C", "link-arg=-Wl,--export=[callback][async-lift]wasi:http/handler@0.3.0-rc-2026-01-06#handle",
-    "-C", "link-arg=-Wl,--export=[async-lift]wasi:cli/run@0.3.0-rc-2026-01-06#run",
-    "-C", "link-arg=-Wl,--export=[callback][async-lift]wasi:cli/run@0.3.0-rc-2026-01-06#run",
-]
+#rustflags = [
+#    # Reactor model (no main, library-style entry)
+#    "-C", "link-arg=-mexec-model=reactor",
+#    "-C", "link-arg=-Wl,--no-entry",
+#    # Don't link default startup files (we use _initialize via run_ctors_once)
+#    "-C", "link-arg=-nostartfiles",
+#    # Stack configuration
+#    "-C", "link-arg=-Wl,-z,stack-size=1048576",
+#    "-C", "link-arg=-Wl,--stack-first",
+#    # Skip WIT component wrapping during linking (componentize.sh handles it)
+#    "-C", "link-arg=-Wl,--skip-wit-component",
+#    # WASI emulated libraries
+#    "-C", "link-arg=-lwasi-emulated-getpid",
+#    "-C", "link-arg=-lwasi-emulated-signal",
+#    "-C", "link-arg=-lwasi-emulated-mman",
+#    "-C", "link-arg=-lwasi-emulated-process-clocks",
+#    # WASIp3 async exports
+#    "-C", "link-arg=-Wl,--export=[async-lift]wasi:http/handler@0.3.0-rc-2026-01-06#handle",
+#    "-C", "link-arg=-Wl,--export=[callback][async-lift]wasi:http/handler@0.3.0-rc-2026-01-06#handle",
+#    "-C", "link-arg=-Wl,--export=[async-lift]wasi:cli/run@0.3.0-rc-2026-01-06#run",
+#    "-C", "link-arg=-Wl,--export=[callback][async-lift]wasi:cli/run@0.3.0-rc-2026-01-06#run",
+#]

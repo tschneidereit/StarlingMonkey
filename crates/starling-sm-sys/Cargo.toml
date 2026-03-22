@@ -6,5 +6,9 @@ license.workspace = true
 description = "SpiderMonkey C++ FFI bindings for the StarlingMonkey runtime"
 links = "spidermonkey"
 
+[features]
+default = []
+debugmozjs = []
+
 [build-dependencies]
 cc = { workspace = true }

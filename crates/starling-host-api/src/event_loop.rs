@@ -35,9 +35,9 @@ extern "C" {
 // ── Public async API ───────────────────────────────────────────────
 
 /// Run the event loop until this request's response is ready or an error occurs.
-pub(crate) async fn run(engine: *mut (), request_handle: i32) -> bool {
+pub(crate) async fn run(engine: *mut (), incoming_event_handle: i32) -> bool {
     unsafe { starling_event_loop_set_engine(engine) };
-    task_queue::set_current_request(request_handle);
+    task_queue::set_current_incoming_event(incoming_event_handle);
 
     loop {
         unsafe { starling_event_loop_run_microtasks() };
@@ -46,10 +46,10 @@ pub(crate) async fn run(engine: *mut (), request_handle: i32) -> bool {
             return false;
         }
 
-        let has_resp = crate::http_response::has_pending_response(request_handle);
-        let req_interest_done = task_queue::request_interest_complete(request_handle);
+        let has_resp = crate::http_response::has_pending_response(incoming_event_handle);
+        let event_interest_done = task_queue::incoming_event_interest_complete(incoming_event_handle);
 
-        if has_resp && req_interest_done {
+        if has_resp && event_interest_done {
             return true;
         }
 
@@ -58,17 +58,17 @@ pub(crate) async fn run(engine: *mut (), request_handle: i32) -> bool {
             return true;
         }
 
-        let count = task_queue::task_count_for(request_handle);
+        let count = task_queue::task_count_for(incoming_event_handle);
         if count == 0 {
             // TODO: this can't happen, given the same check a few lines up. Remove this branch and instead ensure the event loop is only entered if there's at least one task registered for this request.
-            if has_resp && req_interest_done {
+            if has_resp && event_interest_done {
                 return true;
             }
-            if !req_interest_done {
-                if task_queue::has_other_interest(request_handle) {
+            if !event_interest_done {
+                if task_queue::has_other_interest(incoming_event_handle) {
                     // TODO: remove the short sleep here if at all possible.
                     monotonic_clock::wait_for(1).await;
-                    task_queue::set_current_request(request_handle);
+                    task_queue::set_current_incoming_event(incoming_event_handle);
                     continue;
                 }
                 return false;
@@ -76,7 +76,7 @@ pub(crate) async fn run(engine: *mut (), request_handle: i32) -> bool {
             return has_resp;
         }
 
-        if let Some(task_id) = find_immediately_ready(request_handle) {
+        if let Some(task_id) = find_immediately_ready(incoming_event_handle) {
             task_queue::remove_task(task_id);
             if !run_task(task_id) {
                 return false;
@@ -84,8 +84,8 @@ pub(crate) async fn run(engine: *mut (), request_handle: i32) -> bool {
             continue;
         }
 
-        let ready_task_id = await_any_task(request_handle).await;
-        task_queue::set_current_request(request_handle);
+        let ready_task_id = await_any_task(incoming_event_handle).await;
+        task_queue::set_current_incoming_event(incoming_event_handle);
         if ready_task_id >= 0 {
             task_queue::remove_task(ready_task_id);
             if !run_task(ready_task_id) {
@@ -108,9 +108,9 @@ fn run_task(task_id: i32) -> bool {
 // ── Helpers ────────────────────────────────────────────────────────
 
 /// Scan the task queue for the first immediately-runnable task.
-fn find_immediately_ready(request_handle: i32) -> Option<i32> {
+fn find_immediately_ready(incoming_event_handle: i32) -> Option<i32> {
     let now = monotonic_clock::now();
-    task_queue::find_task_for(request_handle, |task| {
+    task_queue::find_task_for(incoming_event_handle, |task| {
         let handle = task.waiter_handle;
 
         if handle == -2 {
@@ -222,8 +222,8 @@ impl Drop for PrefetchGuard {
 /// Send futures are wrapped in `SendFutureGuard` for cancellation safety.
 ///
 /// Returns the task_id of the first task to become ready, or -1 to re-check.
-async fn await_any_task(request_handle: i32) -> i32 {
-    let tasks = task_queue::snapshot_tasks_for(request_handle);
+async fn await_any_task(incoming_event_handle: i32) -> i32 {
+    let tasks = task_queue::snapshot_tasks_for(incoming_event_handle);
     let mut futs: Vec<Pin<Box<dyn Future<Output = i32>>>> = Vec::new();
     let mut min_timer_deadline: Option<u64> = None;
 

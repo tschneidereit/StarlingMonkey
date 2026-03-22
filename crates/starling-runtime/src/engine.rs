@@ -71,6 +71,19 @@ impl Engine {
             return Err("JS_Init failed");
         }
 
+        // Verify that our Rust-side JSVal constants match the C++ NaN-boxing layout.
+        assert!(
+            unsafe {
+                sm::sm_validate_value_constants(
+                    sm::JSVAL_UNDEFINED,
+                    sm::JSVAL_NULL,
+                    sm::JSVAL_TRUE,
+                    sm::JSVAL_FALSE,
+                )
+            },
+            "JSVal constants mismatch: Rust constants don't match C++ Value representations"
+        );
+
         let cx = unsafe { sm::sm_new_context() };
         if cx.is_null() {
             return Err("Failed to create JSContext");
@@ -655,7 +668,7 @@ fn setup_init_global(
     // contentGlobal property
     let content_global_val = unsafe { sm::sm_object_value(content_global) };
     let prop_name = b"contentGlobal\0";
-    // JSPROP_READONLY = 0x10 in SM
+    // JSPROP_READONLY = 0x2 in SM
     if !unsafe {
         sm::sm_define_property_value(
             cx,
@@ -663,7 +676,7 @@ fn setup_init_global(
             prop_name.as_ptr(),
             prop_name.len() as u32 - 1,
             content_global_val,
-            0x10, // JSPROP_READONLY
+            0x2, // JSPROP_READONLY
         )
     } {
         unsafe { sm::sm_leave_realm(cx, old_realm) };

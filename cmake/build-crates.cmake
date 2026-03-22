@@ -15,15 +15,42 @@ set(RUST_STATICLIB_RS "${CMAKE_CURRENT_BINARY_DIR}/rust-staticlib.rs" CACHE INTE
 set(RUST_STATICLIB_TOML "${CMAKE_CURRENT_BINARY_DIR}/Cargo.toml" CACHE INTERNAL "Path to the Rust staticlibs bundler Cargo.toml file" FORCE)
 set(RUST_STATICLIB_LOCK "${CMAKE_CURRENT_BINARY_DIR}/Cargo.lock" CACHE INTERNAL "Path to the Rust staticlibs bundler Cargo.toml file" FORCE)
 
+# Add the debugmozjs feature for debug builds.
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(DEBUGMOZJS_FEATURE "\"debugmozjs\"")
+endif()
+
 configure_file("runtime/crates/staticlib-template/rust-staticlib.rs.in" "${RUST_STATICLIB_RS}" COPYONLY)
 configure_file("runtime/crates/staticlib-template/Cargo.toml.in" "${RUST_STATICLIB_TOML}")
 configure_file("runtime/crates/staticlib-template/Cargo.lock" "${RUST_STATICLIB_LOCK}" COPYONLY)
+
+corrosion_import_crate(
+        MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/starling-ng/crates/Cargo.toml
+        CRATES "generate-bindings"
+)
+corrosion_set_env_vars(generate_bindings
+        SYSROOT=${WASI_SDK_PREFIX}/share/wasi-sysroot
+        CXXFLAGS="${CMAKE_CXX_FLAGS}"
+        BIN_DIR=${CMAKE_CURRENT_BINARY_DIR}
+        SM_HEADERS=${SM_INCLUDE_DIR}
+        RUST_LOG=bindgen
+)
 
 corrosion_import_crate(
         MANIFEST_PATH ${RUST_STATICLIB_TOML}
         CRATES "rust-staticlib"
         NO_LINKER_OVERRIDE
 )
+corrosion_set_env_vars(rust_staticlib
+        SPIDERMONKEY_DIR=${SM_LIB_DIR}
+)
+
+add_dependencies("cargo-prebuild_rust_staticlib" cargo-build_generate_bindings)
+
+add_library(rust-glue STATIC ${CMAKE_CURRENT_SOURCE_DIR}/starling-ng/crates/jsapi-sys/cpp/jsglue.cpp)
+target_include_directories(rust-glue PRIVATE ${SM_INCLUDE_DIR})
+add_dependencies(rust_staticlib rust-glue)
+target_link_libraries(rust-glue PRIVATE spidermonkey)
 
 # Add a Rust library to the staticlib bundle.
 function(add_rust_lib name path)
@@ -43,14 +70,14 @@ add_rust_lib(rust-hooks "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-hooks")
 add_library(rust-hooks-wrappers STATIC "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-hooks/src/wrappers.cpp")
 target_link_libraries(rust-hooks-wrappers PRIVATE spidermonkey)
 add_library(rust-crates STATIC ${CMAKE_CURRENT_BINARY_DIR}/null.cpp)
-target_link_libraries(rust-crates PRIVATE rust_staticlib rust-hooks-wrappers)
+target_link_libraries(rust-crates PRIVATE rust_staticlib rust-glue rust-hooks-wrappers extension_api)
 
 # Add crates as needed here:
 add_rust_lib(rust-url "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-url")
 add_rust_lib(multipart "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-multipart" "\"capi\", \"simd\"")
 
 # The runtime crate provides engine, script loader, entry points, and config.
-add_rust_lib(starling-runtime "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-runtime")
+add_rust_lib(starling-runtime "${CMAKE_CURRENT_SOURCE_DIR}/crates/starling-runtime" ${DEBUGMOZJS_FEATURE})
 
 # The host API Rust crate is selected by the host_api.cmake for the chosen implementation.
 if (DEFINED RUST_HOST_API_CRATE)

@@ -1,4 +1,4 @@
 deps/include/wizer.h
-crates/rust-url/rust-url.h
-crates/rust-encoding/rust-encoding.h
+crates/starling-url/rust-url.h
+crates/starling-encoding/rust-encoding.h
 bindings.h

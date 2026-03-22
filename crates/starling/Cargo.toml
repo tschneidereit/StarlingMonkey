@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 default = ["builtins-full", "debugger"]
 builtins-full = ["starling-builtins/full"]
 debugger = ["starling-runtime/debugger"]
+debugmozjs = ["starling-runtime/debugmozjs"]
 
 # Individual builtin feature forwarding
 base64 = ["starling-builtins/base64"]

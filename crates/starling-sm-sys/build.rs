@@ -55,6 +55,9 @@ fn main() {
         .flag("-fno-math-errno")
         .flag("-mthread-model")
         .flag("single");
+    if cfg!(feature = "debugmozjs") {
+        build.flag("-DJS_GC_ZEAL").flag("-DDEBUG").flag("-DJS_DEBUG");
+    }
 
     // If we have wasi-sdk, configure the compiler to use it.
     if let Some(ref wasi_sdk_dir) = wasi_sdk {
@@ -77,12 +80,12 @@ fn main() {
 
     build.compile("sm_shim");
 
-    // Link the SpiderMonkey static library.
-    println!(
-        "cargo:rustc-link-search=native={}",
-        sm_dir.display()
-    );
-    println!("cargo:rustc-link-lib=static=spidermonkey");
+    // // Link the SpiderMonkey static library.
+    // println!(
+    //     "cargo:rustc-link-search=native={}",
+    //     sm_dir.display()
+    // );
+    // println!("cargo:rustc-link-lib=static=spidermonkey");
 
     // Expose the SM include path to downstream crates via DEP_SPIDERMONKEY_INCLUDE.
     println!(
@@ -148,8 +151,14 @@ fn find_spidermonkey() -> PathBuf {
     }
 
     // Also check deps/cpm_cache/spidermonkey-*
+    // When debugmozjs feature is enabled, prefer the debug SM build.
     let cpm_cache = workspace_root.join("deps").join("cpm_cache");
-    for prefix in &["spidermonkey-release", "spidermonkey-debug"] {
+    let prefixes: &[&str] = if cfg!(feature = "debugmozjs") {
+        &["spidermonkey-debug", "spidermonkey-release"]
+    } else {
+        &["spidermonkey-release", "spidermonkey-debug"]
+    };
+    for prefix in prefixes {
         let dir = cpm_cache.join(prefix);
         if dir.exists() {
             if let Ok(entries) = std::fs::read_dir(&dir) {

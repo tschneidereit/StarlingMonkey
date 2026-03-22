@@ -1,5 +1,7 @@
 set(SM_TAG FIREFOX_140_0_4_RELEASE_STARLING)
 
+option(BUILD_SPIDERMONKEY "Build SpiderMonkey from source" OFF)
+
 include("manage-git-source")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -14,37 +16,39 @@ if (WEVAL)
     set(SM_BUILD_TYPE "${SM_BUILD_TYPE}_weval")
 endif()
 
-# If the developer has specified an alternate local set of SpiderMonkey
-# artifacts, use them. This allows for local/in-tree development without
-# requiring a roundtrip through GitHub CI.
-#
-# This can be set, for example, to the output directly (`release/` or `debug/`)
-# under a local clone of the `spidermonkey-wasi-embedding` repo.
-if (DEFINED ENV{SPIDERMONKEY_BINARIES})
-    set(SM_LIB_DIR $ENV{SPIDERMONKEY_BINARIES})
-    message(STATUS "Using pre-built SpiderMonkey artifacts from local directory ${SM_LIB_DIR}")
-else()
-    set(SM_URL https://github.com/bytecodealliance/starlingmonkey/releases/download/libspidermonkey_${SM_TAG}/spidermonkey-static-${SM_BUILD_TYPE}.tar.gz)
-    message(STATUS "Checking for pre-built SpiderMonkey artifacts at ${SM_URL}")
-    execute_process(
-            COMMAND curl -sIL -o /dev/null -w "%{http_code}" ${SM_URL}
-            RESULT_VARIABLE CURL_RESULT
-            OUTPUT_VARIABLE HTTP_STATUS
-    )
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cpp "")
 
-    if (CURL_RESULT EQUAL 0 AND HTTP_STATUS STREQUAL "200")
-        message(STATUS "Using pre-built SpiderMonkey artifacts from ${SM_URL}")
-        CPMAddPackage(NAME spidermonkey-${SM_BUILD_TYPE}
-                URL ${SM_URL}
-                DOWNLOAD_ONLY YES
-        )
-        set(SM_LIB_DIR ${CPM_PACKAGE_spidermonkey-${SM_BUILD_TYPE}_SOURCE_DIR} CACHE STRING "Path to spidermonkey ${SM_BUILD_TYPE} build" FORCE)
+if (NOT BUILD_SPIDERMONKEY)
+    # If the developer has specified an alternate local set of SpiderMonkey
+    # artifacts, use them. This allows for local/in-tree development without
+    # requiring a roundtrip through GitHub CI.
+    #
+    # This can be set, for example, to the output directly (`release/` or `debug/`)
+    # under a local clone of the `spidermonkey-wasi-embedding` repo.
+    if (DEFINED ENV{SPIDERMONKEY_BINARIES})
+        set(SM_LIB_DIR $ENV{SPIDERMONKEY_BINARIES})
+        message(STATUS "Using pre-built SpiderMonkey artifacts from local directory ${SM_LIB_DIR}")
     else()
-        message(STATUS "No pre-built ${SM_BUILD_TYPE} SpiderMonkey artifacts available for tag ${SM_TAG}. Building from source.")
+        set(SM_URL https://github.com/bytecodealliance/starlingmonkey/releases/download/libspidermonkey_${SM_TAG}/spidermonkey-static-${SM_BUILD_TYPE}.tar.gz)
+        message(STATUS "Checking for pre-built SpiderMonkey artifacts at ${SM_URL}")
+        execute_process(
+                COMMAND curl -sIL -o /dev/null -w "%{http_code}" ${SM_URL}
+                RESULT_VARIABLE CURL_RESULT
+                OUTPUT_VARIABLE HTTP_STATUS
+        )
+
+        if (CURL_RESULT EQUAL 0 AND HTTP_STATUS STREQUAL "200")
+            message(STATUS "Using pre-built SpiderMonkey artifacts from ${SM_URL}")
+            CPMAddPackage(NAME spidermonkey-${SM_BUILD_TYPE}
+                    URL ${SM_URL}
+                    DOWNLOAD_ONLY YES
+            )
+            set(SM_LIB_DIR ${CPM_PACKAGE_spidermonkey-${SM_BUILD_TYPE}_SOURCE_DIR} CACHE STRING "Path to spidermonkey ${SM_BUILD_TYPE} build" FORCE)
+        else()
+            message(STATUS "No pre-built ${SM_BUILD_TYPE} SpiderMonkey artifacts available for tag ${SM_TAG}. Building from source.")
+        endif()
     endif()
 endif()
-
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cpp "")
 
 if (DEFINED SM_LIB_DIR)
     set(SM_INCLUDE_DIR ${SM_LIB_DIR}/include)
